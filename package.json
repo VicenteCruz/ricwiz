@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -45,12 +45,32 @@
         "title": "Ricwiz: Open Merge Requests in Browser"
       },
       {
+        "command": "ricwiz.createMergeRequestsVSCode",
+        "title": "Ricwiz: Open Merge Requests in VS Code"
+      },
+      {
         "command": "ricwiz.openJiraTicket",
-        "title": "Ricwiz: Open Jira Ticket"
+        "title": "Ricwiz: Open Jira Ticket in Browser"
+      },
+      {
+        "command": "ricwiz.openJiraTicketVSCode",
+        "title": "Ricwiz: Open Jira Ticket in VS Code"
       },
       {
         "command": "ricwiz.openSettings",
         "title": "Ricwiz: Open Settings"
+      },
+      {
+        "command": "ricwiz.copyBranchName",
+        "title": "Ricwiz: Copy Branch Name"
+      },
+      {
+        "command": "ricwiz.syncAll",
+        "title": "Ricwiz: Sync All Ticket Branches"
+      },
+      {
+        "command": "ricwiz.deleteUnusedBranches",
+        "title": "Ricwiz: Delete Unused Branches"
       }
     ],
     "configuration": {
@@ -75,6 +95,11 @@
           "type": "string",
           "default": "SFPSCA-",
           "description": "Prefix used for branch creation."
+        },
+        "ricwiz.commitMessageSuffix": {
+          "type": "string",
+          "default": "- ",
+          "description": "Suffix to append to the ticket ID in the auto-generated commit message (e.g., '- ' or ': ')."
         },
         "ricwiz.environments": {
           "type": "array",

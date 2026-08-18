@@ -69,13 +69,38 @@ export async function prepareDeploy(): Promise<void> {
         const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
             progress.report({ message: `CONFLICT! Resolve & click 'Commit & Continue'.` });
             
-            const showConflictNotification = () => {
+            let isResolved = false;
+
+            const getDeletionConflicts = async () => {
+                try {
+                    const { stdout } = await exec('git status --porcelain', { cwd });
+                    return stdout.split('\n')
+                        .filter((line: string) => {
+                            const state = line.substring(0, 2);
+                            return ['UD', 'DU', 'DD'].includes(state);
+                        })
+                        .map((line: string) => line.substring(3).trim());
+                } catch(e) {
+                    return [];
+                }
+            };
+
+            const showConflictNotification = async () => {
+                if (isResolved) return;
+
+                const deletions = await getDeletionConflicts();
+                const buttons = ['Commit & Continue'];
+                if (deletions.length > 0) {
+                    buttons.push('Resolve Deletions...');
+                }
+                buttons.push('Abort Deploy');
+
                 vscode.window.showWarningMessage(
                     `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve the conflicts in your editor, then click "Commit & Continue".`,
-                    'Commit & Continue',
-                    'Resolve Deletions...',
-                    'Abort Deploy'
+                    ...buttons
                 ).then(async selection => {
+                    if (isResolved) return;
+
                     if (selection === 'Abort Deploy') {
                         abortRequested = true;
                     } else if (selection === 'Resolve Deletions...') {
@@ -142,12 +167,14 @@ export async function prepareDeploy(): Promise<void> {
             while (true) {
                 if (abortRequested) {
                     try { await exec('git merge --abort', { cwd }); } catch(err) {}
+                    isResolved = true;
                     throw new Error('Deploy aborted by user.');
                 }
                 
                 try {
                     const { stdout } = await exec('git status --porcelain', { cwd });
                     if (stdout.trim().length === 0) {
+                        isResolved = true;
                         vscode.window.showInformationMessage(`Ricwiz: Changes committed! Resuming deploy...`);
                         break; // Working tree clean, meaning they committed!
                     }

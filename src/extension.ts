@@ -825,13 +825,24 @@ export function activate(context: vscode.ExtensionContext) {
 
             if (!abortRequested) {
                 progress.report({ message: 'Finishing up...', increment: 10 });
-                // Tentar voltar para a branch original
-                if (originalBranch && originalBranch !== currentBranch) {
-                    try {
-                        await exec(`git checkout ${originalBranch}`, { cwd });
-                        vscode.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${originalBranch}.`);
-                    } catch (e) {}
-                } else {
+                
+                // Priorize returning to the main branch of the ticket if it exists locally
+                let targetReturnBranch = originalBranch;
+                try {
+                    await exec(`git show-ref --verify --quiet refs/heads/${mainBranch}`, { cwd });
+                    targetReturnBranch = mainBranch;
+                } catch(e) {}
+
+                try {
+                    const { stdout } = await exec('git branch --show-current', { cwd });
+                    const current = stdout.trim();
+                    if (targetReturnBranch && targetReturnBranch !== current) {
+                        await exec(`git checkout ${targetReturnBranch}`, { cwd });
+                        vscode.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${targetReturnBranch}.`);
+                    } else {
+                        vscode.window.showInformationMessage(`Ricwiz: Operation complete.`);
+                    }
+                } catch (e) {
                     vscode.window.showInformationMessage(`Ricwiz: Operation complete.`);
                 }
             }

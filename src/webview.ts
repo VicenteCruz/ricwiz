@@ -62,6 +62,12 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'generatePackageXml':
                     vscode.commands.executeCommand('ricwiz.generatePackageXml');
                     break;
+                case 'openDevTools':
+                    this.setPage('devtools');
+                    break;
+                case 'openMain':
+                    this.setPage('main');
+                    break;
                 case 'deployPackage':
                     vscode.commands.executeCommand('ricwiz.deployPackage');
                     break;
@@ -115,16 +121,22 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     private commitsCache: CommitEntry[] = [];
     private baseBranchesCache: string[] = [];
     private recentTicketsCache: string[] = [];
+    private currentPage: 'main' | 'devtools' = 'main';
+
+    public setPage(page: 'main' | 'devtools') {
+        this.currentPage = page;
+        this.updateView();
+    }
 
     private updateView() {
         if (!this.webviewView) return;
         const logoUri = this.webviewView.webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png')
         );
-        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache);
+        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache, this.currentPage);
     }
 
-    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[]) {
+    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools') {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -257,6 +269,39 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </html>`;
         }
 
+        if (currentPage === 'devtools') {
+            return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Ricwiz DevTools</title>
+                ${styleHtml}
+            </head>
+            <body>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
+                    <button class="btn" style="width: auto; padding: 4px 8px; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCommand('openMain')">⬅️ Back</button>
+                    <div style="font-weight: bold; font-size: 13px; flex: 1; text-align: center;">Developer Utilities</div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn" title="Generate Salesforce package.xml from git diff" onclick="sendCommand('generatePackageXml')">
+                        <span class="icon">📦</span> Auto Package.xml
+                    </button>
+        
+                    <button class="btn" title="Deploy the generated package to Salesforce" onclick="sendCommand('deployPackage')">
+                        <span class="icon">☁️</span> Deploy Package
+                    </button>
+                </div>
+                
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                </script>
+            </body>
+            </html>`;
+        }
+
         // NORMAL HTML RENDER (No conflict)
         return `<!DOCTYPE html>
         <html lang="en">
@@ -342,14 +387,6 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
             <div class="separator"></div>
 
-            <button class="btn" title="Generate Salesforce package.xml from git diff" onclick="sendCommand('generatePackageXml')">
-                <span class="icon">📦</span> Auto Package.xml
-            </button>
-
-            <button class="btn" title="Deploy the generated package to Salesforce" onclick="sendCommand('deployPackage')">
-                <span class="icon">☁️</span> Deploy Package
-            </button>
-
             <button class="btn" title="Fetch and pull all branches of the current ticket" onclick="sendCommand('syncAll')">
                 <span class="icon">🔄</span> Sync All
             </button>
@@ -362,9 +399,14 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
             <div class="separator"></div>
 
-            <button class="btn" style="opacity: 0.8;" title="Extension Settings" onclick="sendCommand('openSettings')">
-                <span class="icon">⚙️</span> Settings
-            </button>
+            <div style="display: flex; gap: 4px;">
+                <button class="btn" style="flex: 1; opacity: 0.8;" title="Extension Settings" onclick="sendCommand('openSettings')">
+                    <span class="icon">⚙️</span> Settings
+                </button>
+                <button class="btn" style="flex: 1; opacity: 0.8;" title="Developer Utilities" onclick="sendCommand('openDevTools')">
+                    <span class="icon">🛠️</span> Dev Tools
+                </button>
+            </div>
             
             <script>
                 const vscode = acquireVsCodeApi();

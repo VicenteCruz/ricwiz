@@ -62,7 +62,11 @@
       },
       {
         "command": "ricwiz.generatePackageXml",
-        "title": "Ricwiz: Generate package.xml (Auto Mapper)"
+        "title": "Ricwiz: Generate package.xml"
+      },
+      {
+        "command": "ricwiz.deployPackage",
+        "title": "Ricwiz: Deploy Package"
       },
       {
         "command": "ricwiz.copyBranchName",
@@ -99,6 +103,11 @@
           "type": "string",
           "default": "sf sgd source delta --to \"HEAD\" --from \"origin/{baseBranch}\" --output-dir \".\"",
           "description": "The command used to generate the package.xml file. Use {baseBranch} as a placeholder for the ticket source branch."
+        },
+        "ricwiz.deployCommand": {
+          "type": "string",
+          "default": "sf project deploy start --manifest package/package.xml --post-destructive-changes destructiveChanges/destructiveChanges.xml -c -l NoTestRun -g",
+          "description": "The command used to deploy the generated package.xml."
         },
         "ricwiz.ticketPrefix": {
           "type": "string",

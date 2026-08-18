@@ -57,6 +57,9 @@ class RicwizWebviewProvider {
                 case 'generatePackageXml':
                     vscode.commands.executeCommand('ricwiz.generatePackageXml');
                     break;
+                case 'deployPackage':
+                    vscode.commands.executeCommand('ricwiz.deployPackage');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -325,6 +328,10 @@ class RicwizWebviewProvider {
 
             <button class="btn" title="Generate Salesforce package.xml from git diff" onclick="sendCommand('generatePackageXml')">
                 <span class="icon">📦</span> Auto Package.xml
+            </button>
+
+            <button class="btn" title="Deploy the generated package to Salesforce" onclick="sendCommand('deployPackage')">
+                <span class="icon">☁️</span> Deploy Package
             </button>
 
             <button class="btn" title="Fetch and pull all branches of the current ticket" onclick="sendCommand('syncAll')">

@@ -519,94 +519,106 @@ export function activate(context: vscode.ExtensionContext) {
         const mainBranch = ticketId;
 
         try {
-            // Guardar branch inicial para caso dê erro ou para criar a mainBranch a partir da atual
-            let initialBranch = '';
-            try {
-                const { stdout } = await exec('git branch --show-current', { cwd });
-                initialBranch = stdout.trim();
-            } catch(e) {}
-            
-            let createdCount = 0;
-            vscode.window.showInformationMessage(`Ricwiz: Checking remote status (git fetch)...`);
-            
-            try {
-                await exec('git fetch', { cwd });
-            } catch (e) {
-                // Pode falhar se estiver offline, continuamos mesmo assim
-            }
-
-            // Função auxiliar para ver se a branch existe local ou remotamente
-            const checkBranchExists = async (b: string) => {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Ricwiz: Creating Branches",
+                cancellable: false
+            }, async (progress) => {
+                // Guardar branch inicial para caso dê erro ou para criar a mainBranch a partir da atual
+                let initialBranch = '';
                 try {
-                    await exec(`git show-ref --verify --quiet refs/heads/${b}`, { cwd });
-                    return true;
+                    const { stdout } = await exec('git branch --show-current', { cwd });
+                    initialBranch = stdout.trim();
                 } catch(e) {}
+                
+                let createdCount = 0;
+                progress.report({ message: 'Checking remote status (git fetch)...', increment: 10 });
+                
                 try {
-                    await exec(`git show-ref --verify --quiet refs/remotes/origin/${b}`, { cwd });
-                    return true;
-                } catch(e) {}
-                return false;
-            };
+                    await exec('git fetch', { cwd });
+                } catch (e) {
+                    // Pode falhar se estiver offline, continuamos mesmo assim
+                }
 
-            // 1. Criar a branch principal a partir da branch base configurada (ex: main)
-            if (selectedOption.value === 'all') {
-                if (await checkBranchExists(mainBranch)) {
-                    vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
-                    // Checkout para garantir que a temos localmente
-                    await exec(`git checkout ${mainBranch}`, { cwd });
-                } else {
+                // Função auxiliar para ver se a branch existe local ou remotamente
+                const checkBranchExists = async (b: string) => {
                     try {
-                        await exec(`git fetch origin ${sourceBranchForTicket}`, { cwd });
-                        await exec(`git checkout -b ${mainBranch} origin/${sourceBranchForTicket}`, { cwd });
-                        createdCount++;
-                    } catch (e: any) {
+                        await exec(`git show-ref --verify --quiet refs/heads/${b}`, { cwd });
+                        return true;
+                    } catch(e) {}
+                    try {
+                        await exec(`git show-ref --verify --quiet refs/remotes/origin/${b}`, { cwd });
+                        return true;
+                    } catch(e) {}
+                    return false;
+                };
+
+                // 1. Criar a branch principal a partir da branch base configurada (ex: main)
+                if (selectedOption.value === 'all') {
+                    progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 20 });
+                    if (await checkBranchExists(mainBranch)) {
+                        vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
+                        // Checkout para garantir que a temos localmente
+                        await exec(`git checkout ${mainBranch}`, { cwd });
+                    } else {
                         try {
-                            await exec(`git checkout -b ${mainBranch} ${sourceBranchForTicket}`, { cwd });
+                            await exec(`git fetch origin ${sourceBranchForTicket}`, { cwd });
+                            await exec(`git checkout -b ${mainBranch} origin/${sourceBranchForTicket}`, { cwd });
                             createdCount++;
-                        } catch(err) {} 
+                        } catch (e: any) {
+                            try {
+                                await exec(`git checkout -b ${mainBranch} ${sourceBranchForTicket}`, { cwd });
+                                createdCount++;
+                            } catch(err) {} 
+                        }
+                        
+                        try { 
+                            await exec(`git push -u origin ${mainBranch}`, { cwd }); 
+                        } catch(e){} 
                     }
-                    
-                    try { 
-                        await exec(`git push -u origin ${mainBranch}`, { cwd }); 
-                    } catch(e){} 
                 }
-            }
 
-            // 2. Criar branches de ambiente baseadas nas sourceBranches configuradas
-            for (const env of environments) {
-                const envBranchName = `${ticketId}-to-${env.name}`;
-                const sourceBranch = env.sourceBranch;
+                // 2. Criar branches de ambiente baseadas nas sourceBranches configuradas
+                const envProgressStep = 60 / (environments.length || 1);
+                for (const env of environments) {
+                    const envBranchName = `${ticketId}-to-${env.name}`;
+                    const sourceBranch = env.sourceBranch;
 
-                if (await checkBranchExists(envBranchName)) {
-                    // Já existe, não criamos nem apagamos nada
-                } else {
+                    progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });
+
+                    if (await checkBranchExists(envBranchName)) {
+                        // Já existe, não criamos nem apagamos nada
+                    } else {
+                        try {
+                            // Checkout source branch e pull
+                            await exec(`git checkout ${sourceBranch}`, { cwd });
+                            try { await exec(`git pull origin ${sourceBranch}`, { cwd }); } catch(e){}
+                            
+                            // Criar a branch de ambiente baseada nela
+                            await exec(`git checkout -b ${envBranchName}`, { cwd });
+                            createdCount++;
+                            
+                            // Push
+                            await exec(`git push -u origin ${envBranchName}`, { cwd });
+                        } catch (e: any) {
+                            vscode.window.showWarningMessage(`Ricwiz: Could not create/sync branch ${envBranchName} from ${sourceBranch}. Does the source branch exist?`);
+                        }
+                    }
+                }
+
+                // 3. Voltar para a main branch no final (se aplicável)
+                if (selectedOption.value === 'all') {
+                    progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
                     try {
-                        // Checkout source branch e pull
-                        await exec(`git checkout ${sourceBranch}`, { cwd });
-                        try { await exec(`git pull origin ${sourceBranch}`, { cwd }); } catch(e){}
-                        
-                        // Criar a branch de ambiente baseada nela
-                        await exec(`git checkout -b ${envBranchName}`, { cwd });
-                        createdCount++;
-                        
-                        // Push
-                        await exec(`git push -u origin ${envBranchName}`, { cwd });
+                        await exec(`git checkout ${mainBranch}`, { cwd });
                     } catch (e: any) {
-                        vscode.window.showWarningMessage(`Ricwiz: Could not create/sync branch ${envBranchName} from ${sourceBranch}. Does the source branch exist?`);
+                        vscode.window.showErrorMessage(`Ricwiz: Failed to switch to main branch: ${e.message}`);
                     }
                 }
-            }
 
-            // 3. Voltar para a main branch no final (se aplicável)
-            if (selectedOption.value === 'all') {
-                try {
-                    await exec(`git checkout ${mainBranch}`, { cwd });
-                } catch (e: any) {
-                    vscode.window.showErrorMessage(`Ricwiz: Failed to switch to main branch: ${e.message}`);
-                }
-            }
-
-            vscode.window.showInformationMessage(`Ricwiz: All set! You can start working on your branches! 🚀`);
+                progress.report({ increment: 100 });
+                vscode.window.showInformationMessage(`Ricwiz: All set! You can start working on your branches! 🚀`);
+            });
             
         } catch (error: any) {
             vscode.window.showErrorMessage(`Ricwiz general error: ${error.message}`);
@@ -685,72 +697,84 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
 
-        let successCount = 0;
-        const originalBranch = currentBranch;
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Ricwiz: Preparing Deploy",
+            cancellable: false
+        }, async (progress) => {
+            let successCount = 0;
+            const originalBranch = currentBranch;
 
-        vscode.window.showInformationMessage(`Ricwiz: Preparing deploy. Auto-syncing base branches...`);
-        
-        try {
-            await exec('git fetch', { cwd });
+            progress.report({ message: 'Auto-syncing base branches...', increment: 10 });
+            
+            try {
+                await exec('git fetch', { cwd });
+                const envSyncStep = 20 / (environments.length || 1);
+                for (const env of environments) {
+                    try {
+                        progress.report({ message: `Fetching ${env.sourceBranch}...`, increment: envSyncStep });
+                        await exec(`git fetch origin ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
+                    } catch(e) {}
+                }
+            } catch(e) {}
+
+            const processStep = 60 / (environments.length || 1);
+
             for (const env of environments) {
-                try {
-                    await exec(`git fetch origin ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
-                } catch(e) {}
-            }
-        } catch(e) {}
+                const targetBranch = `${ticketId}-to-${env.name}`;
+                const sourceBranch = env.sourceBranch;
 
-        vscode.window.showInformationMessage(`Ricwiz: Syncing environment branches with their origins and merging ${mainBranch}...`);
-
-        for (const env of environments) {
-            const targetBranch = `${ticketId}-to-${env.name}`;
-            const sourceBranch = env.sourceBranch;
-
-            try {
-                // Mudar para a branch de ambiente
-                await exec(`git checkout ${targetBranch}`, { cwd });
-                
-                // Fazer pull para garantir que tem o estado mais recente do remote (da própria branch)
                 try {
-                    await exec(`git pull origin ${targetBranch}`, { cwd });
-                } catch (e) {} // Ignora se não conseguir
-                
-                // 1. Fazer merge da branch de origem (ex: quality) para mantê-la atualizada com o estado global
-                try {
-                    await exec(`git fetch origin ${sourceBranch}`, { cwd });
-                    await exec(`git merge origin/${sourceBranch}`, { cwd });
-                } catch (e) {
-                    vscode.window.showErrorMessage(`Ricwiz: CONFLICT! The branch origin/${sourceBranch} has conflicts with ${targetBranch}. Operation paused. Please go to Source Control, resolve conflicts, commit, and run the command again.`);
-                    return; // Interrompe tudo para o utilizador poder resolver
+                    progress.report({ message: `Processing ${targetBranch}...`, increment: processStep / 4 });
+                    // Mudar para a branch de ambiente
+                    await exec(`git checkout ${targetBranch}`, { cwd });
+                    
+                    // Fazer pull para garantir que tem o estado mais recente do remote (da própria branch)
+                    try {
+                        await exec(`git pull origin ${targetBranch}`, { cwd });
+                    } catch (e) {} // Ignora se não conseguir
+                    
+                    // 1. Fazer merge da branch de origem (ex: quality) para mantê-la atualizada com o estado global
+                    try {
+                        progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
+                        await exec(`git fetch origin ${sourceBranch}`, { cwd });
+                        await exec(`git merge origin/${sourceBranch}`, { cwd });
+                    } catch (e) {
+                        vscode.window.showErrorMessage(`Ricwiz: CONFLICT! The branch origin/${sourceBranch} has conflicts with ${targetBranch}. Operation paused. Please go to Source Control, resolve conflicts, commit, and run the command again.`);
+                        return; // Interrompe tudo para o utilizador poder resolver
+                    }
+
+                    // 2. Fazer merge da main branch (as alterações do ticket)
+                    try {
+                        progress.report({ message: `Merging ${mainBranch} into ${targetBranch}...`, increment: processStep / 4 });
+                        await exec(`git merge ${mainBranch}`, { cwd });
+                    } catch (e) {
+                        vscode.window.showErrorMessage(`Ricwiz: CONFLICT! Your changes in ${mainBranch} have conflicts with ${targetBranch}. Operation paused. Resolve them in Source Control, commit, and run the command again.`);
+                        return; // Interrompe tudo para o utilizador poder resolver
+                    }
+                    
+                    // 3. Sincronizar com o remote
+                    progress.report({ message: `Pushing ${targetBranch}...`, increment: processStep / 4 });
+                    await exec(`git push origin ${targetBranch}`, { cwd });
+                    
+                    successCount++;
+                } catch (e: any) {
+                    vscode.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
+                    return; // Interrompe execução perante erro crítico (ex: falhou o checkout)
                 }
-
-                // 2. Fazer merge da main branch (as alterações do ticket)
-                try {
-                    await exec(`git merge ${mainBranch}`, { cwd });
-                } catch (e) {
-                    vscode.window.showErrorMessage(`Ricwiz: CONFLICT! Your changes in ${mainBranch} have conflicts with ${targetBranch}. Operation paused. Resolve them in Source Control, commit, and run the command again.`);
-                    return; // Interrompe tudo para o utilizador poder resolver
-                }
-                
-                // 3. Sincronizar com o remote
-                await exec(`git push origin ${targetBranch}`, { cwd });
-                
-                successCount++;
-                vscode.window.showInformationMessage(`Ricwiz: Synchronization complete on branch ${targetBranch}.`);
-            } catch (e: any) {
-                vscode.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
-                return; // Interrompe execução perante erro crítico (ex: falhou o checkout)
             }
-        }
 
-        // Tentar voltar para a branch original
-        if (originalBranch && originalBranch !== currentBranch) {
-            try {
-                await exec(`git checkout ${originalBranch}`, { cwd });
-                vscode.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${originalBranch}.`);
-            } catch (e) {}
-        } else {
-            vscode.window.showInformationMessage(`Ricwiz: Operation complete.`);
-        }
+            progress.report({ message: 'Finishing up...', increment: 10 });
+            // Tentar voltar para a branch original
+            if (originalBranch && originalBranch !== currentBranch) {
+                try {
+                    await exec(`git checkout ${originalBranch}`, { cwd });
+                    vscode.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${originalBranch}.`);
+                } catch (e) {}
+            } else {
+                vscode.window.showInformationMessage(`Ricwiz: Operation complete.`);
+            }
+        });
     });
 
     context.subscriptions.push(prepareDeployDisposable);

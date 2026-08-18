@@ -73,10 +73,44 @@ export async function prepareDeploy(): Promise<void> {
                 vscode.window.showWarningMessage(
                     `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve the conflicts in your editor, then click "Commit & Continue".`,
                     'Commit & Continue',
+                    'Resolve Deletions...',
                     'Abort Deploy'
                 ).then(async selection => {
                     if (selection === 'Abort Deploy') {
                         abortRequested = true;
+                    } else if (selection === 'Resolve Deletions...') {
+                        try {
+                            const { stdout } = await exec('git status --porcelain', { cwd });
+                            const unmerged = stdout.split('\n')
+                                .filter((line: string) => {
+                                    const state = line.substring(0, 2);
+                                    return ['UU', 'AA', 'UD', 'DU', 'AU', 'UA', 'DD'].includes(state);
+                                })
+                                .map((line: string) => line.substring(3).trim());
+
+                            if (unmerged.length === 0) {
+                                vscode.window.showInformationMessage('Ricwiz: No conflicted files found.');
+                            } else {
+                                const items = unmerged.map((file: string) => ({ label: file }));
+                                const selected = await vscode.window.showQuickPick(items, {
+                                    canPickMany: true,
+                                    placeHolder: 'Select conflicted files you want to DELETE to resolve them',
+                                    title: 'Ricwiz: Delete Conflicted Files'
+                                });
+
+                                if (selected && selected.length > 0) {
+                                    for (const item of selected) {
+                                        try {
+                                            await exec(`git rm --force "${item.label}"`, { cwd });
+                                        } catch(e) {}
+                                    }
+                                    vscode.window.showInformationMessage(`Ricwiz: Deleted ${selected.length} conflicted file(s).`);
+                                }
+                            }
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Ricwiz: Error reading conflicts. (${e.message})`);
+                        }
+                        showConflictNotification(); // Re-show so they can Commit & Continue
                     } else if (selection === 'Commit & Continue') {
                         try {
                             // Safety check for leftover markers

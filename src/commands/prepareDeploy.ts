@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists, getCurrentBranch } from '../git';
 import { EnvironmentConfig } from '../types';
 
@@ -137,6 +139,25 @@ export async function prepareDeploy(): Promise<void> {
                 } else if (selected.label.includes('Commit & Continue')) {
                     qp.hide();
                     try {
+                        // Check if they are about to keep files that were deleted in the other branch
+                        const deletions = await getDeletionConflicts();
+                        const keptFiles = deletions.filter(file => fs.existsSync(path.join(cwd, file)));
+                        
+                        if (keptFiles.length > 0) {
+                            const confirm = await vscode.window.showWarningMessage(
+                                `Wait! There are ${keptFiles.length} file(s) with deletion conflicts that are still on your disk.\n\nIf you commit now, you will KEEP them in the project.\n\nAre you sure you want to KEEP them?`,
+                                { modal: true },
+                                'Yes, KEEP them',
+                                'No, let me DELETE them'
+                            );
+                            
+                            if (confirm !== 'Yes, KEEP them') {
+                                // If they say No, or dismiss the modal, re-show the QuickPick
+                                updateQuickPick();
+                                return;
+                            }
+                        }
+
                         let hasMarkers = false;
                         try {
                             const { stdout } = await exec(`git grep -E "^<<<<<<< "`, { cwd });

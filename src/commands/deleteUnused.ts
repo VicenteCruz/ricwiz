@@ -102,7 +102,7 @@ export async function deleteUnusedBranches(): Promise<void> {
 
             // If on this branch, switch away first
             if (name === currentBranch) {
-                const fallbackBranch = config.get<string>('ticketSourceBranch', 'master');
+                const fallbackBranch = config.get<string>('ticketSourceBranch', 'main');
                 try {
                     await exec(`git checkout ${fallbackBranch}`, { cwd });
                     currentBranch = fallbackBranch;

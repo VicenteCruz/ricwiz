@@ -75,7 +75,9 @@ async function createBranches() {
                             await (0, git_1.exec)(`git checkout -b ${mainBranch} ${sourceBranchForTicket}`, { cwd });
                             createdCount++;
                         }
-                        catch (err) { }
+                        catch (err) {
+                            vscode.window.showWarningMessage(`Ricwiz: Could not create main branch ${mainBranch} from ${sourceBranchForTicket}. Does the source branch exist?`);
+                        }
                     }
                     try {
                         await (0, git_1.exec)(`git push -u origin ${mainBranch}`, { cwd });

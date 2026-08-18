@@ -60,16 +60,54 @@ class RicwizWebviewProvider {
                 case 'deleteUnused':
                     vscode.commands.executeCommand('ricwiz.deleteUnusedBranches');
                     break;
+                case 'conflict_commitAndContinue':
+                    vscode.commands.executeCommand('ricwiz.conflictAction', 'commitAndContinue');
+                    break;
+                case 'conflict_resolveDeletions':
+                    vscode.commands.executeCommand('ricwiz.conflictAction', 'resolveDeletions');
+                    break;
+                case 'conflict_abortDeploy':
+                    vscode.commands.executeCommand('ricwiz.conflictAction', 'abortDeploy');
+                    break;
+                case 'openFile':
+                    if (data.file) {
+                        const workspaceFolders = vscode.workspace.workspaceFolders;
+                        if (workspaceFolders) {
+                            const uri = vscode.Uri.joinPath(workspaceFolders[0].uri, data.file);
+                            vscode.commands.executeCommand('vscode.open', uri);
+                        }
+                    }
+                    break;
             }
         });
     }
-    updateBranch(branchName, relatedBranches = [], commits = []) {
+    conflictState = null;
+    setConflictState(state) {
+        this.conflictState = state;
+        this.updateView();
+    }
+    updateBranch(branchName, relatedBranches = [], commits = [], baseBranches = [], recentTickets = []) {
+        if (!this.webviewView)
+            return;
+        this.currentBranchCache = branchName;
+        this.relatedBranchesCache = relatedBranches;
+        this.commitsCache = commits;
+        this.baseBranchesCache = baseBranches;
+        this.recentTicketsCache = recentTickets;
+        this.updateView();
+    }
+    currentBranchCache = '';
+    relatedBranchesCache = [];
+    commitsCache = [];
+    baseBranchesCache = [];
+    recentTicketsCache = [];
+    updateView() {
         if (!this.webviewView)
             return;
         const logoUri = this.webviewView.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png'));
-        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, branchName, relatedBranches, commits);
+        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache);
     }
-    _getHtmlForWebview(logoUri, currentBranch, relatedBranches, commits) {
+    _getHtmlForWebview(logoUri, currentBranch, relatedBranches, commits, baseBranches, recentTickets) {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -87,12 +125,7 @@ class RicwizWebviewProvider {
                 </div>
             </div>
         ` : '';
-        return `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Ricwiz</title>
+        const styleHtml = `
             <style>
                 body {
                     padding: 10px 8px;
@@ -147,6 +180,70 @@ class RicwizWebviewProvider {
                     background-color: var(--vscode-list-hoverBackground);
                 }
             </style>
+        `;
+        if (this.conflictState) {
+            const filesHtml = (this.conflictState.files || []).map(f => `
+                <button class="btn" style="padding: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;" onclick="sendOpenFileCommand('${escapeHtml(f.file)}')">
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left;">&lrm;${escapeHtml(f.file)}</span>
+                    <span style="font-size: 10px; opacity: 0.8; flex-shrink: 0; background-color: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 4px; border-radius: 2px;">${escapeHtml(f.state)}</span>
+                </button>
+            `).join('');
+            return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Ricwiz Conflict</title>
+                ${styleHtml}
+            </head>
+            <body>
+                <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
+                    <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9;" />
+                </div>
+                <div style="background-color: var(--vscode-editorError-background); color: var(--vscode-editorError-foreground); padding: 12px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
+                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">⚠️ MERGE CONFLICT</div>
+                    <div style="font-size: 11px; margin-bottom: 12px; opacity: 0.9;">
+                        Merging <b>${escapeHtml(this.conflictState.sourceStr)}</b> into <b>${escapeHtml(this.conflictState.targetStr)}</b>.<br/>
+                        Resolve the conflicts, then click below.
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); justify-content: center;" onclick="sendCommand('conflict_commitAndContinue')">
+                            ✅ Commit & Continue
+                        </button>
+                        ${this.conflictState.deletionsCount > 0 ? `
+                            <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_resolveDeletions')">
+                                🗑️ Resolve Deletions (${this.conflictState.deletionsCount})
+                            </button>
+                        ` : ''}
+                        <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_abortDeploy')">
+                            ❌ Abort Deploy
+                        </button>
+                    </div>
+                </div>
+                
+                ${filesHtml ? `
+                    <div style="font-size: 11px; opacity: 0.7; margin: 8px 4px 4px 4px; text-transform: uppercase;">Conflicted Files</div>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        ${filesHtml}
+                    </div>
+                ` : ''}
+
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                    function sendOpenFileCommand(file) { vscode.postMessage({ command: 'openFile', file: file }); }
+                </script>
+            </body>
+            </html>`;
+        }
+        // NORMAL HTML RENDER (No conflict)
+        return `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ricwiz</title>
+            ${styleHtml}
         </head>
         <body>
             <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
@@ -171,8 +268,29 @@ class RicwizWebviewProvider {
                                 `).join('')}
                             </div>
                         </div>
-                    ` : ''}
+                    ` : (recentTickets.length > 0 ? `
+                        <div style="margin-top: 8px; border-top: 1px solid var(--vscode-panel-border); padding-top: 8px;">
+                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Recent Tickets</div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${recentTickets.map(b => `
+                                    <div class="btn" style="padding: 4px; font-size: 11px; justify-content: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                                        ${escapeHtml(b)}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : '')}
                 </div>` : ''}
+
+            ${baseBranches.length > 0 ? `
+                <div style="display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center;">
+                    ${baseBranches.map(b => `
+                        <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border);" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                            ${escapeHtml(b.toUpperCase())}
+                        </button>
+                    `).join('')}
+                </div>
+            ` : ''}
 
             <button class="btn" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
                 <span class="icon">🌿</span> Create Branches

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.webviewProvider = void 0;
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
@@ -14,8 +15,8 @@ const deleteUnused_1 = require("./commands/deleteUnused");
 const checkoutBranch_1 = require("./commands/checkoutBranch");
 const copyBranch_1 = require("./commands/copyBranch");
 function activate(context) {
-    const provider = new webview_1.RicwizWebviewProvider(context.extensionUri);
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider('ricwiz-webview', provider));
+    exports.webviewProvider = new webview_1.RicwizWebviewProvider(context.extensionUri);
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider('ricwiz-webview', exports.webviewProvider));
     // Status Bar Item — shows current ticket, click opens Jira
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBarItem.command = 'ricwiz.openJiraTicket';
@@ -48,6 +49,19 @@ function activate(context) {
                         }
                         let relatedBranches = [];
                         let commits = [];
+                        let baseBranches = [];
+                        let recentTickets = [];
+                        try {
+                            const environments = config.get('environments', [
+                                { name: 'Qual', sourceBranch: 'quality' },
+                                { name: 'Val', sourceBranch: 'validation' },
+                                { name: 'Prod', sourceBranch: 'main' }
+                            ]);
+                            const sourceBranchForTicket = config.get('ticketSourceBranch', 'main');
+                            const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch)];
+                            baseBranches = Array.from(new Set(allBase));
+                        }
+                        catch (e) { }
                         const match = currentBranch.match(new RegExp(`(${prefix}\\d+)`, 'i'));
                         if (match) {
                             const ticketId = match[1].toUpperCase();
@@ -74,6 +88,18 @@ function activate(context) {
                         else {
                             // Not on a ticket branch — hide status bar
                             statusBarItem.hide();
+                            try {
+                                const workspaceFolders = vscode.workspace.workspaceFolders;
+                                if (workspaceFolders) {
+                                    const cwd = workspaceFolders[0].uri.fsPath;
+                                    const { stdout } = await (0, git_1.exec)(`git for-each-ref --sort=-committerdate --format="%(refname:short)" refs/heads/`, { cwd });
+                                    const allBranches = stdout.split('\n').map((b) => b.trim()).filter((b) => b);
+                                    // Match ticket patterns (e.g., SFPSC-11111) but NOT environment branches (-to-Qual)
+                                    const ticketPattern = /^[A-Z]+-\d+$/i;
+                                    recentTickets = allBranches.filter((b) => ticketPattern.test(b)).slice(0, 3);
+                                }
+                            }
+                            catch (e) { }
                         }
                         // Fetch recent commits for the Git Log
                         try {
@@ -94,7 +120,7 @@ function activate(context) {
                             }
                         }
                         catch (e) { }
-                        provider.updateBranch(currentBranch, relatedBranches, commits);
+                        exports.webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
                     }
                 }
                 update();

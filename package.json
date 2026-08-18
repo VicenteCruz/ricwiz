@@ -95,6 +95,11 @@
           "default": "",
           "description": "Base URL of the company's GitLab repository (e.g., https://gitlab.company.com/group/project). Leave empty for the extension to discover it automatically via git remote."
         },
+        "ricwiz.packageXmlCommand": {
+          "type": "string",
+          "default": "sf sgd source delta --to \"HEAD\" --from \"origin/{baseBranch}\" --output-dir \".\"",
+          "description": "The command used to generate the package.xml file. Use {baseBranch} as a placeholder for the ticket source branch."
+        },
         "ricwiz.ticketPrefix": {
           "type": "string",
           "default": "SFPSCA-",

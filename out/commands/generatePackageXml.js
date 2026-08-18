@@ -11,6 +11,10 @@ async function generatePackageXml() {
         vscode.window.showErrorMessage('Ricwiz: Open a folder or workspace that is a Git repository.');
         return;
     }
+    const config = vscode.workspace.getConfiguration('ricwiz');
+    const sourceBranch = config.get('ticketSourceBranch', 'main');
+    const rawCommand = config.get('packageXmlCommand', 'sf sgd source delta --to "HEAD" --from "origin/{baseBranch}" --output-dir "."');
+    const command = rawCommand.replace('{baseBranch}', sourceBranch);
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Ricwiz: Generating package.xml using Salesforce CLI...`,
@@ -18,20 +22,18 @@ async function generatePackageXml() {
     }, async () => {
         try {
             // Run the user's preferred Salesforce CLI command
-            await (0, git_1.exec)(`sf project generate manifest --source-dir force-app`, { cwd });
+            await (0, git_1.exec)(command, { cwd });
             vscode.window.showInformationMessage(`Ricwiz: Successfully generated package.xml!`);
-            // Try to open the generated file (sf usually places it in the current directory)
-            const outputPath = path.join(cwd, 'package.xml');
-            if (fs.existsSync(outputPath)) {
-                const doc = await vscode.workspace.openTextDocument(outputPath);
-                await vscode.window.showTextDocument(doc);
-            }
-            else {
-                // Check if it placed it in manifest/package.xml
-                const manifestPath = path.join(cwd, 'manifest', 'package.xml');
-                if (fs.existsSync(manifestPath)) {
-                    const doc = await vscode.workspace.openTextDocument(manifestPath);
+            // Try to open the generated file
+            // sfdx-git-delta usually places it in a 'package' subfolder
+            const sgdPath = path.join(cwd, 'package', 'package.xml');
+            const rootPath = path.join(cwd, 'package.xml');
+            const manifestPath = path.join(cwd, 'manifest', 'package.xml');
+            for (const p of [sgdPath, rootPath, manifestPath]) {
+                if (fs.existsSync(p)) {
+                    const doc = await vscode.workspace.openTextDocument(p);
                     await vscode.window.showTextDocument(doc);
+                    break;
                 }
             }
         }

@@ -80,7 +80,9 @@ export async function createBranches(): Promise<void> {
                         try {
                             await exec(`git checkout -b ${mainBranch} ${sourceBranchForTicket}`, { cwd });
                             createdCount++;
-                        } catch(err) {} 
+                        } catch(err: any) {
+                            vscode.window.showWarningMessage(`Ricwiz: Could not create main branch ${mainBranch} from ${sourceBranchForTicket}. Does the source branch exist?`);
+                        } 
                     }
                     
                     try { 

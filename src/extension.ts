@@ -700,10 +700,15 @@ export function activate(context: vscode.ExtensionContext) {
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Ricwiz: Preparing Deploy",
-            cancellable: false
-        }, async (progress) => {
+            cancellable: true
+        }, async (progress, token) => {
             let successCount = 0;
             const originalBranch = currentBranch;
+            let abortRequested = false;
+
+            token.onCancellationRequested(() => {
+                abortRequested = true;
+            });
 
             progress.report({ message: 'Auto-syncing base branches...', increment: 10 });
             
@@ -712,6 +717,7 @@ export function activate(context: vscode.ExtensionContext) {
                 const envSyncStep = 20 / (environments.length || 1);
                 for (const env of environments) {
                     try {
+                        if (abortRequested) throw new Error('Aborted');
                         progress.report({ message: `Fetching ${env.sourceBranch}...`, increment: envSyncStep });
                         await exec(`git fetch origin ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
                     } catch(e) {}
@@ -721,34 +727,33 @@ export function activate(context: vscode.ExtensionContext) {
             const processStep = 60 / (environments.length || 1);
 
             const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
-                while (true) {
-                    const options = [
-                        { label: '$(check) Continue', description: 'I have resolved the conflicts and COMMITTED the changes' },
-                        { label: '$(x) Abort', description: 'Cancel the deploy process' }
-                    ];
+                progress.report({ message: `CONFLICT! Resolve & COMMIT to auto-resume.` });
+                
+                vscode.window.showWarningMessage(
+                    `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Please resolve the conflicts and COMMIT. The deploy will automatically resume.`
+                );
 
-                    const choice = await vscode.window.showQuickPick(options, {
-                        placeHolder: `CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve & Commit, then choose Continue.`,
-                        ignoreFocusOut: true,
-                        title: 'Ricwiz Merge Conflict'
-                    });
-                    
-                    if (!choice || choice.label.includes('Abort')) {
+                while (true) {
+                    if (abortRequested) {
                         try { await exec('git merge --abort', { cwd }); } catch(err) {}
                         throw new Error('Deploy aborted by user.');
                     }
                     
-                    // Verifies if the working tree is clean
-                    const { stdout } = await exec('git status --porcelain', { cwd });
-                    if (stdout.trim().length > 0) {
-                        vscode.window.showErrorMessage('Ricwiz: There are still uncommitted changes. Please commit your resolved conflicts before continuing.');
-                    } else {
-                        break; // Resolved and committed!
-                    }
+                    try {
+                        const { stdout } = await exec('git status --porcelain', { cwd });
+                        if (stdout.trim().length === 0) {
+                            vscode.window.showInformationMessage(`Ricwiz: Changes committed! Resuming deploy...`);
+                            break; // Working tree clean, meaning they committed!
+                        }
+                    } catch (e) {}
+
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             };
 
             for (const env of environments) {
+                if (abortRequested) break;
+
                 const targetBranch = `${ticketId}-to-${env.name}`;
                 const sourceBranch = env.sourceBranch;
 
@@ -779,26 +784,34 @@ export function activate(context: vscode.ExtensionContext) {
                         await handleMergeConflict(mainBranch, targetBranch);
                     }
                     
+                    if (abortRequested) break;
+
                     // 3. Sincronizar com o remote
                     progress.report({ message: `Pushing ${targetBranch}...`, increment: processStep / 4 });
                     await exec(`git push origin ${targetBranch}`, { cwd });
                     
                     successCount++;
                 } catch (e: any) {
-                    vscode.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
-                    return; // Interrompe execução perante erro crítico ou abort do user
+                    if (e.message.includes('aborted')) {
+                        vscode.window.showInformationMessage('Ricwiz: Deploy cancelled.');
+                    } else {
+                        vscode.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
+                    }
+                    return; // Interrompe execução
                 }
             }
 
-            progress.report({ message: 'Finishing up...', increment: 10 });
-            // Tentar voltar para a branch original
-            if (originalBranch && originalBranch !== currentBranch) {
-                try {
-                    await exec(`git checkout ${originalBranch}`, { cwd });
-                    vscode.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${originalBranch}.`);
-                } catch (e) {}
-            } else {
-                vscode.window.showInformationMessage(`Ricwiz: Operation complete.`);
+            if (!abortRequested) {
+                progress.report({ message: 'Finishing up...', increment: 10 });
+                // Tentar voltar para a branch original
+                if (originalBranch && originalBranch !== currentBranch) {
+                    try {
+                        await exec(`git checkout ${originalBranch}`, { cwd });
+                        vscode.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${originalBranch}.`);
+                    } catch (e) {}
+                } else {
+                    vscode.window.showInformationMessage(`Ricwiz: Operation complete.`);
+                }
             }
         });
     });

@@ -723,8 +723,7 @@ export function activate(context: vscode.ExtensionContext) {
             const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
                 while (true) {
                     const choice = await vscode.window.showWarningMessage(
-                        `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}.\n\nPlease resolve the conflicts in the Source Control tab, COMMIT the changes, and then click Continue.`,
-                        { modal: true },
+                        `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve conflicts, COMMIT, and click Continue.`,
                         'Continue', 'Abort'
                     );
                     

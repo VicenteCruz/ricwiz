@@ -56,17 +56,18 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         }
 
-                        let relatedBranches: string[] = [];
+                        let relatedBranches: { name: string, isMerged: boolean }[] = [];
                         let commits: CommitEntry[] = [];
                         let baseBranches: string[] = [];
                         let recentTickets: string[] = [];
 
+                        const environments = config.get<EnvironmentConfig[]>('environments', [
+                            { name: 'Qual', sourceBranch: 'quality' },
+                            { name: 'Val', sourceBranch: 'validation' },
+                            { name: 'Prod', sourceBranch: 'main' }
+                        ]);
+
                         try {
-                            const environments = config.get<EnvironmentConfig[]>('environments', [
-                                { name: 'Qual', sourceBranch: 'quality' },
-                                { name: 'Val', sourceBranch: 'validation' },
-                                { name: 'Prod', sourceBranch: 'main' }
-                            ]);
                             const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
                             
                             const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch)];
@@ -91,9 +92,29 @@ export function activate(context: vscode.ExtensionContext) {
                                 if (workspaceFolders) {
                                     const cwd = workspaceFolders[0].uri.fsPath;
                                     const { stdout } = await exec(`git branch --list "*${ticketId}*"`, { cwd });
-                                    relatedBranches = stdout.split('\n')
+                                    const relatedBranchesRaw = stdout.split('\n')
                                         .map((b: string) => b.replace('*', '').trim())
                                         .filter((b: string) => b && b !== currentBranch);
+
+                                    // Determine if sister branches are merged into their target org branch
+                                    for (const rb of relatedBranchesRaw) {
+                                        let isMerged = false;
+                                        for (const env of environments) {
+                                            if (rb.endsWith(`-to-${env.name}`)) {
+                                                try {
+                                                    await exec(`git merge-base --is-ancestor ${rb} origin/${env.sourceBranch}`, { cwd });
+                                                    isMerged = true;
+                                                } catch {
+                                                    try {
+                                                        await exec(`git merge-base --is-ancestor ${rb} ${env.sourceBranch}`, { cwd });
+                                                        isMerged = true;
+                                                    } catch {}
+                                                }
+                                                break;
+                                            }
+                                        }
+                                        relatedBranches.push({ name: rb, isMerged });
+                                    }
                                 }
                             } catch (e) {}
                         } else {
@@ -115,38 +136,10 @@ export function activate(context: vscode.ExtensionContext) {
                         }
 
                         // Fetch recent commits for the Git Log
-                        let timeline: { name: string, merged: boolean }[] | null = null;
                         try {
                             const workspaceFolders = vscode.workspace.workspaceFolders;
                             if (workspaceFolders) {
                                 const cwd = workspaceFolders[0].uri.fsPath;
-                                
-                                if (match) {
-                                    // Calculate timeline
-                                    const isMerged = async (envBranch: string) => {
-                                        try {
-                                            await exec(`git merge-base --is-ancestor ${currentBranch} origin/${envBranch}`, { cwd });
-                                            return true;
-                                        } catch {
-                                            try {
-                                                await exec(`git merge-base --is-ancestor ${currentBranch} ${envBranch}`, { cwd });
-                                                return true;
-                                            } catch { return false; }
-                                        }
-                                    };
-                                    
-                                    const configEnvs = config.get<EnvironmentConfig[]>('environments', [
-                                        { name: 'Qual', sourceBranch: 'quality' },
-                                        { name: 'Val', sourceBranch: 'validation' },
-                                        { name: 'Prod', sourceBranch: 'main' }
-                                    ]);
-                                    
-                                    timeline = [];
-                                    for (const env of configEnvs) {
-                                        timeline.push({ name: env.name, merged: await isMerged(env.sourceBranch) });
-                                    }
-                                }
-
                                 const { stdout } = await exec(`git log --oneline -10 --format="%h|||%s|||%ar"`, { cwd });
                                 commits = stdout.split('\n')
                                     .filter((line: string) => line.trim())
@@ -161,7 +154,7 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         } catch (e) {}
                         
-                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets, timeline);
+                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
                     }
                 }
 

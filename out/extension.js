@@ -52,12 +52,12 @@ function activate(context) {
                         let commits = [];
                         let baseBranches = [];
                         let recentTickets = [];
+                        const environments = config.get('environments', [
+                            { name: 'Qual', sourceBranch: 'quality' },
+                            { name: 'Val', sourceBranch: 'validation' },
+                            { name: 'Prod', sourceBranch: 'main' }
+                        ]);
                         try {
-                            const environments = config.get('environments', [
-                                { name: 'Qual', sourceBranch: 'quality' },
-                                { name: 'Val', sourceBranch: 'validation' },
-                                { name: 'Prod', sourceBranch: 'main' }
-                            ]);
                             const sourceBranchForTicket = config.get('ticketSourceBranch', 'main');
                             const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch)];
                             baseBranches = Array.from(new Set(allBase));
@@ -79,9 +79,30 @@ function activate(context) {
                                 if (workspaceFolders) {
                                     const cwd = workspaceFolders[0].uri.fsPath;
                                     const { stdout } = await (0, git_1.exec)(`git branch --list "*${ticketId}*"`, { cwd });
-                                    relatedBranches = stdout.split('\n')
+                                    const relatedBranchesRaw = stdout.split('\n')
                                         .map((b) => b.replace('*', '').trim())
                                         .filter((b) => b && b !== currentBranch);
+                                    // Determine if sister branches are merged into their target org branch
+                                    for (const rb of relatedBranchesRaw) {
+                                        let isMerged = false;
+                                        for (const env of environments) {
+                                            if (rb.endsWith(`-to-${env.name}`)) {
+                                                try {
+                                                    await (0, git_1.exec)(`git merge-base --is-ancestor ${rb} origin/${env.sourceBranch}`, { cwd });
+                                                    isMerged = true;
+                                                }
+                                                catch {
+                                                    try {
+                                                        await (0, git_1.exec)(`git merge-base --is-ancestor ${rb} ${env.sourceBranch}`, { cwd });
+                                                        isMerged = true;
+                                                    }
+                                                    catch { }
+                                                }
+                                                break;
+                                            }
+                                        }
+                                        relatedBranches.push({ name: rb, isMerged });
+                                    }
                                 }
                             }
                             catch (e) { }
@@ -103,38 +124,10 @@ function activate(context) {
                             catch (e) { }
                         }
                         // Fetch recent commits for the Git Log
-                        let timeline = null;
                         try {
                             const workspaceFolders = vscode.workspace.workspaceFolders;
                             if (workspaceFolders) {
                                 const cwd = workspaceFolders[0].uri.fsPath;
-                                if (match) {
-                                    // Calculate timeline
-                                    const isMerged = async (envBranch) => {
-                                        try {
-                                            await (0, git_1.exec)(`git merge-base --is-ancestor ${currentBranch} origin/${envBranch}`, { cwd });
-                                            return true;
-                                        }
-                                        catch {
-                                            try {
-                                                await (0, git_1.exec)(`git merge-base --is-ancestor ${currentBranch} ${envBranch}`, { cwd });
-                                                return true;
-                                            }
-                                            catch {
-                                                return false;
-                                            }
-                                        }
-                                    };
-                                    const configEnvs = config.get('environments', [
-                                        { name: 'Qual', sourceBranch: 'quality' },
-                                        { name: 'Val', sourceBranch: 'validation' },
-                                        { name: 'Prod', sourceBranch: 'main' }
-                                    ]);
-                                    timeline = [];
-                                    for (const env of configEnvs) {
-                                        timeline.push({ name: env.name, merged: await isMerged(env.sourceBranch) });
-                                    }
-                                }
                                 const { stdout } = await (0, git_1.exec)(`git log --oneline -10 --format="%h|||%s|||%ar"`, { cwd });
                                 commits = stdout.split('\n')
                                     .filter((line) => line.trim())
@@ -149,7 +142,7 @@ function activate(context) {
                             }
                         }
                         catch (e) { }
-                        exports.webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets, timeline);
+                        exports.webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
                     }
                 }
                 update();

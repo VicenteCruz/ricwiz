@@ -772,16 +772,24 @@ export function activate(context: vscode.ExtensionContext) {
                         progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
                         await exec(`git fetch origin ${sourceBranch}`, { cwd });
                         await exec(`git merge origin/${sourceBranch}`, { cwd });
-                    } catch (e) {
-                        await handleMergeConflict(`origin/${sourceBranch}`, targetBranch);
+                    } catch (e: any) {
+                        if (e.message && e.message.toLowerCase().includes('conflict')) {
+                            await handleMergeConflict(`origin/${sourceBranch}`, targetBranch);
+                        } else {
+                            throw e;
+                        }
                     }
 
                     // 2. Fazer merge da main branch (as alterações do ticket)
                     try {
                         progress.report({ message: `Merging ${mainBranch} into ${targetBranch}...`, increment: processStep / 4 });
                         await exec(`git merge ${mainBranch}`, { cwd });
-                    } catch (e) {
-                        await handleMergeConflict(mainBranch, targetBranch);
+                    } catch (e: any) {
+                         if (e.message && e.message.toLowerCase().includes('conflict')) {
+                            await handleMergeConflict(mainBranch, targetBranch);
+                        } else {
+                            throw e;
+                        }
                     }
                     
                     if (abortRequested) break;

@@ -73,6 +73,10 @@
         "title": "Ricwiz: Import Data"
       },
       {
+        "command": "ricwiz.listTicketFiles",
+        "title": "Ricwiz: List Ticket Files"
+      },
+      {
         "command": "ricwiz.copyBranchName",
         "title": "Ricwiz: Copy Branch Name"
       },

@@ -74,6 +74,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'importData':
                     vscode.commands.executeCommand('ricwiz.importData');
                     break;
+                case 'listTicketFiles':
+                    vscode.commands.executeCommand('ricwiz.listTicketFiles');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -298,6 +301,12 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
                     <button class="btn" title="Import data using Salesforce CLI" onclick="sendCommand('importData')">
                         <span class="icon">📥</span> Import Data
+                    </button>
+
+                    <div class="separator" style="margin: 4px 0;"></div>
+
+                    <button class="btn" title="Find and group all files modified in a specific ticket" onclick="sendCommand('listTicketFiles')">
+                        <span class="icon">🗂️</span> List Ticket Files
                     </button>
                 </div>
                 

@@ -69,13 +69,9 @@ export async function prepareDeploy(): Promise<void> {
         const processStep = 60 / (environments.length || 1);
 
         const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
-            progress.report({ message: `CONFLICT! Resolve & click 'Commit & Continue'.` });
+            progress.report({ message: `CONFLICT! Resolve & click 'Commit & Continue' in Ricwiz panel.` });
             
             let isResolved = false;
-            const qp = vscode.window.createQuickPick();
-            qp.ignoreFocusOut = true;
-            qp.title = `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}`;
-            qp.placeholder = `Resolve conflicts in editor, then pick an action below:`;
 
             const getDeletionConflicts = async () => {
                 try {
@@ -91,32 +87,26 @@ export async function prepareDeploy(): Promise<void> {
                 }
             };
 
-            const updateQuickPick = async () => {
+            const updateWebviewState = async () => {
                 if (isResolved) return;
                 const deletions = await getDeletionConflicts();
                 
-                const items: vscode.QuickPickItem[] = [
-                    { label: '$(check) Commit & Continue', description: 'Commit resolved files and resume deploy' }
-                ];
-                
-                if (deletions.length > 0) {
-                    items.push({ label: '$(trash) Resolve Deletions...', description: `Delete ${deletions.length} missing file(s)` });
+                // We have to dynamic import to avoid circular dependencies
+                const { webviewProvider } = require('../extension');
+                if (webviewProvider) {
+                    webviewProvider.setConflictState({
+                        isConflict: true,
+                        sourceStr,
+                        targetStr,
+                        deletionsCount: deletions.length
+                    });
                 }
-                
-                items.push({ label: '$(close) Abort Deploy', description: 'Abort and reset' });
-                qp.items = items;
-                qp.show();
             };
 
-            qp.onDidAccept(async () => {
-                const selected = qp.selectedItems[0];
-                if (!selected) return;
-
-                if (selected.label.includes('Abort Deploy')) {
-                    qp.hide();
+            const conflictActionDisposable = vscode.commands.registerCommand('ricwiz.conflictAction', async (action: string) => {
+                if (action === 'abortDeploy') {
                     abortRequested = true;
-                } else if (selected.label.includes('Resolve Deletions...')) {
-                    qp.hide();
+                } else if (action === 'resolveDeletions') {
                     try {
                         const deletions = await getDeletionConflicts();
                         const items = deletions.map((file: string) => ({ label: file }));
@@ -135,13 +125,12 @@ export async function prepareDeploy(): Promise<void> {
                     } catch (e: any) {
                         vscode.window.showErrorMessage(`Ricwiz: Error. (${e.message})`);
                     }
-                    updateQuickPick(); // Re-show the main QuickPick
-                } else if (selected.label.includes('Commit & Continue')) {
-                    qp.hide();
+                    updateWebviewState();
+                } else if (action === 'commitAndContinue') {
                     try {
                         // Check if they are about to keep files that were deleted in the other branch
                         const deletions = await getDeletionConflicts();
-                        const keptFiles = deletions.filter(file => fs.existsSync(path.join(cwd, file)));
+                        const keptFiles = deletions.filter((file: string) => fs.existsSync(path.join(cwd, file)));
                         
                         if (keptFiles.length > 0) {
                             const confirm = await vscode.window.showWarningMessage(
@@ -152,8 +141,7 @@ export async function prepareDeploy(): Promise<void> {
                             );
                             
                             if (confirm !== 'Yes, KEEP them') {
-                                // If they say No, or dismiss the modal, re-show the QuickPick
-                                updateQuickPick();
+                                updateWebviewState();
                                 return;
                             }
                         }
@@ -166,7 +154,7 @@ export async function prepareDeploy(): Promise<void> {
 
                         if (hasMarkers) {
                             vscode.window.showErrorMessage('Ricwiz: You still have unresolved conflict markers (<<<<<<<) in your files. Please resolve them first!');
-                            updateQuickPick();
+                            updateWebviewState();
                             return;
                         }
 
@@ -174,17 +162,18 @@ export async function prepareDeploy(): Promise<void> {
                         await exec('git commit --no-edit', { cwd });
                     } catch (e: any) {
                         vscode.window.showErrorMessage(`Ricwiz: Could not commit automatically. (${e.message})`);
-                        updateQuickPick();
+                        updateWebviewState();
                     }
                 }
             });
 
-            updateQuickPick();
+            updateWebviewState();
 
             while (true) {
                 if (abortRequested) {
                     isResolved = true;
-                    qp.dispose();
+                    conflictActionDisposable.dispose();
+                    require('../extension').webviewProvider?.setConflictState(null);
                     try { await exec('git merge --abort', { cwd }); } catch(err) {}
                     throw new Error('Deploy aborted by user.');
                 }
@@ -193,7 +182,8 @@ export async function prepareDeploy(): Promise<void> {
                     const { stdout } = await exec('git status --porcelain', { cwd });
                     if (stdout.trim().length === 0) {
                         isResolved = true;
-                        qp.dispose();
+                        conflictActionDisposable.dispose();
+                        require('../extension').webviewProvider?.setConflictState(null);
                         vscode.window.showInformationMessage(`Ricwiz: Changes committed! Resuming deploy...`);
                         break; // Working tree clean, meaning they committed!
                     }

@@ -65,16 +65,44 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'deleteUnused':
                     vscode.commands.executeCommand('ricwiz.deleteUnusedBranches');
                     break;
+                case 'conflict_commitAndContinue':
+                    vscode.commands.executeCommand('ricwiz.conflictAction', 'commitAndContinue');
+                    break;
+                case 'conflict_resolveDeletions':
+                    vscode.commands.executeCommand('ricwiz.conflictAction', 'resolveDeletions');
+                    break;
+                case 'conflict_abortDeploy':
+                    vscode.commands.executeCommand('ricwiz.conflictAction', 'abortDeploy');
+                    break;
             }
         });
     }
 
+    private conflictState: { isConflict: boolean, sourceStr: string, targetStr: string, deletionsCount: number } | null = null;
+
+    public setConflictState(state: { isConflict: boolean, sourceStr: string, targetStr: string, deletionsCount: number } | null) {
+        this.conflictState = state;
+        this.updateView();
+    }
+
     public updateBranch(branchName: string, relatedBranches: string[] = [], commits: CommitEntry[] = []) {
+        if (!this.webviewView) return;
+        this.currentBranchCache = branchName;
+        this.relatedBranchesCache = relatedBranches;
+        this.commitsCache = commits;
+        this.updateView();
+    }
+
+    private currentBranchCache = '';
+    private relatedBranchesCache: string[] = [];
+    private commitsCache: CommitEntry[] = [];
+
+    private updateView() {
         if (!this.webviewView) return;
         const logoUri = this.webviewView.webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png')
         );
-        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, branchName, relatedBranches, commits);
+        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache);
     }
 
     private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: string[], commits: CommitEntry[]) {
@@ -92,6 +120,29 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                             <span style="font-size: 9px; opacity: 0.5; flex-shrink: 0;">${escapeHtml(c.timeAgo)}</span>
                         </div>
                     `).join('')}
+                </div>
+            </div>
+        ` : '';
+
+        const conflictHtml = this.conflictState ? `
+            <div style="background-color: var(--vscode-editorError-background); color: var(--vscode-editorError-foreground); padding: 12px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">⚠️ MERGE CONFLICT</div>
+                <div style="font-size: 11px; margin-bottom: 12px; opacity: 0.9;">
+                    Merging <b>${escapeHtml(this.conflictState.sourceStr)}</b> into <b>${escapeHtml(this.conflictState.targetStr)}</b>.<br/>
+                    Resolve the conflicts in your editor, then click below.
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); justify-content: center;" onclick="sendCommand('conflict_commitAndContinue')">
+                        ✅ Commit & Continue
+                    </button>
+                    ${this.conflictState.deletionsCount > 0 ? `
+                        <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_resolveDeletions')">
+                            🗑️ Resolve Deletions (${this.conflictState.deletionsCount})
+                        </button>
+                    ` : ''}
+                    <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_abortDeploy')">
+                        ❌ Abort Deploy
+                    </button>
                 </div>
             </div>
         ` : '';
@@ -161,6 +212,8 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
                 <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9;" />
             </div>
+
+            ${conflictHtml}
 
             ${currentBranch ? 
                 `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 8px; border-radius: 4px; margin-bottom: 12px; text-align: center;">

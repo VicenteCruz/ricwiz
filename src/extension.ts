@@ -11,10 +11,12 @@ import { deleteUnusedBranches } from './commands/deleteUnused';
 import { checkoutBranch } from './commands/checkoutBranch';
 import { copyBranchName } from './commands/copyBranch';
 
+export let webviewProvider: RicwizWebviewProvider | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
-    const provider = new RicwizWebviewProvider(context.extensionUri);
+    webviewProvider = new RicwizWebviewProvider(context.extensionUri);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('ricwiz-webview', provider)
+        vscode.window.registerWebviewViewProvider('ricwiz-webview', webviewProvider)
     );
 
     // Status Bar Item — shows current ticket, click opens Jira
@@ -102,7 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         } catch (e) {}
                         
-                        provider.updateBranch(currentBranch, relatedBranches, commits);
+                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits);
                     }
                 }
 

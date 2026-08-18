@@ -137,7 +137,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     </button>
                     ${this.conflictState.deletionsCount > 0 ? `
                         <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_resolveDeletions')">
-                            🗑️ Resolve Deletions (${this.conflictState.deletionsCount})
+                            🗑️ Delete Conflicted Files... (${this.conflictState.deletionsCount})
                         </button>
                     ` : ''}
                     <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_abortDeploy')">

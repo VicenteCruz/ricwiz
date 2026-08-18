@@ -73,14 +73,14 @@ export async function prepareDeploy(): Promise<void> {
             
             let isResolved = false;
 
-            const getUnmergedFiles = async (onlyDeletions = false) => {
+            const getDeletionConflicts = async () => {
                 try {
                     const { stdout } = await exec('git status --porcelain', { cwd });
                     return stdout.split('\n')
                         .filter((line: string) => {
                             const state = line.substring(0, 2);
-                            if (onlyDeletions) return ['UD', 'DU', 'DD'].includes(state);
-                            return ['UU', 'AA', 'UD', 'DU', 'AU', 'UA', 'DD'].includes(state);
+                            // Include any conflict that involves a deletion or missing file
+                            return ['UD', 'DU', 'DD', 'AU', 'UA'].includes(state);
                         })
                         .map((line: string) => line.substring(3).trim());
                 } catch(e) {
@@ -90,7 +90,7 @@ export async function prepareDeploy(): Promise<void> {
 
             const updateWebviewState = async () => {
                 if (isResolved) return;
-                const unmerged = await getUnmergedFiles();
+                const deletions = await getDeletionConflicts();
                 
                 // We have to dynamic import to avoid circular dependencies
                 const { webviewProvider } = require('../extension');
@@ -99,7 +99,7 @@ export async function prepareDeploy(): Promise<void> {
                         isConflict: true,
                         sourceStr,
                         targetStr,
-                        deletionsCount: unmerged.length
+                        deletionsCount: deletions.length
                     });
                 }
             };
@@ -109,8 +109,8 @@ export async function prepareDeploy(): Promise<void> {
                     abortRequested = true;
                 } else if (action === 'resolveDeletions') {
                     try {
-                        const unmerged = await getUnmergedFiles();
-                        const items = unmerged.map((file: string) => ({ label: file }));
+                        const deletions = await getDeletionConflicts();
+                        const items = deletions.map((file: string) => ({ label: file }));
                         const toDelete = await vscode.window.showQuickPick(items, {
                             canPickMany: true,
                             placeHolder: 'Select conflicted files to DELETE',
@@ -130,7 +130,7 @@ export async function prepareDeploy(): Promise<void> {
                 } else if (action === 'commitAndContinue') {
                     try {
                         // Check if they are about to keep files that were deleted in the other branch
-                        const deletions = await getUnmergedFiles(true);
+                        const deletions = await getDeletionConflicts();
                         const keptFiles = deletions.filter((file: string) => fs.existsSync(path.join(cwd, file)));
                         
                         if (keptFiles.length > 0) {

@@ -67,16 +67,43 @@ export async function prepareDeploy(): Promise<void> {
         const processStep = 60 / (environments.length || 1);
 
         const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
-            progress.report({ message: `CONFLICT! Resolve & COMMIT to auto-resume.` });
+            progress.report({ message: `CONFLICT! Resolve & click 'Commit & Continue'.` });
             
-            vscode.window.showWarningMessage(
-                `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Please resolve the conflicts and COMMIT. The deploy will automatically resume.`,
-                'Abort Deploy'
-            ).then(selection => {
-                if (selection === 'Abort Deploy') {
-                    abortRequested = true;
-                }
-            });
+            const showConflictNotification = () => {
+                vscode.window.showWarningMessage(
+                    `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve the conflicts in your editor, then click "Commit & Continue".`,
+                    'Commit & Continue',
+                    'Abort Deploy'
+                ).then(async selection => {
+                    if (selection === 'Abort Deploy') {
+                        abortRequested = true;
+                    } else if (selection === 'Commit & Continue') {
+                        try {
+                            // Safety check for leftover markers
+                            let hasMarkers = false;
+                            try {
+                                const { stdout } = await exec(`git grep -E "^<<<<<<< "`, { cwd });
+                                if (stdout.trim().length > 0) hasMarkers = true;
+                            } catch(e) {
+                                // git grep exits with 1 if no matches (which means no markers, we're good)
+                            }
+                            if (hasMarkers) {
+                                vscode.window.showErrorMessage('Ricwiz: You still have unresolved conflict markers (<<<<<<<) in your files. Please resolve them first!');
+                                showConflictNotification();
+                                return;
+                            }
+
+                            await exec('git add .', { cwd });
+                            await exec('git commit --no-edit', { cwd });
+                        } catch (e: any) {
+                            vscode.window.showErrorMessage(`Ricwiz: Could not commit automatically. (${e.message})`);
+                            showConflictNotification(); // Re-show so they can try again
+                        }
+                    }
+                });
+            };
+
+            showConflictNotification();
 
             while (true) {
                 if (abortRequested) {

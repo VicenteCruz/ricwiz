@@ -70,8 +70,13 @@ export async function prepareDeploy(): Promise<void> {
             progress.report({ message: `CONFLICT! Resolve & COMMIT to auto-resume.` });
             
             vscode.window.showWarningMessage(
-                `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Please resolve the conflicts and COMMIT. The deploy will automatically resume.`
-            );
+                `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Please resolve the conflicts and COMMIT. The deploy will automatically resume.`,
+                'Abort Deploy'
+            ).then(selection => {
+                if (selection === 'Abort Deploy') {
+                    abortRequested = true;
+                }
+            });
 
             while (true) {
                 if (abortRequested) {

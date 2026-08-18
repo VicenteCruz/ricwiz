@@ -722,12 +722,18 @@ export function activate(context: vscode.ExtensionContext) {
 
             const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
                 while (true) {
-                    const choice = await vscode.window.showWarningMessage(
-                        `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve conflicts, COMMIT, and click Continue.`,
-                        'Continue', 'Abort'
-                    );
+                    const options = [
+                        { label: '$(check) Continue', description: 'I have resolved the conflicts and COMMITTED the changes' },
+                        { label: '$(x) Abort', description: 'Cancel the deploy process' }
+                    ];
+
+                    const choice = await vscode.window.showQuickPick(options, {
+                        placeHolder: `CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve & Commit, then choose Continue.`,
+                        ignoreFocusOut: true,
+                        title: 'Ricwiz Merge Conflict'
+                    });
                     
-                    if (choice !== 'Continue') {
+                    if (!choice || choice.label.includes('Abort')) {
                         try { await exec('git merge --abort', { cwd }); } catch(err) {}
                         throw new Error('Deploy aborted by user.');
                     }

@@ -88,9 +88,41 @@ export async function prepareDeploy(): Promise<void> {
                 }
             };
 
+            const getUnmergedFilesData = async () => {
+                try {
+                    const { stdout } = await exec('git status --porcelain', { cwd });
+                    const mapState = (state: string) => {
+                        if (state === 'UU') return 'Both Modified';
+                        if (state === 'UD') return 'Deleted by them';
+                        if (state === 'DU') return 'Deleted by us';
+                        if (state === 'DD') return 'Both Deleted';
+                        if (state === 'AA') return 'Both Added';
+                        if (state === 'AU') return 'Added by us';
+                        if (state === 'UA') return 'Added by them';
+                        return 'Conflicted';
+                    };
+
+                    return stdout.split('\n')
+                        .map(line => line.trimRight())
+                        .filter(line => line.length > 2)
+                        .filter(line => {
+                            const state = line.substring(0, 2);
+                            return ['UU', 'AA', 'UD', 'DU', 'AU', 'UA', 'DD'].includes(state);
+                        })
+                        .map(line => {
+                            const stateCode = line.substring(0, 2);
+                            const file = line.substring(3).trim();
+                            return { file, state: mapState(stateCode) };
+                        });
+                } catch(e) {
+                    return [];
+                }
+            };
+
             const updateWebviewState = async () => {
                 if (isResolved) return;
                 const deletions = await getDeletionConflicts();
+                const allConflicts = await getUnmergedFilesData();
                 
                 // We have to dynamic import to avoid circular dependencies
                 const { webviewProvider } = require('../extension');
@@ -99,7 +131,8 @@ export async function prepareDeploy(): Promise<void> {
                         isConflict: true,
                         sourceStr,
                         targetStr,
-                        deletionsCount: deletions.length
+                        deletionsCount: deletions.length,
+                        files: allConflicts
                     });
                 }
             };

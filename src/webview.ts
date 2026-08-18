@@ -74,13 +74,22 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'conflict_abortDeploy':
                     vscode.commands.executeCommand('ricwiz.conflictAction', 'abortDeploy');
                     break;
+                case 'openFile':
+                    if (data.file) {
+                        const workspaceFolders = vscode.workspace.workspaceFolders;
+                        if (workspaceFolders) {
+                            const uri = vscode.Uri.joinPath(workspaceFolders[0].uri, data.file);
+                            vscode.commands.executeCommand('vscode.open', uri);
+                        }
+                    }
+                    break;
             }
         });
     }
 
-    private conflictState: { isConflict: boolean, sourceStr: string, targetStr: string, deletionsCount: number } | null = null;
+    private conflictState: { isConflict: boolean, sourceStr: string, targetStr: string, deletionsCount: number, files?: { file: string, state: string }[] } | null = null;
 
-    public setConflictState(state: { isConflict: boolean, sourceStr: string, targetStr: string, deletionsCount: number } | null) {
+    public setConflictState(state: { isConflict: boolean, sourceStr: string, targetStr: string, deletionsCount: number, files?: { file: string, state: string }[] } | null) {
         this.conflictState = state;
         this.updateView();
     }
@@ -124,35 +133,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </div>
         ` : '';
 
-        const conflictHtml = this.conflictState ? `
-            <div style="background-color: var(--vscode-editorError-background); color: var(--vscode-editorError-foreground); padding: 12px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
-                <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">⚠️ MERGE CONFLICT</div>
-                <div style="font-size: 11px; margin-bottom: 12px; opacity: 0.9;">
-                    Merging <b>${escapeHtml(this.conflictState.sourceStr)}</b> into <b>${escapeHtml(this.conflictState.targetStr)}</b>.<br/>
-                    Resolve the conflicts in your editor, then click below.
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); justify-content: center;" onclick="sendCommand('conflict_commitAndContinue')">
-                        ✅ Commit & Continue
-                    </button>
-                    ${this.conflictState.deletionsCount > 0 ? `
-                        <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_resolveDeletions')">
-                            🗑️ Resolve Deletions (${this.conflictState.deletionsCount})
-                        </button>
-                    ` : ''}
-                    <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_abortDeploy')">
-                        ❌ Abort Deploy
-                    </button>
-                </div>
-            </div>
-        ` : '';
-
-        return `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Ricwiz</title>
+        const styleHtml = `
             <style>
                 body {
                     padding: 10px 8px;
@@ -207,13 +188,78 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     background-color: var(--vscode-list-hoverBackground);
                 }
             </style>
+        `;
+
+        if (this.conflictState) {
+            const filesHtml = (this.conflictState.files || []).map(f => `
+                <button class="btn" style="padding: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;" onclick="sendOpenFileCommand('${escapeHtml(f.file)}')">
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left;">&lrm;${escapeHtml(f.file)}</span>
+                    <span style="font-size: 10px; opacity: 0.8; flex-shrink: 0; background-color: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 4px; border-radius: 2px;">${escapeHtml(f.state)}</span>
+                </button>
+            `).join('');
+
+            return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Ricwiz Conflict</title>
+                ${styleHtml}
+            </head>
+            <body>
+                <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
+                    <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9;" />
+                </div>
+                <div style="background-color: var(--vscode-editorError-background); color: var(--vscode-editorError-foreground); padding: 12px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
+                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">⚠️ MERGE CONFLICT</div>
+                    <div style="font-size: 11px; margin-bottom: 12px; opacity: 0.9;">
+                        Merging <b>${escapeHtml(this.conflictState.sourceStr)}</b> into <b>${escapeHtml(this.conflictState.targetStr)}</b>.<br/>
+                        Resolve the conflicts, then click below.
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); justify-content: center;" onclick="sendCommand('conflict_commitAndContinue')">
+                            ✅ Commit & Continue
+                        </button>
+                        ${this.conflictState.deletionsCount > 0 ? `
+                            <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_resolveDeletions')">
+                                🗑️ Resolve Deletions (${this.conflictState.deletionsCount})
+                            </button>
+                        ` : ''}
+                        <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); justify-content: center;" onclick="sendCommand('conflict_abortDeploy')">
+                            ❌ Abort Deploy
+                        </button>
+                    </div>
+                </div>
+                
+                ${filesHtml ? `
+                    <div style="font-size: 11px; opacity: 0.7; margin: 8px 4px 4px 4px; text-transform: uppercase;">Conflicted Files</div>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        ${filesHtml}
+                    </div>
+                ` : ''}
+
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                    function sendOpenFileCommand(file) { vscode.postMessage({ command: 'openFile', file: file }); }
+                </script>
+            </body>
+            </html>`;
+        }
+
+        // NORMAL HTML RENDER (No conflict)
+        return `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ricwiz</title>
+            ${styleHtml}
         </head>
         <body>
             <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
                 <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9;" />
             </div>
-
-            ${conflictHtml}
 
             ${currentBranch ? 
                 `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 8px; border-radius: 4px; margin-bottom: 12px; text-align: center;">

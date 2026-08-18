@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { exec } from './git';
-import { CommitEntry } from './types';
+import { CommitEntry, EnvironmentConfig } from './types';
 import { RicwizWebviewProvider } from './webview';
 import { createBranches } from './commands/createBranches';
 import { prepareDeploy } from './commands/prepareDeploy';
@@ -57,6 +57,21 @@ export function activate(context: vscode.ExtensionContext) {
 
                         let relatedBranches: string[] = [];
                         let commits: CommitEntry[] = [];
+                        let baseBranches: string[] = [];
+                        let recentTickets: string[] = [];
+
+                        try {
+                            const environments = config.get<EnvironmentConfig[]>('environments', [
+                                { name: 'Qual', sourceBranch: 'quality' },
+                                { name: 'Val', sourceBranch: 'validation' },
+                                { name: 'Prod', sourceBranch: 'main' }
+                            ]);
+                            const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
+                            
+                            const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch)];
+                            baseBranches = Array.from(new Set(allBase));
+                        } catch (e) {}
+
                         const match = currentBranch.match(new RegExp(`(${prefix}\\d+)`, 'i'));
                         if (match) {
                             const ticketId = match[1].toUpperCase();
@@ -83,6 +98,19 @@ export function activate(context: vscode.ExtensionContext) {
                         } else {
                             // Not on a ticket branch — hide status bar
                             statusBarItem.hide();
+
+                            try {
+                                const workspaceFolders = vscode.workspace.workspaceFolders;
+                                if (workspaceFolders) {
+                                    const cwd = workspaceFolders[0].uri.fsPath;
+                                    const { stdout } = await exec(`git for-each-ref --sort=-committerdate --format="%(refname:short)" refs/heads/`, { cwd });
+                                    const allBranches = stdout.split('\n').map((b: string) => b.trim()).filter((b: string) => b);
+                                    
+                                    // Match ticket patterns (e.g., SFPSC-11111) but NOT environment branches (-to-Qual)
+                                    const ticketPattern = /^[A-Z]+-\d+$/i;
+                                    recentTickets = allBranches.filter((b: string) => ticketPattern.test(b)).slice(0, 3);
+                                }
+                            } catch (e) {}
                         }
 
                         // Fetch recent commits for the Git Log
@@ -104,7 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         } catch (e) {}
                         
-                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits);
+                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
                     }
                 }
 

@@ -94,27 +94,31 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.updateView();
     }
 
-    public updateBranch(branchName: string, relatedBranches: string[] = [], commits: CommitEntry[] = []) {
+    public updateBranch(branchName: string, relatedBranches: string[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = []) {
         if (!this.webviewView) return;
         this.currentBranchCache = branchName;
         this.relatedBranchesCache = relatedBranches;
         this.commitsCache = commits;
+        this.baseBranchesCache = baseBranches;
+        this.recentTicketsCache = recentTickets;
         this.updateView();
     }
 
     private currentBranchCache = '';
     private relatedBranchesCache: string[] = [];
     private commitsCache: CommitEntry[] = [];
+    private baseBranchesCache: string[] = [];
+    private recentTicketsCache: string[] = [];
 
     private updateView() {
         if (!this.webviewView) return;
         const logoUri = this.webviewView.webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png')
         );
-        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache);
+        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache);
     }
 
-    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: string[], commits: CommitEntry[]) {
+    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: string[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[]) {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -279,9 +283,30 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                 `).join('')}
                             </div>
                         </div>
-                    ` : ''}
+                    ` : (recentTickets.length > 0 ? `
+                        <div style="margin-top: 8px; border-top: 1px solid var(--vscode-panel-border); padding-top: 8px;">
+                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Recent Tickets</div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${recentTickets.map(b => `
+                                    <div class="btn" style="padding: 4px; font-size: 11px; justify-content: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                                        ${escapeHtml(b)}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : '')}
                 </div>` : ''
             }
+
+            ${baseBranches.length > 0 ? `
+                <div style="display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center;">
+                    ${baseBranches.map(b => `
+                        <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border);" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                            ${escapeHtml(b.toUpperCase())}
+                        </button>
+                    `).join('')}
+                </div>
+            ` : ''}
 
             <button class="btn" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
                 <span class="icon">🌿</span> Create Branches

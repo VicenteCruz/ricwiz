@@ -61,6 +61,10 @@
         "title": "Ricwiz: Open Settings"
       },
       {
+        "command": "ricwiz.generatePackageXml",
+        "title": "Ricwiz: Generate package.xml (Auto Mapper)"
+      },
+      {
         "command": "ricwiz.copyBranchName",
         "title": "Ricwiz: Copy Branch Name"
       },
@@ -145,5 +149,8 @@
     "@types/node": "^18.19.130",
     "@types/vscode": "^1.80.0",
     "typescript": "^5.1.3"
+  },
+  "dependencies": {
+    "xmlbuilder2": "^4.0.3"
   }
 }

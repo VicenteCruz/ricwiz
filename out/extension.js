@@ -14,6 +14,7 @@ const syncAll_1 = require("./commands/syncAll");
 const deleteUnused_1 = require("./commands/deleteUnused");
 const checkoutBranch_1 = require("./commands/checkoutBranch");
 const copyBranch_1 = require("./commands/copyBranch");
+const generatePackageXml_1 = require("./commands/generatePackageXml");
 function activate(context) {
     exports.webviewProvider = new webview_1.RicwizWebviewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('ricwiz-webview', exports.webviewProvider));
@@ -102,10 +103,38 @@ function activate(context) {
                             catch (e) { }
                         }
                         // Fetch recent commits for the Git Log
+                        let timeline = null;
                         try {
                             const workspaceFolders = vscode.workspace.workspaceFolders;
                             if (workspaceFolders) {
                                 const cwd = workspaceFolders[0].uri.fsPath;
+                                if (match) {
+                                    // Calculate timeline
+                                    const isMerged = async (envBranch) => {
+                                        try {
+                                            await (0, git_1.exec)(`git merge-base --is-ancestor ${currentBranch} origin/${envBranch}`, { cwd });
+                                            return true;
+                                        }
+                                        catch {
+                                            try {
+                                                await (0, git_1.exec)(`git merge-base --is-ancestor ${currentBranch} ${envBranch}`, { cwd });
+                                                return true;
+                                            }
+                                            catch {
+                                                return false;
+                                            }
+                                        }
+                                    };
+                                    const configEnvs = config.get('environments', [
+                                        { name: 'Qual', sourceBranch: 'quality' },
+                                        { name: 'Val', sourceBranch: 'validation' },
+                                        { name: 'Prod', sourceBranch: 'main' }
+                                    ]);
+                                    timeline = [];
+                                    for (const env of configEnvs) {
+                                        timeline.push({ name: env.name, merged: await isMerged(env.sourceBranch) });
+                                    }
+                                }
                                 const { stdout } = await (0, git_1.exec)(`git log --oneline -10 --format="%h|||%s|||%ar"`, { cwd });
                                 commits = stdout.split('\n')
                                     .filter((line) => line.trim())
@@ -120,7 +149,7 @@ function activate(context) {
                             }
                         }
                         catch (e) { }
-                        exports.webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
+                        exports.webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets, timeline);
                     }
                 }
                 update();
@@ -130,7 +159,7 @@ function activate(context) {
     }
     initGit();
     // ─── Register All Commands ──────────────────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand('ricwiz.createBranches', createBranches_1.createBranches), vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy_1.prepareDeploy), vscode.commands.registerCommand('ricwiz.createMergeRequests', mergeRequests_1.createMergeRequests), vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', mergeRequests_1.createMergeRequestsVSCode), vscode.commands.registerCommand('ricwiz.openJiraTicket', jira_1.openJiraTicket), vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', jira_1.openJiraTicketVSCode), vscode.commands.registerCommand('ricwiz.syncAll', syncAll_1.syncAll), vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnused_1.deleteUnusedBranches), vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch_1.checkoutBranch), vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranch_1.copyBranchName), vscode.commands.registerCommand('ricwiz.openSettings', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('ricwiz.createBranches', createBranches_1.createBranches), vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy_1.prepareDeploy), vscode.commands.registerCommand('ricwiz.createMergeRequests', mergeRequests_1.createMergeRequests), vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', mergeRequests_1.createMergeRequestsVSCode), vscode.commands.registerCommand('ricwiz.openJiraTicket', jira_1.openJiraTicket), vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', jira_1.openJiraTicketVSCode), vscode.commands.registerCommand('ricwiz.syncAll', syncAll_1.syncAll), vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnused_1.deleteUnusedBranches), vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch_1.checkoutBranch), vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranch_1.copyBranchName), vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml_1.generatePackageXml), vscode.commands.registerCommand('ricwiz.openSettings', () => {
         vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');
     }));
 }

@@ -54,6 +54,9 @@ class RicwizWebviewProvider {
                 case 'copyBranch':
                     vscode.commands.executeCommand('ricwiz.copyBranchName');
                     break;
+                case 'generatePackageXml':
+                    vscode.commands.executeCommand('ricwiz.generatePackageXml');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -86,7 +89,7 @@ class RicwizWebviewProvider {
         this.conflictState = state;
         this.updateView();
     }
-    updateBranch(branchName, relatedBranches = [], commits = [], baseBranches = [], recentTickets = []) {
+    updateBranch(branchName, relatedBranches = [], commits = [], baseBranches = [], recentTickets = [], timeline = null) {
         if (!this.webviewView)
             return;
         this.currentBranchCache = branchName;
@@ -94,6 +97,7 @@ class RicwizWebviewProvider {
         this.commitsCache = commits;
         this.baseBranchesCache = baseBranches;
         this.recentTicketsCache = recentTickets;
+        this.timelineCache = timeline;
         this.updateView();
     }
     currentBranchCache = '';
@@ -101,13 +105,14 @@ class RicwizWebviewProvider {
     commitsCache = [];
     baseBranchesCache = [];
     recentTicketsCache = [];
+    timelineCache = null;
     updateView() {
         if (!this.webviewView)
             return;
         const logoUri = this.webviewView.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png'));
-        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache);
+        this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache, this.timelineCache);
     }
-    _getHtmlForWebview(logoUri, currentBranch, relatedBranches, commits, baseBranches, recentTickets) {
+    _getHtmlForWebview(logoUri, currentBranch, relatedBranches, commits, baseBranches, recentTickets, timeline) {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -292,6 +297,24 @@ class RicwizWebviewProvider {
                 </div>
             ` : ''}
 
+            ${timeline ? `
+                <div style="margin-bottom: 12px; background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 8px; border-radius: 4px;">
+                    <div style="font-size: 11px; opacity: 0.8; margin-bottom: 8px; text-align: center; font-weight: bold; text-transform: uppercase;">Promotion Timeline</div>
+                    <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+                            <span style="color: var(--vscode-testing-iconPassed);">✅</span>
+                            <span style="flex: 1;">Dev</span>
+                        </div>
+                        ${timeline.map(env => `
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; opacity: ${env.merged ? 1 : 0.6};">
+                                <span>${env.merged ? '<span style="color: var(--vscode-testing-iconPassed);">✅</span>' : '⏳'}</span>
+                                <span style="flex: 1;">${escapeHtml(env.name)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
             <button class="btn" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
                 <span class="icon">🌿</span> Create Branches
             </button>
@@ -319,6 +342,10 @@ class RicwizWebviewProvider {
             </div>
 
             <div class="separator"></div>
+
+            <button class="btn" title="Generate Salesforce package.xml from git diff" onclick="sendCommand('generatePackageXml')">
+                <span class="icon">📦</span> Auto Package.xml
+            </button>
 
             <button class="btn" title="Fetch and pull all branches of the current ticket" onclick="sendCommand('syncAll')">
                 <span class="icon">🔄</span> Sync All

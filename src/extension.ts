@@ -10,6 +10,7 @@ import { syncAll } from './commands/syncAll';
 import { deleteUnusedBranches } from './commands/deleteUnused';
 import { checkoutBranch } from './commands/checkoutBranch';
 import { copyBranchName } from './commands/copyBranch';
+import { generatePackageXml } from './commands/generatePackageXml';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
@@ -114,10 +115,38 @@ export function activate(context: vscode.ExtensionContext) {
                         }
 
                         // Fetch recent commits for the Git Log
+                        let timeline: { name: string, merged: boolean }[] | null = null;
                         try {
                             const workspaceFolders = vscode.workspace.workspaceFolders;
                             if (workspaceFolders) {
                                 const cwd = workspaceFolders[0].uri.fsPath;
+                                
+                                if (match) {
+                                    // Calculate timeline
+                                    const isMerged = async (envBranch: string) => {
+                                        try {
+                                            await exec(`git merge-base --is-ancestor ${currentBranch} origin/${envBranch}`, { cwd });
+                                            return true;
+                                        } catch {
+                                            try {
+                                                await exec(`git merge-base --is-ancestor ${currentBranch} ${envBranch}`, { cwd });
+                                                return true;
+                                            } catch { return false; }
+                                        }
+                                    };
+                                    
+                                    const configEnvs = config.get<EnvironmentConfig[]>('environments', [
+                                        { name: 'Qual', sourceBranch: 'quality' },
+                                        { name: 'Val', sourceBranch: 'validation' },
+                                        { name: 'Prod', sourceBranch: 'main' }
+                                    ]);
+                                    
+                                    timeline = [];
+                                    for (const env of configEnvs) {
+                                        timeline.push({ name: env.name, merged: await isMerged(env.sourceBranch) });
+                                    }
+                                }
+
                                 const { stdout } = await exec(`git log --oneline -10 --format="%h|||%s|||%ar"`, { cwd });
                                 commits = stdout.split('\n')
                                     .filter((line: string) => line.trim())
@@ -132,7 +161,7 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         } catch (e) {}
                         
-                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
+                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets, timeline);
                     }
                 }
 
@@ -155,6 +184,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnusedBranches),
         vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch),
         vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranchName),
+        vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml),
         vscode.commands.registerCommand('ricwiz.openSettings', () => {
             vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');
         })

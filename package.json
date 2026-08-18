@@ -69,6 +69,10 @@
         "title": "Ricwiz: Deploy Package"
       },
       {
+        "command": "ricwiz.importData",
+        "title": "Ricwiz: Import Data"
+      },
+      {
         "command": "ricwiz.copyBranchName",
         "title": "Ricwiz: Copy Branch Name"
       },
@@ -108,6 +112,11 @@
           "type": "string",
           "default": "sf project deploy start --manifest package/package.xml --post-destructive-changes destructiveChanges/destructiveChanges.xml -c -l NoTestRun -g",
           "description": "The command used to deploy the generated package.xml."
+        },
+        "ricwiz.importDataCommand": {
+          "type": "string",
+          "default": "sfdx force:data:tree:import --plan data/plan.json",
+          "description": "The command used to import data."
         },
         "ricwiz.ticketPrefix": {
           "type": "string",

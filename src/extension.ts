@@ -12,6 +12,7 @@ import { checkoutBranch } from './commands/checkoutBranch';
 import { copyBranchName } from './commands/copyBranch';
 import { generatePackageXml } from './commands/generatePackageXml';
 import { deployPackage } from './commands/deployPackage';
+import { importData } from './commands/importData';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
@@ -180,6 +181,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranchName),
         vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml),
         vscode.commands.registerCommand('ricwiz.deployPackage', deployPackage),
+        vscode.commands.registerCommand('ricwiz.importData', importData),
         vscode.commands.registerCommand('ricwiz.openSettings', () => {
             vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');
         })

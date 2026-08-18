@@ -16,6 +16,7 @@ const checkoutBranch_1 = require("./commands/checkoutBranch");
 const copyBranch_1 = require("./commands/copyBranch");
 const generatePackageXml_1 = require("./commands/generatePackageXml");
 const deployPackage_1 = require("./commands/deployPackage");
+const importData_1 = require("./commands/importData");
 function activate(context) {
     exports.webviewProvider = new webview_1.RicwizWebviewProvider(context.extensionUri);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider('ricwiz-webview', exports.webviewProvider));
@@ -153,7 +154,7 @@ function activate(context) {
     }
     initGit();
     // ─── Register All Commands ──────────────────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand('ricwiz.createBranches', createBranches_1.createBranches), vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy_1.prepareDeploy), vscode.commands.registerCommand('ricwiz.createMergeRequests', mergeRequests_1.createMergeRequests), vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', mergeRequests_1.createMergeRequestsVSCode), vscode.commands.registerCommand('ricwiz.openJiraTicket', jira_1.openJiraTicket), vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', jira_1.openJiraTicketVSCode), vscode.commands.registerCommand('ricwiz.syncAll', syncAll_1.syncAll), vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnused_1.deleteUnusedBranches), vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch_1.checkoutBranch), vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranch_1.copyBranchName), vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml_1.generatePackageXml), vscode.commands.registerCommand('ricwiz.deployPackage', deployPackage_1.deployPackage), vscode.commands.registerCommand('ricwiz.openSettings', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('ricwiz.createBranches', createBranches_1.createBranches), vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy_1.prepareDeploy), vscode.commands.registerCommand('ricwiz.createMergeRequests', mergeRequests_1.createMergeRequests), vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', mergeRequests_1.createMergeRequestsVSCode), vscode.commands.registerCommand('ricwiz.openJiraTicket', jira_1.openJiraTicket), vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', jira_1.openJiraTicketVSCode), vscode.commands.registerCommand('ricwiz.syncAll', syncAll_1.syncAll), vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnused_1.deleteUnusedBranches), vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch_1.checkoutBranch), vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranch_1.copyBranchName), vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml_1.generatePackageXml), vscode.commands.registerCommand('ricwiz.deployPackage', deployPackage_1.deployPackage), vscode.commands.registerCommand('ricwiz.importData', importData_1.importData), vscode.commands.registerCommand('ricwiz.openSettings', () => {
         vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');
     }));
 }

@@ -71,6 +71,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'deployPackage':
                     vscode.commands.executeCommand('ricwiz.deployPackage');
                     break;
+                case 'importData':
+                    vscode.commands.executeCommand('ricwiz.importData');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -291,6 +294,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         
                     <button class="btn" title="Deploy the generated package to Salesforce" onclick="sendCommand('deployPackage')">
                         <span class="icon">☁️</span> Deploy Package
+                    </button>
+
+                    <button class="btn" title="Import data using Salesforce CLI" onclick="sendCommand('importData')">
+                        <span class="icon">📥</span> Import Data
                     </button>
                 </div>
                 

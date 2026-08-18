@@ -11,6 +11,15 @@ export async function deployPackage(): Promise<void> {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const command = config.get<string>('deployCommand', 'sf project deploy start --manifest package/package.xml --post-destructive-changes destructiveChanges/destructiveChanges.xml -c -l NoTestRun -g');
 
+    const confirm = await vscode.window.showWarningMessage(
+        'Are you sure you want to deploy to Salesforce? This action modifies your org and cannot be easily undone.',
+        { modal: true },
+        'Yes, Deploy'
+    );
+    if (confirm !== 'Yes, Deploy') {
+        return;
+    }
+
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Ricwiz: Deploying package...`,

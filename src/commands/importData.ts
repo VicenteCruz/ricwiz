@@ -11,6 +11,15 @@ export async function importData(): Promise<void> {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const command = config.get<string>('importDataCommand', 'sfdx force:data:tree:import --plan data/plan.json');
 
+    const confirm = await vscode.window.showWarningMessage(
+        'Are you sure you want to import data into Salesforce? This action modifies records in your org.',
+        { modal: true },
+        'Yes, Import'
+    );
+    if (confirm !== 'Yes, Import') {
+        return;
+    }
+
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Ricwiz: Importing data...`,

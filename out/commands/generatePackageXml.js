@@ -15,6 +15,10 @@ async function generatePackageXml() {
     const sourceBranch = config.get('ticketSourceBranch', 'main');
     const rawCommand = config.get('packageXmlCommand', 'sf sgd source delta --to "HEAD" --from "origin/{baseBranch}" --output-dir "."');
     const command = rawCommand.replace('{baseBranch}', sourceBranch);
+    const confirm = await vscode.window.showWarningMessage('Are you sure you want to generate the package.xml? This may overwrite existing local manifest files.', { modal: true }, 'Yes, Generate');
+    if (confirm !== 'Yes, Generate') {
+        return;
+    }
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Ricwiz: Generating package.xml using Salesforce CLI...`,

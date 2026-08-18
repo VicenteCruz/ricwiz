@@ -64,9 +64,9 @@ export function activate(context: vscode.ExtensionContext) {
                             const environments = config.get<EnvironmentConfig[]>('environments', [
                                 { name: 'Qual', sourceBranch: 'quality' },
                                 { name: 'Val', sourceBranch: 'validation' },
-                                { name: 'Prod', sourceBranch: 'main' }
+                                { name: 'Prod', sourceBranch: 'master' }
                             ]);
-                            const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
+                            const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'master');
                             
                             const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch)];
                             baseBranches = Array.from(new Set(allBase));

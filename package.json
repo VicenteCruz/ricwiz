@@ -83,8 +83,8 @@
         },
         "ricwiz.ticketSourceBranch": {
           "type": "string",
-          "default": "main",
-          "description": "The base branch from which ticket branches are created (e.g., main, develop)."
+          "default": "master",
+          "description": "The base branch from which ticket branches are created (e.g., master, main, develop)."
         },
         "ricwiz.gitlabUrlOverride": {
           "type": "string",
@@ -125,7 +125,7 @@
             },
             {
               "name": "Prod",
-              "sourceBranch": "main"
+              "sourceBranch": "master"
             }
           ],
           "description": "Environments to which deploy branches will be created, defining the source branch as well."

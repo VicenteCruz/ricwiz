@@ -33,11 +33,11 @@ export async function createBranches(): Promise<void> {
         return;
     }
 
-    const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
+    const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'master');
     const environments = config.get<EnvironmentConfig[]>('environments', [
         { name: 'Qual', sourceBranch: 'quality' },
         { name: 'Val', sourceBranch: 'validation' },
-        { name: 'Prod', sourceBranch: 'main' }
+        { name: 'Prod', sourceBranch: 'master' }
     ]);
 
     try {

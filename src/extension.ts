@@ -720,6 +720,29 @@ export function activate(context: vscode.ExtensionContext) {
 
             const processStep = 60 / (environments.length || 1);
 
+            const handleMergeConflict = async (sourceStr: string, targetStr: string) => {
+                while (true) {
+                    const choice = await vscode.window.showWarningMessage(
+                        `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}.\n\nPlease resolve the conflicts in the Source Control tab, COMMIT the changes, and then click Continue.`,
+                        { modal: true },
+                        'Continue', 'Abort'
+                    );
+                    
+                    if (choice !== 'Continue') {
+                        try { await exec('git merge --abort', { cwd }); } catch(err) {}
+                        throw new Error('Deploy aborted by user.');
+                    }
+                    
+                    // Verifies if the working tree is clean
+                    const { stdout } = await exec('git status --porcelain', { cwd });
+                    if (stdout.trim().length > 0) {
+                        vscode.window.showErrorMessage('Ricwiz: There are still uncommitted changes. Please commit your resolved conflicts before continuing.');
+                    } else {
+                        break; // Resolved and committed!
+                    }
+                }
+            };
+
             for (const env of environments) {
                 const targetBranch = `${ticketId}-to-${env.name}`;
                 const sourceBranch = env.sourceBranch;
@@ -740,8 +763,7 @@ export function activate(context: vscode.ExtensionContext) {
                         await exec(`git fetch origin ${sourceBranch}`, { cwd });
                         await exec(`git merge origin/${sourceBranch}`, { cwd });
                     } catch (e) {
-                        vscode.window.showErrorMessage(`Ricwiz: CONFLICT! The branch origin/${sourceBranch} has conflicts with ${targetBranch}. Operation paused. Please go to Source Control, resolve conflicts, commit, and run the command again.`);
-                        return; // Interrompe tudo para o utilizador poder resolver
+                        await handleMergeConflict(`origin/${sourceBranch}`, targetBranch);
                     }
 
                     // 2. Fazer merge da main branch (as alterações do ticket)
@@ -749,8 +771,7 @@ export function activate(context: vscode.ExtensionContext) {
                         progress.report({ message: `Merging ${mainBranch} into ${targetBranch}...`, increment: processStep / 4 });
                         await exec(`git merge ${mainBranch}`, { cwd });
                     } catch (e) {
-                        vscode.window.showErrorMessage(`Ricwiz: CONFLICT! Your changes in ${mainBranch} have conflicts with ${targetBranch}. Operation paused. Resolve them in Source Control, commit, and run the command again.`);
-                        return; // Interrompe tudo para o utilizador poder resolver
+                        await handleMergeConflict(mainBranch, targetBranch);
                     }
                     
                     // 3. Sincronizar com o remote
@@ -760,7 +781,7 @@ export function activate(context: vscode.ExtensionContext) {
                     successCount++;
                 } catch (e: any) {
                     vscode.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
-                    return; // Interrompe execução perante erro crítico (ex: falhou o checkout)
+                    return; // Interrompe execução perante erro crítico ou abort do user
                 }
             }
 

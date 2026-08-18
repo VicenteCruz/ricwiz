@@ -72,6 +72,9 @@ class RicwizWebviewProvider {
                 case 'listTicketFiles':
                     vscode.commands.executeCommand('ricwiz.listTicketFiles');
                     break;
+                case 'resetTracking':
+                    vscode.commands.executeCommand('ricwiz.resetTracking');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -291,6 +294,10 @@ class RicwizWebviewProvider {
 
                     <button class="btn" title="Find and group all files modified in a specific ticket" onclick="sendCommand('listTicketFiles')">
                         <span class="icon">🗂️</span> List Ticket Files
+                    </button>
+
+                    <button class="btn" title="Reset Salesforce source tracking" onclick="sendCommand('resetTracking')">
+                        <span class="icon">🧹</span> Reset Tracking
                     </button>
                 </div>
                 

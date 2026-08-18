@@ -77,6 +77,10 @@
         "title": "Ricwiz: List Ticket Files"
       },
       {
+        "command": "ricwiz.resetTracking",
+        "title": "Ricwiz: Reset Tracking"
+      },
+      {
         "command": "ricwiz.copyBranchName",
         "title": "Ricwiz: Copy Branch Name"
       },
@@ -121,6 +125,11 @@
           "type": "string",
           "default": "sfdx force:data:tree:import --plan data/plan.json",
           "description": "The command used to import data."
+        },
+        "ricwiz.resetTrackingCommand": {
+          "type": "string",
+          "default": "sf org disable tracking && sf project reset tracking --no-prompt",
+          "description": "The command used to reset source tracking."
         },
         "ricwiz.ticketPrefix": {
           "type": "string",

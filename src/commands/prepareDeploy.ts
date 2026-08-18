@@ -70,6 +70,10 @@ export async function prepareDeploy(): Promise<void> {
             progress.report({ message: `CONFLICT! Resolve & click 'Commit & Continue'.` });
             
             let isResolved = false;
+            const qp = vscode.window.createQuickPick();
+            qp.ignoreFocusOut = true;
+            qp.title = `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}`;
+            qp.placeholder = `Resolve conflicts in editor, then pick an action below:`;
 
             const getDeletionConflicts = async () => {
                 try {
@@ -85,89 +89,82 @@ export async function prepareDeploy(): Promise<void> {
                 }
             };
 
-            const showConflictNotification = async () => {
+            const updateQuickPick = async () => {
                 if (isResolved) return;
-
                 const deletions = await getDeletionConflicts();
-                const buttons = ['Commit & Continue'];
+                
+                const items: vscode.QuickPickItem[] = [
+                    { label: '$(check) Commit & Continue', description: 'Commit resolved files and resume deploy' }
+                ];
+                
                 if (deletions.length > 0) {
-                    buttons.push('Resolve Deletions...');
+                    items.push({ label: '$(trash) Resolve Deletions...', description: `Delete ${deletions.length} missing file(s)` });
                 }
-                buttons.push('Abort Deploy');
-
-                vscode.window.showWarningMessage(
-                    `Ricwiz: CONFLICT! Merging ${sourceStr} into ${targetStr}. Resolve the conflicts in your editor, then click "Commit & Continue".`,
-                    ...buttons
-                ).then(async selection => {
-                    if (isResolved) return;
-
-                    if (selection === 'Abort Deploy') {
-                        abortRequested = true;
-                    } else if (selection === 'Resolve Deletions...') {
-                        try {
-                            const { stdout } = await exec('git status --porcelain', { cwd });
-                            const unmerged = stdout.split('\n')
-                                .filter((line: string) => {
-                                    const state = line.substring(0, 2);
-                                    return ['UU', 'AA', 'UD', 'DU', 'AU', 'UA', 'DD'].includes(state);
-                                })
-                                .map((line: string) => line.substring(3).trim());
-
-                            if (unmerged.length === 0) {
-                                vscode.window.showInformationMessage('Ricwiz: No conflicted files found.');
-                            } else {
-                                const items = unmerged.map((file: string) => ({ label: file }));
-                                const selected = await vscode.window.showQuickPick(items, {
-                                    canPickMany: true,
-                                    placeHolder: 'Select conflicted files you want to DELETE to resolve them',
-                                    title: 'Ricwiz: Delete Conflicted Files'
-                                });
-
-                                if (selected && selected.length > 0) {
-                                    for (const item of selected) {
-                                        try {
-                                            await exec(`git rm --force "${item.label}"`, { cwd });
-                                        } catch(e) {}
-                                    }
-                                    vscode.window.showInformationMessage(`Ricwiz: Deleted ${selected.length} conflicted file(s).`);
-                                }
-                            }
-                        } catch (e: any) {
-                            vscode.window.showErrorMessage(`Ricwiz: Error reading conflicts. (${e.message})`);
-                        }
-                        showConflictNotification(); // Re-show so they can Commit & Continue
-                    } else if (selection === 'Commit & Continue') {
-                        try {
-                            // Safety check for leftover markers
-                            let hasMarkers = false;
-                            try {
-                                const { stdout } = await exec(`git grep -E "^<<<<<<< "`, { cwd });
-                                if (stdout.trim().length > 0) hasMarkers = true;
-                            } catch(e) {
-                                // git grep exits with 1 if no matches (which means no markers, we're good)
-                            }
-                            if (hasMarkers) {
-                                vscode.window.showErrorMessage('Ricwiz: You still have unresolved conflict markers (<<<<<<<) in your files. Please resolve them first!');
-                                showConflictNotification();
-                                return;
-                            }
-
-                            await exec('git add .', { cwd });
-                            await exec('git commit --no-edit', { cwd });
-                        } catch (e: any) {
-                            vscode.window.showErrorMessage(`Ricwiz: Could not commit automatically. (${e.message})`);
-                            showConflictNotification(); // Re-show so they can try again
-                        }
-                    }
-                });
+                
+                items.push({ label: '$(close) Abort Deploy', description: 'Abort and reset' });
+                qp.items = items;
+                qp.show();
             };
 
-            showConflictNotification();
+            qp.onDidAccept(async () => {
+                const selected = qp.selectedItems[0];
+                if (!selected) return;
+
+                if (selected.label.includes('Abort Deploy')) {
+                    qp.hide();
+                    abortRequested = true;
+                } else if (selected.label.includes('Resolve Deletions...')) {
+                    qp.hide();
+                    try {
+                        const deletions = await getDeletionConflicts();
+                        const items = deletions.map((file: string) => ({ label: file }));
+                        const toDelete = await vscode.window.showQuickPick(items, {
+                            canPickMany: true,
+                            placeHolder: 'Select conflicted files to DELETE',
+                            title: 'Ricwiz: Delete Conflicted Files'
+                        });
+
+                        if (toDelete && toDelete.length > 0) {
+                            for (const item of toDelete) {
+                                try { await exec(`git rm --force "${item.label}"`, { cwd }); } catch(e) {}
+                            }
+                            vscode.window.showInformationMessage(`Ricwiz: Deleted ${toDelete.length} conflicted file(s).`);
+                        }
+                    } catch (e: any) {
+                        vscode.window.showErrorMessage(`Ricwiz: Error. (${e.message})`);
+                    }
+                    updateQuickPick(); // Re-show the main QuickPick
+                } else if (selected.label.includes('Commit & Continue')) {
+                    qp.hide();
+                    try {
+                        let hasMarkers = false;
+                        try {
+                            const { stdout } = await exec(`git grep -E "^<<<<<<< "`, { cwd });
+                            if (stdout.trim().length > 0) hasMarkers = true;
+                        } catch(e) {}
+
+                        if (hasMarkers) {
+                            vscode.window.showErrorMessage('Ricwiz: You still have unresolved conflict markers (<<<<<<<) in your files. Please resolve them first!');
+                            updateQuickPick();
+                            return;
+                        }
+
+                        await exec('git add .', { cwd });
+                        await exec('git commit --no-edit', { cwd });
+                    } catch (e: any) {
+                        vscode.window.showErrorMessage(`Ricwiz: Could not commit automatically. (${e.message})`);
+                        updateQuickPick();
+                    }
+                }
+            });
+
+            updateQuickPick();
 
             while (true) {
                 if (abortRequested) {
-                    try { await exec('git merge --abort', { cwd }); } catch(err) {}
                     isResolved = true;
+                    qp.dispose();
+                    try { await exec('git merge --abort', { cwd }); } catch(err) {}
                     throw new Error('Deploy aborted by user.');
                 }
                 
@@ -175,6 +172,7 @@ export async function prepareDeploy(): Promise<void> {
                     const { stdout } = await exec('git status --porcelain', { cwd });
                     if (stdout.trim().length === 0) {
                         isResolved = true;
+                        qp.dispose();
                         vscode.window.showInformationMessage(`Ricwiz: Changes committed! Resuming deploy...`);
                         break; // Working tree clean, meaning they committed!
                     }

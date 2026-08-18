@@ -773,7 +773,14 @@ export function activate(context: vscode.ExtensionContext) {
                         await exec(`git fetch origin ${sourceBranch}`, { cwd });
                         await exec(`git merge origin/${sourceBranch}`, { cwd });
                     } catch (e: any) {
-                        if (e.message && e.message.toLowerCase().includes('conflict')) {
+                        let isConflict = false;
+                        try {
+                            const { stdout } = await exec('git ls-files -u', { cwd });
+                            if (stdout.trim().length > 0) isConflict = true;
+                        } catch(err) {}
+                        
+                        const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
+                        if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
                             await handleMergeConflict(`origin/${sourceBranch}`, targetBranch);
                         } else {
                             throw e;
@@ -785,7 +792,14 @@ export function activate(context: vscode.ExtensionContext) {
                         progress.report({ message: `Merging ${mainBranch} into ${targetBranch}...`, increment: processStep / 4 });
                         await exec(`git merge ${mainBranch}`, { cwd });
                     } catch (e: any) {
-                         if (e.message && e.message.toLowerCase().includes('conflict')) {
+                        let isConflict = false;
+                        try {
+                            const { stdout } = await exec('git ls-files -u', { cwd });
+                            if (stdout.trim().length > 0) isConflict = true;
+                        } catch(err) {}
+                        
+                        const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
+                        if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
                             await handleMergeConflict(mainBranch, targetBranch);
                         } else {
                             throw e;

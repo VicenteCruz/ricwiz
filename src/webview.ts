@@ -117,6 +117,12 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         }
                     }
                     break;
+                case 'searchTicket':
+                    vscode.commands.executeCommand('ricwiz.searchTicket');
+                    break;
+                case 'openHistory':
+                    vscode.commands.executeCommand('ricwiz.openHistory');
+                    break;
             }
         });
     }
@@ -493,6 +499,14 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                             </div>
                         </div>
                     ` : '')}
+                    <div style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-end;">
+                        <button class="btn" style="width: auto; padding: 4px 6px; font-size: 11px; opacity: 0.8; border: 1px solid var(--vscode-panel-border);" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
+                            <span class="icon" style="font-size: 12px; margin-right: 2px;">🔍</span> Search
+                        </button>
+                        <button class="btn" style="width: auto; padding: 4px 6px; font-size: 11px; opacity: 0.8; border: 1px solid var(--vscode-panel-border);" onclick="sendCommand('openHistory')" title="View recent branches history">
+                            <span class="icon" style="font-size: 12px; margin-right: 2px;">🕰️</span> History
+                        </button>
+                    </div>
                 </div>` : ''
             }
 

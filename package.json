@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.7",
+  "version": "4.7.8",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -91,6 +91,14 @@
       {
         "command": "ricwiz.captureAdminChanges",
         "title": "Ricwiz: Capture Admin Changes"
+      },
+      {
+        "command": "ricwiz.openHistory",
+        "title": "Ricwiz: Branch History"
+      },
+      {
+        "command": "ricwiz.searchTicket",
+        "title": "Ricwiz: Search Ticket Branches"
       },
       {
         "command": "ricwiz.copyBranchName",

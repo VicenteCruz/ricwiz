@@ -16,6 +16,8 @@ import { importData } from './commands/importData';
 import { listTicketFiles } from './commands/listTicketFiles';
 import { resetTracking } from './commands/resetTracking';
 import { captureAdminChanges } from './commands/captureAdminChanges';
+import { openHistory } from './commands/openHistory';
+import { searchTicket } from './commands/searchTicket';
 import { getBlameData } from './commands/whoToBlame';
 import { generateDestructiveChanges } from './commands/generateDestructiveChanges';
 import { runSmartTests } from './commands/runSmartTests';
@@ -211,6 +213,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.listTicketFiles', listTicketFiles),
         vscode.commands.registerCommand('ricwiz.resetTracking', resetTracking),
         vscode.commands.registerCommand('ricwiz.captureAdminChanges', captureAdminChanges),
+        vscode.commands.registerCommand('ricwiz.openHistory', openHistory),
+        vscode.commands.registerCommand('ricwiz.searchTicket', searchTicket),
         vscode.commands.registerCommand('ricwiz.whoToBlame', async () => {
             const data = await getBlameData();
             if (data && webviewProvider) {

@@ -81,6 +81,10 @@
         "title": "Ricwiz: Reset Tracking"
       },
       {
+        "command": "ricwiz.captureAdminChanges",
+        "title": "Ricwiz: Capture Admin Changes"
+      },
+      {
         "command": "ricwiz.copyBranchName",
         "title": "Ricwiz: Copy Branch Name"
       },
@@ -130,6 +134,16 @@
           "type": "string",
           "default": "sf org disable tracking && sf project reset tracking --no-prompt",
           "description": "The command used to reset source tracking."
+        },
+        "ricwiz.auditUsername": {
+          "type": "string",
+          "default": "admin@example.com",
+          "description": "The Salesforce username to use when querying the SetupAuditTrail for changes."
+        },
+        "ricwiz.auditHours": {
+          "type": "number",
+          "default": 8,
+          "description": "The default number of hours to look back when querying the SetupAuditTrail."
         },
         "ricwiz.ticketPrefix": {
           "type": "string",

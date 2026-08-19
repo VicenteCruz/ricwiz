@@ -15,6 +15,7 @@ import { deployPackage } from './commands/deployPackage';
 import { importData } from './commands/importData';
 import { listTicketFiles } from './commands/listTicketFiles';
 import { resetTracking } from './commands/resetTracking';
+import { captureAdminChanges } from './commands/captureAdminChanges';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
@@ -186,6 +187,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.importData', importData),
         vscode.commands.registerCommand('ricwiz.listTicketFiles', listTicketFiles),
         vscode.commands.registerCommand('ricwiz.resetTracking', resetTracking),
+        vscode.commands.registerCommand('ricwiz.captureAdminChanges', captureAdminChanges),
         vscode.commands.registerCommand('ricwiz.openSettings', () => {
             vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');
         })

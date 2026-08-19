@@ -75,6 +75,9 @@ class RicwizWebviewProvider {
                 case 'resetTracking':
                     vscode.commands.executeCommand('ricwiz.resetTracking');
                     break;
+                case 'captureAdminChanges':
+                    vscode.commands.executeCommand('ricwiz.captureAdminChanges');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -298,6 +301,10 @@ class RicwizWebviewProvider {
 
                     <button class="btn" title="Reset Salesforce source tracking" onclick="sendCommand('resetTracking')">
                         <span class="icon">🧹</span> Reset Tracking
+                    </button>
+
+                    <button class="btn" title="Capture manual Admin changes via SetupAuditTrail" onclick="sendCommand('captureAdminChanges')" style="background-color: var(--vscode-button-hoverBackground);">
+                        <span class="icon">🕵️</span> Capture Admin Changes
                     </button>
                 </div>
                 

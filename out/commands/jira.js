@@ -46,7 +46,7 @@ async function doOpenJiraTicket(openInVSCode = false) {
     else {
         vscode.env.openExternal(vscode.Uri.parse(url));
     }
-    vscode.window.showInformationMessage(`Ricwiz: Opening Jira Ticket ${ticketId} in ${openInVSCode ? 'VS Code' : 'browser'}!`);
+    vscode.window.showInformationMessage(`Ricwiz: Opening Jira Ticket ${finalTicketId} in ${openInVSCode ? 'VS Code' : 'browser'}!`);
 }
 async function openJiraTicket() {
     return doOpenJiraTicket(false);

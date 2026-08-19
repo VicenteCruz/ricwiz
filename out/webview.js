@@ -22,7 +22,7 @@ class RicwizWebviewProvider {
             enableScripts: true,
             localResourceRoots: [this._extensionUri]
         };
-        this.updateBranch('');
+        this.updateBranch('', false);
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.command) {
                 case 'createBranches':

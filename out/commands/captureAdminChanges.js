@@ -121,6 +121,9 @@ function translateToMetadata(action, display, section) {
     // Filter out user/login/password actions specifically (this keeps "Manage Users" clean of data-only noise)
     if (act.includes('login') || act.includes('password') || act.includes('oauth') || act.includes('session'))
         return null;
+    // Filter out deletions or disablings, because retrieving a deleted component from Salesforce will fail and block the whole command
+    if (act.includes('delete') || act.includes('remove') || act.includes('disable'))
+        return null;
     // 2. Map standard metadata
     if (act.includes('profile')) {
         // e.g., "Changed profile System Administrator"

@@ -296,19 +296,34 @@ class RicwizWebviewProvider {
                     </div>
 
                     <div style="margin-bottom: 16px;">
-                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">💻</span> Local Git (Last Commit)</div>
-                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-modifiedResourceForeground);">
-                            <div><strong>Author:</strong> ${data.gitAuthor}</div>
-                            <div><strong>When:</strong> ${data.gitTime}</div>
-                            <div style="margin-top: 4px; opacity: 0.8; font-style: italic;">"${data.gitCommit}"</div>
+                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">💻</span> Local Git (Last Commits)</div>
+                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-modifiedResourceForeground); display: flex; flex-direction: column; gap: 8px;">
+                            ${data.gitHistory && data.gitHistory.length > 0 ? data.gitHistory.map((h) => `
+                                <div>
+                                    <div><strong>${h.author}</strong> <span style="opacity:0.7">(${h.time})</span> - <span style="font-family:monospace; opacity:0.6">${h.hash}</span></div>
+                                    <div style="margin-top: 2px; opacity: 0.8; font-style: italic;">"${h.message}"</div>
+                                </div>
+                            `).join('') : '<div style="opacity:0.7">No Git history found.</div>'}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">☁️</span> Salesforce Metadata</div>
+                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-addedResourceForeground);">
+                            <div><strong>Last Modified By:</strong> ${data.sfAuthor} <span style="opacity:0.7">(${data.sfTime})</span></div>
+                            ${data.sfCreatedBy !== 'Unknown' && data.sfCreatedBy !== 'N/A' ? `<div><strong>Created By:</strong> ${data.sfCreatedBy}</div>` : ''}
                         </div>
                     </div>
 
                     <div>
-                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">☁️</span> Salesforce Org (Last Modified)</div>
-                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-addedResourceForeground);">
-                            <div><strong>Author:</strong> ${data.sfAuthor}</div>
-                            <div><strong>When:</strong> ${data.sfTime}</div>
+                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">🕵️</span> Salesforce Audit Trail (Recent)</div>
+                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-untrackedResourceForeground); display: flex; flex-direction: column; gap: 6px;">
+                            ${data.auditHistory && data.auditHistory.length > 0 ? data.auditHistory.map((a) => `
+                                <div>
+                                    <div><strong>${a.author}</strong> <span style="opacity:0.7">(${a.time})</span></div>
+                                    <div style="opacity: 0.8; font-style: italic;">${a.action} - ${a.display}</div>
+                                </div>
+                            `).join('') : '<div style="opacity:0.7">No recent setup changes found in Audit Trail.</div>'}
                         </div>
                     </div>
                 </div>

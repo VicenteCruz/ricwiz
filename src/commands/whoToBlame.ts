@@ -4,11 +4,11 @@ import { exec, getWorkspaceCwd } from '../git';
 
 export interface BlameData {
     fileName: string;
-    gitAuthor: string;
-    gitTime: string;
-    gitCommit: string;
+    gitHistory: { author: string, time: string, message: string, hash: string }[];
     sfAuthor: string;
     sfTime: string;
+    sfCreatedBy: string;
+    auditHistory: { action: string, display: string, author: string, time: string }[];
 }
 
 export async function getBlameData(): Promise<BlameData | null> {
@@ -27,18 +27,22 @@ export async function getBlameData(): Promise<BlameData | null> {
         return null;
     }
 
-    // 1. Get Git Blame (last commit for this file)
-    let gitAuthor = 'Unknown';
-    let gitTime = 'Unknown';
-    let gitCommit = 'Unknown';
+    // 1. Get Git Blame (last 5 commits for this file)
+    let gitHistory: { author: string, time: string, message: string, hash: string }[] = [];
     
     try {
-        const { stdout } = await exec(`git log -1 --pretty=format:"%an|%ar|%s" -- "${filePath}"`, { cwd });
-        const parts = stdout.trim().split('|');
-        if (parts.length >= 3) {
-            gitAuthor = parts[0];
-            gitTime = parts[1];
-            gitCommit = parts.slice(2).join('|');
+        const { stdout } = await exec(`git log -5 --pretty=format:"%an|%ar|%s|%h" -- "${filePath}"`, { cwd });
+        const lines = stdout.trim().split('\\n');
+        for (const line of lines) {
+            const parts = line.split('|');
+            if (parts.length >= 4) {
+                gitHistory.push({
+                    author: parts[0],
+                    time: parts[1],
+                    message: parts.slice(2, -1).join('|'),
+                    hash: parts[parts.length - 1]
+                });
+            }
         }
     } catch (e) {
         console.error('Git blame error:', e);
@@ -47,6 +51,8 @@ export async function getBlameData(): Promise<BlameData | null> {
     // 2. Get Salesforce Blame
     let sfAuthor = 'Unknown';
     let sfTime = 'Unknown';
+    let sfCreatedBy = 'Unknown';
+    let auditHistory: { action: string, display: string, author: string, time: string }[] = [];
 
     // Parse Metadata Type and Name from filepath
     const metaInfo = parseMetadataInfo(filePath);
@@ -55,43 +61,68 @@ export async function getBlameData(): Promise<BlameData | null> {
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Ricwiz: Querying Salesforce for ${metaInfo.name}...`,
+                title: `Ricwiz: Analyzing ${metaInfo.name} in Salesforce...`,
                 cancellable: false
             }, async () => {
                 let query = '';
                 if (metaInfo.type === 'CustomField') {
-                    // Custom fields are tricky in Tooling API, querying SetupAuditTrail is more generic or we just query FieldDefinition
-                    // Actually, Tooling API allows querying CustomField by DeveloperName and TableEnumOrId
                     const parts = metaInfo.name.split('.');
                     if (parts.length === 2) {
-                        query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM CustomField WHERE DeveloperName = '${parts[1].replace('__c', '')}' AND TableEnumOrId = '${parts[0]}'`;
+                        query = `SELECT LastModifiedBy.Name, LastModifiedDate, CreatedBy.Name FROM CustomField WHERE DeveloperName = '${parts[1].replace('__c', '')}' AND TableEnumOrId = '${parts[0]}'`;
                     }
                 } else if (metaInfo.type === 'LightningComponentBundle') {
-                    query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM LightningComponentBundle WHERE DeveloperName = '${metaInfo.name}'`;
+                    query = `SELECT LastModifiedBy.Name, LastModifiedDate, CreatedBy.Name FROM LightningComponentBundle WHERE DeveloperName = '${metaInfo.name}'`;
                 } else {
-                    query = `SELECT LastModifiedBy.Name, LastModifiedDate FROM ${metaInfo.type} WHERE Name = '${metaInfo.name}'`;
+                    query = `SELECT LastModifiedBy.Name, LastModifiedDate, CreatedBy.Name FROM ${metaInfo.type} WHERE Name = '${metaInfo.name}'`;
                 }
 
                 if (query) {
-                    const { stdout } = await exec(`sf data query -t -q "${query}" --json`, { cwd });
-                    const res = JSON.parse(stdout);
-                    if (res && res.result && res.result.records && res.result.records.length > 0) {
-                        const record = res.result.records[0];
-                        sfAuthor = record.LastModifiedBy ? record.LastModifiedBy.Name : 'Unknown';
-                        
-                        // Format date nicely
-                        const d = new Date(record.LastModifiedDate);
-                        sfTime = d.toLocaleString();
-                    } else {
-                        sfAuthor = 'Not found in Org';
+                    try {
+                        const { stdout } = await exec(`sf data query -t -q "${query}" --json`, { cwd });
+                        const res = JSON.parse(stdout);
+                        if (res && res.result && res.result.records && res.result.records.length > 0) {
+                            const record = res.result.records[0];
+                            sfAuthor = record.LastModifiedBy ? record.LastModifiedBy.Name : 'Unknown';
+                            sfCreatedBy = record.CreatedBy ? record.CreatedBy.Name : 'Unknown';
+                            sfTime = new Date(record.LastModifiedDate).toLocaleString();
+                        } else {
+                            sfAuthor = 'Not found in Org';
+                            sfTime = 'N/A';
+                            sfCreatedBy = 'N/A';
+                        }
+                    } catch(e) {
+                        sfAuthor = 'Query Error';
                         sfTime = 'N/A';
+                        sfCreatedBy = 'N/A';
                     }
+                }
+
+                // 3. Query Audit Trail for this specific component
+                // Fetch last 1500 audit trail events and filter in memory to avoid SOQL LIKE restrictions
+                try {
+                    const auditQuery = `SELECT Action, Display, CreatedBy.Name, CreatedDate FROM SetupAuditTrail ORDER BY CreatedDate DESC LIMIT 1500`;
+                    const { stdout: auditOut } = await exec(`sf data query -q "${auditQuery}" --json`, { cwd });
+                    const auditRes = JSON.parse(auditOut);
+                    
+                    if (auditRes && auditRes.result && auditRes.result.records) {
+                        const searchName = metaInfo.name.replace('__c', ''); // broaden search
+                        const matches = auditRes.result.records.filter((r: any) => 
+                            r.Display && r.Display.includes(searchName)
+                        );
+                        
+                        auditHistory = matches.map((r: any) => ({
+                            action: r.Action,
+                            display: r.Display,
+                            author: r.CreatedBy ? r.CreatedBy.Name : 'Unknown',
+                            time: new Date(r.CreatedDate).toLocaleString()
+                        })).slice(0, 10); // keep up to 10
+                    }
+                } catch(e) {
+                    console.error('Audit trail query error:', e);
                 }
             });
         } catch (e) {
             console.error('Salesforce query error:', e);
-            sfAuthor = 'Query Error';
-            sfTime = 'N/A';
         }
     } else {
         sfAuthor = 'Unsupported Metadata Type';
@@ -100,11 +131,11 @@ export async function getBlameData(): Promise<BlameData | null> {
 
     return {
         fileName,
-        gitAuthor,
-        gitTime,
-        gitCommit,
+        gitHistory,
         sfAuthor,
-        sfTime
+        sfTime,
+        sfCreatedBy,
+        auditHistory
     };
 }
 

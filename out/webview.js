@@ -295,36 +295,53 @@ class RicwizWebviewProvider {
                         📄 ${data.fileName}
                     </div>
 
-                    <div style="margin-bottom: 16px;">
-                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">💻</span> Local Git (Last Commits)</div>
-                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-modifiedResourceForeground); display: flex; flex-direction: column; gap: 8px;">
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase; margin-bottom: 8px;"><span class="icon">💻</span> Local Git (Last Commits)</div>
+                        <ul style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
                             ${data.gitHistory && data.gitHistory.length > 0 ? data.gitHistory.map((h) => `
-                                <div>
-                                    <div><strong>${h.author}</strong> <span style="opacity:0.7">(${h.time})</span> - <span style="font-family:monospace; opacity:0.6">${h.hash}</span></div>
-                                    <div style="margin-top: 2px; opacity: 0.8; font-style: italic;">"${h.message}"</div>
-                                </div>
-                            `).join('') : '<div style="opacity:0.7">No Git history found.</div>'}
-                        </div>
+                                <li style="background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-modifiedResourceForeground);">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
+                                        <strong style="font-size: 13px;">${h.author}</strong>
+                                        <span style="opacity: 0.7; font-size: 11px;">${h.time}</span>
+                                    </div>
+                                    <div style="font-size: 12px; margin-bottom: 6px; opacity: 0.9; font-style: italic;">"${h.message}"</div>
+                                    <div style="font-family: monospace; font-size: 10px; opacity: 0.6;">Commit: ${h.hash}</div>
+                                </li>
+                            `).join('') : '<li style="opacity:0.7; font-size: 12px;">No Git history found.</li>'}
+                        </ul>
                     </div>
 
-                    <div style="margin-bottom: 16px;">
-                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">☁️</span> Salesforce Metadata</div>
-                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-addedResourceForeground);">
-                            <div><strong>Last Modified By:</strong> ${data.sfAuthor} <span style="opacity:0.7">(${data.sfTime})</span></div>
-                            ${data.sfCreatedBy !== 'Unknown' && data.sfCreatedBy !== 'N/A' ? `<div><strong>Created By:</strong> ${data.sfCreatedBy}</div>` : ''}
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase; margin-bottom: 8px;"><span class="icon">☁️</span> Salesforce Metadata</div>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1; background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-addedResourceForeground);">
+                                <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; margin-bottom: 2px;">Last Modified By</div>
+                                <div style="font-weight: bold; font-size: 13px;">${data.sfAuthor}</div>
+                                <div style="font-size: 11px; opacity: 0.7; margin-top: 2px;">${data.sfTime}</div>
+                            </div>
+                            ${data.sfCreatedBy !== 'Unknown' && data.sfCreatedBy !== 'N/A' ? `
+                            <div style="flex: 1; background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-addedResourceForeground);">
+                                <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; margin-bottom: 2px;">Created By</div>
+                                <div style="font-weight: bold; font-size: 13px;">${data.sfCreatedBy}</div>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
 
                     <div>
-                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">🕵️</span> Salesforce Audit Trail (Recent)</div>
-                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-untrackedResourceForeground); display: flex; flex-direction: column; gap: 6px;">
+                        <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase; margin-bottom: 8px;"><span class="icon">🕵️</span> Setup Audit Trail (Recent)</div>
+                        <ul style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
                             ${data.auditHistory && data.auditHistory.length > 0 ? data.auditHistory.map((a) => `
-                                <div>
-                                    <div><strong>${a.author}</strong> <span style="opacity:0.7">(${a.time})</span></div>
-                                    <div style="opacity: 0.8; font-style: italic;">${a.action} - ${a.display}</div>
-                                </div>
-                            `).join('') : '<div style="opacity:0.7">No recent setup changes found in Audit Trail.</div>'}
-                        </div>
+                                <li style="background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-untrackedResourceForeground);">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
+                                        <strong style="font-size: 13px;">${a.author}</strong>
+                                        <span style="opacity: 0.7; font-size: 11px;">${a.time}</span>
+                                    </div>
+                                    <div style="font-size: 12px; font-weight: 500; margin-bottom: 2px;">${a.action}</div>
+                                    <div style="font-size: 11px; opacity: 0.7; font-style: italic;">${a.display}</div>
+                                </li>
+                            `).join('') : '<li style="opacity:0.7; font-size: 12px;">No recent setup changes found in Audit Trail.</li>'}
+                        </ul>
                     </div>
                 </div>
                 ` : `

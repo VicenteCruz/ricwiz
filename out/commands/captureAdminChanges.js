@@ -50,14 +50,22 @@ async function captureAdminChanges() {
                 return;
             }
             const records = result.result.records;
-            // Generate QuickPick items
-            const items = records.map((record) => {
-                return {
-                    label: `$(plus) ${record.Section}: ${record.Display}`,
-                    description: record.Action,
-                    metadataFormat: translateToMetadata(record.Action, record.Display)
-                };
-            });
+            // Generate QuickPick items, filtering out known noisy/non-metadata events
+            const items = [];
+            for (const record of records) {
+                const metadataStr = translateToMetadata(record.Action, record.Display, record.Section);
+                if (metadataStr) {
+                    items.push({
+                        label: `$(plus) ${record.Section}: ${record.Display}`,
+                        description: record.Action,
+                        metadataFormat: metadataStr
+                    });
+                }
+            }
+            if (items.length === 0) {
+                vscode.window.showInformationMessage(`Ricwiz: No extractable metadata changes found for ${username} in the last ${hours} hours (ignored passwords/logins).`);
+                return;
+            }
             // Show QuickPick
             const selection = await vscode.window.showQuickPick(items, {
                 canPickMany: true,
@@ -101,31 +109,50 @@ async function captureAdminChanges() {
         }
     });
 }
-function translateToMetadata(action, display) {
+function translateToMetadata(action, display, section) {
     const act = action.toLowerCase();
+    const sec = section.toLowerCase();
+    // 1. Filter out known noisy / non-extractable sections
+    const ignoredSections = ['manage users', 'user profiles', 'security controls', 'network access', 'session settings', 'data export', 'login history', 'password policies', 'identity verification', 'delegated administration'];
+    if (ignoredSections.includes(sec))
+        return null;
+    // Filter out user/login actions specifically
+    if (act.includes('login') || act.includes('password') || act.includes('oauth') || act.includes('session'))
+        return null;
+    // 2. Map standard metadata
     if (act.includes('apexclass')) {
         const parts = display.split(' ');
         return `ApexClass:${parts[parts.length - 1]}`;
     }
     if (act.includes('customfield')) {
-        // e.g. "Status__c on Account" or "Status__c na Conta"
         const fieldMatch = display.match(/([A-Za-z0-9_]+__c)/);
         const objMatch = display.match(/(?:on|na|for)\s+([A-Za-z0-9_]+)/i);
         if (fieldMatch && objMatch) {
             return `CustomField:${objMatch[1]}.${fieldMatch[1]}`;
         }
-        return `CustomField:${display.replace(/\\s+/g, '')}`;
+        return `CustomField:${display.replace(/\s+/g, '')}`;
     }
     if (act.includes('layout')) {
         return `Layout:${display.trim()}`;
     }
     if (act.includes('validation')) {
-        return `ValidationRule:${display.replace(/\\s+/g, '')}`;
+        return `ValidationRule:${display.replace(/\s+/g, '')}`;
     }
     if (act.includes('flow')) {
-        return `Flow:${display.replace(/\\s+/g, '')}`;
+        return `Flow:${display.replace(/\s+/g, '')}`;
     }
-    // Fallback guess
-    return `Unknown:${display}`;
+    if (act.includes('customobject')) {
+        const objMatch = display.match(/([A-Za-z0-9_]+__c)/);
+        return objMatch ? `CustomObject:${objMatch[1]}` : `CustomObject:${display.replace(/\s+/g, '')}`;
+    }
+    // Only return fallback for things we think MIGHT be metadata, otherwise null
+    // If we reach here, it's not a known clear-cut metadata type.
+    // Let's filter out general 'changed', 'deleted', 'created' unless they mention a component
+    if (act.includes('created') || act.includes('changed') || act.includes('deleted')) {
+        // If it's a generic word with no specific metadata tie, we discard it
+        return null;
+    }
+    // For any other unexpected action, discard to reduce noise
+    return null;
 }
 //# sourceMappingURL=captureAdminChanges.js.map

@@ -170,17 +170,24 @@ function translateToMetadata(action, display, section) {
     let metaString = null;
     const extractName = (d, allowSpaces = false) => {
         let clean = d.replace(/\(.*\)/g, '').trim();
-        const stopWords = ['disabled', 'deleted', 'removed', 'created', 'changed', 'updated', 'from', 'to'];
+        const stopWords = [
+            'disabled', 'deleted', 'removed', 'created', 'changed', 'updated', 'from', 'to', 'on', 'assigned', 'assign', 'assignment',
+            'permission', 'set', 'group', 'apex', 'class', 'trigger', 'custom', 'field', 'object', 'layout', 'validation', 'rule', 'flow', 'profile'
+        ];
         let words = clean.split(/\s+/);
         if (!allowSpaces) {
+            // For API names, we want the first word that isn't a common Salesforce descriptive word.
             const nameWord = words.find(w => !stopWords.includes(w.toLowerCase()));
             return nameWord || clean.replace(/\s+/g, '');
         }
         else {
-            if (words.length > 0 && stopWords.includes(words[words.length - 1].toLowerCase()))
+            // For labels (which can have spaces), we just trim the stop words from the beginning and end.
+            while (words.length > 0 && stopWords.includes(words[words.length - 1].toLowerCase())) {
                 words.pop();
-            if (words.length > 0 && stopWords.includes(words[0].toLowerCase()))
+            }
+            while (words.length > 0 && stopWords.includes(words[0].toLowerCase())) {
                 words.shift();
+            }
             return words.join(' ').trim();
         }
     };

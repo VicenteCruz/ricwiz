@@ -314,11 +314,12 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         📄 ${data.fileName}
                     </div>
 
+
                     <div style="margin-bottom: 20px;">
                         <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase; margin-bottom: 8px;"><span class="icon">💻</span> Local Git (Last Commits)</div>
                         <ul style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
                             ${data.gitHistory && data.gitHistory.length > 0 ? data.gitHistory.map((h: any) => `
-                                <li style="background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-modifiedResourceForeground);">
+                                <li style="background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); padding: 8px 10px; border-radius: 4px; border-left: 4px solid var(--vscode-gitDecoration-modifiedResourceForeground);">
                                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
                                         <strong style="font-size: 13px;">${h.author}</strong>
                                         <span style="opacity: 0.7; font-size: 11px;">${h.time}</span>
@@ -332,14 +333,14 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
                     <div style="margin-bottom: 20px;">
                         <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase; margin-bottom: 8px;"><span class="icon">☁️</span> Salesforce Metadata</div>
-                        <div style="display: flex; gap: 8px;">
-                            <div style="flex: 1; background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-addedResourceForeground);">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); padding: 8px 10px; border-radius: 4px; border-left: 4px solid var(--vscode-gitDecoration-addedResourceForeground);">
                                 <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; margin-bottom: 2px;">Last Modified By</div>
                                 <div style="font-weight: bold; font-size: 13px;">${data.sfAuthor}</div>
                                 <div style="font-size: 11px; opacity: 0.7; margin-top: 2px;">${data.sfTime}</div>
                             </div>
                             ${data.sfCreatedBy !== 'Unknown' && data.sfCreatedBy !== 'N/A' ? `
-                            <div style="flex: 1; background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-addedResourceForeground);">
+                            <div style="background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); padding: 8px 10px; border-radius: 4px; border-left: 4px solid var(--vscode-gitDecoration-addedResourceForeground);">
                                 <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; margin-bottom: 2px;">Created By</div>
                                 <div style="font-weight: bold; font-size: 13px;">${data.sfCreatedBy}</div>
                             </div>
@@ -351,13 +352,13 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase; margin-bottom: 8px;"><span class="icon">🕵️</span> Setup Audit Trail (Recent)</div>
                         <ul style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
                             ${data.auditHistory && data.auditHistory.length > 0 ? data.auditHistory.map((a: any) => `
-                                <li style="background: var(--vscode-editor-inactiveSelectionBackground); padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--vscode-gitDecoration-untrackedResourceForeground);">
+                                <li style="background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); padding: 8px 10px; border-radius: 4px; border-left: 4px solid var(--vscode-gitDecoration-untrackedResourceForeground);">
                                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
                                         <strong style="font-size: 13px;">${a.author}</strong>
                                         <span style="opacity: 0.7; font-size: 11px;">${a.time}</span>
                                     </div>
-                                    <div style="font-size: 12px; font-weight: 500; margin-bottom: 2px;">${a.action}</div>
-                                    <div style="font-size: 11px; opacity: 0.7; font-style: italic;">${a.display}</div>
+                                    <div style="font-size: 12px; font-weight: 500; margin-bottom: 4px;">${a.action}</div>
+                                    <div style="font-size: 11px; opacity: 0.7; font-style: italic; background: var(--vscode-editor-background); padding: 4px; border-radius: 3px;">${a.display}</div>
                                 </li>
                             `).join('') : '<li style="opacity:0.7; font-size: 12px;">No recent setup changes found in Audit Trail.</li>'}
                         </ul>

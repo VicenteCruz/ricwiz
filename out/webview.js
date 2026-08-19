@@ -114,10 +114,11 @@ class RicwizWebviewProvider {
         this.conflictState = state;
         this.updateView();
     }
-    updateBranch(branchName, relatedBranches = [], commits = [], baseBranches = [], recentTickets = []) {
+    updateBranch(branchName, isMerged, relatedBranches = [], commits = [], baseBranches = [], recentTickets = []) {
         if (!this.webviewView)
             return;
         this.currentBranchCache = branchName;
+        this.currentBranchIsMergedCache = isMerged;
         this.relatedBranchesCache = relatedBranches;
         this.commitsCache = commits;
         this.baseBranchesCache = baseBranches;
@@ -125,6 +126,7 @@ class RicwizWebviewProvider {
         this.updateView();
     }
     currentBranchCache = '';
+    currentBranchIsMergedCache = false;
     relatedBranchesCache = [];
     commitsCache = [];
     baseBranchesCache = [];
@@ -431,7 +433,9 @@ class RicwizWebviewProvider {
                         Current Ticket / Branch
                         <button class="copy-btn" onclick="sendCommand('copyBranch')" title="Copy branch name to clipboard">📋</button>
                     </div>
-                    <div style="font-weight: bold; font-size: 13px; word-break: break-all;">${escapeHtml(currentBranch)}</div>
+                    <div style="font-weight: bold; font-size: 13px; word-break: break-all;">
+                        ${escapeHtml(currentBranch)} ${this.currentBranchIsMergedCache ? '<span style="margin-left: 4px;" title="Merged to target env">✅</span>' : ''}
+                    </div>
                     ${relatedBranches.length > 0 ? `
                         <div style="margin-top: 8px; border-top: 1px solid var(--vscode-panel-border); padding-top: 8px;">
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Sister Branches</div>

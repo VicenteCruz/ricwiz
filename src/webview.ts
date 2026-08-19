@@ -122,9 +122,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.updateView();
     }
 
-    public updateBranch(branchName: string, relatedBranches: { name: string, isMerged: boolean }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = []) {
+    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = []) {
         if (!this.webviewView) return;
         this.currentBranchCache = branchName;
+        this.currentBranchIsMergedCache = isMerged;
         this.relatedBranchesCache = relatedBranches;
         this.commitsCache = commits;
         this.baseBranchesCache = baseBranches;
@@ -133,6 +134,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private currentBranchCache = '';
+    private currentBranchIsMergedCache = false;
     private relatedBranchesCache: { name: string, isMerged: boolean }[] = [];
     private commitsCache: CommitEntry[] = [];
     private baseBranchesCache: string[] = [];
@@ -450,7 +452,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         Current Ticket / Branch
                         <button class="copy-btn" onclick="sendCommand('copyBranch')" title="Copy branch name to clipboard">📋</button>
                     </div>
-                    <div style="font-weight: bold; font-size: 13px; word-break: break-all;">${escapeHtml(currentBranch)}</div>
+                    <div style="font-weight: bold; font-size: 13px; word-break: break-all;">
+                        ${escapeHtml(currentBranch)} ${this.currentBranchIsMergedCache ? '<span style="margin-left: 4px;" title="Merged to target env">✅</span>' : ''}
+                    </div>
                     ${relatedBranches.length > 0 ? `
                         <div style="margin-top: 8px; border-top: 1px solid var(--vscode-panel-border); padding-top: 8px;">
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Sister Branches</div>

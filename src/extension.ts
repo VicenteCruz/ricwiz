@@ -160,7 +160,25 @@ export function activate(context: vscode.ExtensionContext) {
                             }
                         } catch (e) {}
                         
-                        webviewProvider?.updateBranch(currentBranch, relatedBranches, commits, baseBranches, recentTickets);
+                        let currentBranchIsMerged = false;
+                        for (const env of environments) {
+                            if (currentBranch.endsWith(`-to-${env.name}`)) {
+                                try {
+                                    const cwd = vscode.workspace.workspaceFolders![0].uri.fsPath;
+                                    await exec(`git merge-base --is-ancestor ${currentBranch} origin/${env.sourceBranch}`, { cwd });
+                                    currentBranchIsMerged = true;
+                                } catch {
+                                    try {
+                                        const cwd = vscode.workspace.workspaceFolders![0].uri.fsPath;
+                                        await exec(`git merge-base --is-ancestor ${currentBranch} ${env.sourceBranch}`, { cwd });
+                                        currentBranchIsMerged = true;
+                                    } catch {}
+                                }
+                                break;
+                            }
+                        }
+
+                        webviewProvider?.updateBranch(currentBranch, currentBranchIsMerged, relatedBranches, commits, baseBranches, recentTickets);
                     }
                 }
 

@@ -13,18 +13,33 @@ async function doOpenJiraTicket(openInVSCode: boolean = false): Promise<void> {
         return;
     }
 
-    const result = await promptForTicketId(cwd, {
-        prompt: 'Enter the full Jira ticket ID (e.g., SFPSCA-1234) or just the number',
-        handleToSuffix: true
-    });
-    if (!result) return;
-    const { ticketId } = result;
+    const { getCurrentBranch, resolvePrefix, extractTicketSuggestion } = require('../git');
+    const currentBranch = await getCurrentBranch(cwd);
+    const configPrefix = config.get<string>('ticketPrefix', 'SFPSCA-');
+    const prefix = resolvePrefix(currentBranch, configPrefix);
+    const suggestedTicket = extractTicketSuggestion(currentBranch, prefix, true);
+
+    let finalTicketId = suggestedTicket;
+
+    if (!finalTicketId) {
+        // Only prompt if we cannot guess it from the branch name
+        const result = await promptForTicketId(cwd, {
+            prompt: 'Ricwiz could not detect the ticket from the branch name. Enter Jira ticket ID (e.g. SFPSCA-1234)',
+            handleToSuffix: true
+        });
+        if (!result) return;
+        finalTicketId = result.ticketId;
+    } else {
+        // Ensure it's normalized just in case
+        const { normalizeTicketId } = require('../git');
+        finalTicketId = normalizeTicketId(finalTicketId, prefix);
+    }
 
     let url = jiraUrl.trim();
     if (!url.endsWith('/')) {
         url += '/';
     }
-    url += ticketId;
+    url += finalTicketId;
 
     if (openInVSCode) {
         vscode.commands.executeCommand('simpleBrowser.show', url);

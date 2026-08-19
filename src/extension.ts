@@ -17,6 +17,8 @@ import { listTicketFiles } from './commands/listTicketFiles';
 import { resetTracking } from './commands/resetTracking';
 import { captureAdminChanges } from './commands/captureAdminChanges';
 import { getBlameData } from './commands/whoToBlame';
+import { generateDestructiveChanges } from './commands/generateDestructiveChanges';
+import { runSmartTests } from './commands/runSmartTests';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
@@ -191,6 +193,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     // ─── Register All Commands ──────────────────────────────────────────
     context.subscriptions.push(
+        vscode.commands.registerCommand('ricwiz.generateDestructiveChanges', generateDestructiveChanges),
+        vscode.commands.registerCommand('ricwiz.runSmartTests', runSmartTests),
         vscode.commands.registerCommand('ricwiz.createBranches', createBranches),
         vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy),
         vscode.commands.registerCommand('ricwiz.createMergeRequests', createMergeRequests),

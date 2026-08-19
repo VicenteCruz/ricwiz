@@ -63,8 +63,14 @@ class RicwizWebviewProvider {
                 case 'openMain':
                     this.setPage('main');
                     break;
+                case 'generateDestructiveChanges':
+                    vscode.commands.executeCommand('ricwiz.generateDestructiveChanges');
+                    break;
                 case 'deployPackage':
                     vscode.commands.executeCommand('ricwiz.deployPackage');
+                    break;
+                case 'runSmartTests':
+                    vscode.commands.executeCommand('ricwiz.runSmartTests');
                     break;
                 case 'importData':
                     vscode.commands.executeCommand('ricwiz.importData');
@@ -379,9 +385,17 @@ class RicwizWebviewProvider {
                     <button class="btn" title="Generate Salesforce package.xml from git diff" onclick="sendCommand('generatePackageXml')">
                         <span class="icon">📦</span> Auto Package.xml
                     </button>
+                    
+                    <button class="btn" title="Generate destructiveChanges.xml for deleted files" onclick="sendCommand('generateDestructiveChanges')">
+                        <span class="icon">🗑️</span> Auto DestructiveChanges
+                    </button>
         
                     <button class="btn" title="Deploy the generated package to Salesforce" onclick="sendCommand('deployPackage')">
                         <span class="icon">☁️</span> Deploy Package
+                    </button>
+
+                    <button class="btn" title="Smart run modified Apex Test classes" onclick="sendCommand('runSmartTests')">
+                        <span class="icon">🧪</span> Smart Test Runner
                     </button>
 
                     <button class="btn" title="Import data using Salesforce CLI" onclick="sendCommand('importData')">

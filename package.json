@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.5.4",
+  "version": "4.6.1",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -32,6 +32,14 @@
       ]
     },
     "commands": [
+      {
+        "command": "ricwiz.generateDestructiveChanges",
+        "title": "Ricwiz: Auto DestructiveChanges.xml"
+      },
+      {
+        "command": "ricwiz.runSmartTests",
+        "title": "Ricwiz: Run Smart Apex Tests"
+      },
       {
         "command": "ricwiz.createBranches",
         "title": "Ricwiz: Create Ticket Branches"

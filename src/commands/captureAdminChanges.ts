@@ -60,17 +60,22 @@ export async function captureAdminChanges(): Promise<void> {
 
             // Generate QuickPick items, filtering out known noisy/non-metadata events
             const items: (vscode.QuickPickItem & { metadataFormat: string, isDelete: boolean })[] = [];
+            const seen = new Set<string>();
             
             for (const record of records) {
                 const metaObj = translateToMetadata(record.Action, record.Display, record.Section);
                 if (metaObj) {
-                    const icon = metaObj.isDelete ? '$(trash)' : '$(plus)';
-                    items.push({
-                        label: `${icon} ${metaObj.metadataFormat}`,
-                        description: `${record.Action} -> ${record.Display}`,
-                        metadataFormat: metaObj.metadataFormat,
-                        isDelete: metaObj.isDelete
-                    });
+                    const uniqueKey = `${metaObj.isDelete ? 'DEL' : 'ADD'}-${metaObj.metadataFormat}`;
+                    if (!seen.has(uniqueKey)) {
+                        seen.add(uniqueKey);
+                        const icon = metaObj.isDelete ? '$(trash)' : '$(plus)';
+                        items.push({
+                            label: `${icon} ${metaObj.metadataFormat}`,
+                            description: `${record.Action} -> ${record.Display}`,
+                            metadataFormat: metaObj.metadataFormat,
+                            isDelete: metaObj.isDelete
+                        });
+                    }
                 }
             }
 
@@ -212,9 +217,9 @@ function translateToMetadata(action: string, display: string, section: string): 
     // 2. Map standard metadata
     if (act.includes('profile')) {
         metaString = `Profile:${extractName(display, true)}`;
-    } else if (act.includes('permission set group')) {
+    } else if (act.includes('permission set group') || act.includes('permissionsetgroup')) {
         metaString = `PermissionSetGroup:${extractName(display, false)}`;
-    } else if (act.includes('permission set')) {
+    } else if (act.includes('permission set') || act.includes('permissionset')) {
         metaString = `PermissionSet:${extractName(display, false)}`;
     } else if (act.includes('apexclass')) {
         metaString = `ApexClass:${extractName(display, false)}`;

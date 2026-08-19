@@ -78,6 +78,10 @@ class RicwizWebviewProvider {
                 case 'captureAdminChanges':
                     vscode.commands.executeCommand('ricwiz.captureAdminChanges');
                     break;
+                case 'whoToBlame':
+                    // Need to dynamically require/import or execute it. We'll execute a command that calls a method on webviewProvider, or we can just import getBlameData here.
+                    vscode.commands.executeCommand('ricwiz.whoToBlame');
+                    break;
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
@@ -126,6 +130,10 @@ class RicwizWebviewProvider {
     baseBranchesCache = [];
     recentTicketsCache = [];
     currentPage = 'main';
+    blameDataCache = null;
+    setBlameData(data) {
+        this.blameDataCache = data;
+    }
     setPage(page) {
         this.currentPage = page;
         this.updateView();
@@ -265,6 +273,58 @@ class RicwizWebviewProvider {
             </body>
             </html>`;
         }
+        if (currentPage === 'blame') {
+            const data = this.blameDataCache;
+            return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Ricwiz Blame</title>
+                ${styleHtml}
+            </head>
+            <body>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
+                    <button class="btn" style="width: auto; padding: 4px 8px; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCommand('openDevTools')">⬅️ Back</button>
+                    <div style="font-weight: bold; font-size: 13px; flex: 1; text-align: center;">Who to Blame</div>
+                </div>
+
+                ${data ? `
+                <div style="padding: 12px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); border-radius: 6px; margin-bottom: 12px;">
+                    <div style="font-weight: bold; margin-bottom: 12px; font-size: 14px; text-align: center; color: var(--vscode-textLink-foreground); word-break: break-all;">
+                        📄 ${data.fileName}
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">💻</span> Local Git (Last Commit)</div>
+                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-modifiedResourceForeground);">
+                            <div><strong>Author:</strong> ${data.gitAuthor}</div>
+                            <div><strong>When:</strong> ${data.gitTime}</div>
+                            <div style="margin-top: 4px; opacity: 0.8; font-style: italic;">"${data.gitCommit}"</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;"><span class="icon">☁️</span> Salesforce Org (Last Modified)</div>
+                        <div style="font-size: 13px; padding-left: 8px; border-left: 2px solid var(--vscode-gitDecoration-addedResourceForeground);">
+                            <div><strong>Author:</strong> ${data.sfAuthor}</div>
+                            <div><strong>When:</strong> ${data.sfTime}</div>
+                        </div>
+                    </div>
+                </div>
+                ` : `
+                <div style="text-align: center; padding: 20px; opacity: 0.7;">
+                    No blame data available. Make sure you have a file open in the editor.
+                </div>
+                `}
+
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                </script>
+            </body>
+            </html>`;
+        }
         if (currentPage === 'devtools') {
             return `<!DOCTYPE html>
             <html lang="en">
@@ -303,8 +363,12 @@ class RicwizWebviewProvider {
                         <span class="icon">🧹</span> Reset Tracking
                     </button>
 
-                    <button class="btn" title="Capture manual Admin changes via SetupAuditTrail" onclick="sendCommand('captureAdminChanges')" style="background-color: var(--vscode-button-hoverBackground);">
+                    <button class="btn" title="Capture manual Admin changes via SetupAuditTrail" onclick="sendCommand('captureAdminChanges')">
                         <span class="icon">🕵️</span> Capture Admin Changes
+                    </button>
+                    
+                    <button class="btn" title="Discover who last modified the current file in Git and Salesforce" onclick="sendCommand('whoToBlame')" style="background-color: var(--vscode-button-hoverBackground);">
+                        <span class="icon">🔍</span> Who to Blame
                     </button>
                 </div>
                 

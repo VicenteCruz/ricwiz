@@ -16,6 +16,7 @@ import { importData } from './commands/importData';
 import { listTicketFiles } from './commands/listTicketFiles';
 import { resetTracking } from './commands/resetTracking';
 import { captureAdminChanges } from './commands/captureAdminChanges';
+import { getBlameData } from './commands/whoToBlame';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
@@ -188,6 +189,13 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.listTicketFiles', listTicketFiles),
         vscode.commands.registerCommand('ricwiz.resetTracking', resetTracking),
         vscode.commands.registerCommand('ricwiz.captureAdminChanges', captureAdminChanges),
+        vscode.commands.registerCommand('ricwiz.whoToBlame', async () => {
+            const data = await getBlameData();
+            if (data && webviewProvider) {
+                webviewProvider.setBlameData(data);
+                webviewProvider.setPage('blame');
+            }
+        }),
         vscode.commands.registerCommand('ricwiz.openSettings', () => {
             vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');
         })

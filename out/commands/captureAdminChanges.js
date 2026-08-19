@@ -161,12 +161,16 @@ function translateToMetadata(action, display, section) {
     // Filter out user/login/password actions specifically
     if (act.includes('login') || act.includes('password') || act.includes('oauth') || act.includes('session'))
         return null;
-    const isDelete = act.includes('delete') || act.includes('remove') || act.includes('disable');
+    const isDelete = act.includes('delete');
     let metaString = null;
     // 2. Map standard metadata
     if (act.includes('profile')) {
         const parts = display.split(' ');
         metaString = `Profile:${parts[parts.length - 1]}`;
+    }
+    else if (act.includes('permission set group')) {
+        const parts = display.split(' ');
+        metaString = `PermissionSetGroup:${parts[parts.length - 1]}`;
     }
     else if (act.includes('permission set')) {
         const parts = display.split(' ');
@@ -175,6 +179,10 @@ function translateToMetadata(action, display, section) {
     else if (act.includes('apexclass')) {
         const parts = display.split(' ');
         metaString = `ApexClass:${parts[parts.length - 1]}`;
+    }
+    else if (act.includes('apextrigger') || act.includes('apex trigger')) {
+        const parts = display.split(' ');
+        metaString = `ApexTrigger:${parts[parts.length - 1]}`;
     }
     else if (act.includes('customfield')) {
         const fieldMatch = display.match(/([A-Za-z0-9_]+__c)/);

@@ -194,39 +194,49 @@ function translateToMetadata(action: string, display: string, section: string): 
 
     let metaString: string | null = null;
 
+    const extractName = (d: string, allowSpaces: boolean = false) => {
+        let clean = d.replace(/\(.*\)/g, '').trim();
+        const stopWords = ['disabled', 'deleted', 'removed', 'created', 'changed', 'updated', 'from', 'to'];
+        let words = clean.split(/\s+/);
+        
+        if (!allowSpaces) {
+            const nameWord = words.find(w => !stopWords.includes(w.toLowerCase()));
+            return nameWord || clean.replace(/\s+/g, '');
+        } else {
+            if (words.length > 0 && stopWords.includes(words[words.length - 1].toLowerCase())) words.pop();
+            if (words.length > 0 && stopWords.includes(words[0].toLowerCase())) words.shift();
+            return words.join(' ').trim();
+        }
+    };
+
     // 2. Map standard metadata
     if (act.includes('profile')) {
-        const parts = display.split(' ');
-        metaString = `Profile:${parts[parts.length - 1]}`;
+        metaString = `Profile:${extractName(display, true)}`;
     } else if (act.includes('permission set group')) {
-        const parts = display.split(' ');
-        metaString = `PermissionSetGroup:${parts[parts.length - 1]}`;
+        metaString = `PermissionSetGroup:${extractName(display, false)}`;
     } else if (act.includes('permission set')) {
-        const parts = display.split(' ');
-        metaString = `PermissionSet:${parts[parts.length - 1]}`;
+        metaString = `PermissionSet:${extractName(display, false)}`;
     } else if (act.includes('apexclass')) {
-        const parts = display.split(' ');
-        metaString = `ApexClass:${parts[parts.length - 1]}`;
+        metaString = `ApexClass:${extractName(display, false)}`;
     } else if (act.includes('apextrigger') || act.includes('apex trigger')) {
-        const parts = display.split(' ');
-        metaString = `ApexTrigger:${parts[parts.length - 1]}`;
+        metaString = `ApexTrigger:${extractName(display, false)}`;
     } else if (act.includes('customfield')) {
         const fieldMatch = display.match(/([A-Za-z0-9_]+__c)/);
         const objMatch = display.match(/(?:on|na|for)\s+([A-Za-z0-9_]+)/i);
         if (fieldMatch && objMatch) {
             metaString = `CustomField:${objMatch[1]}.${fieldMatch[1]}`;
         } else {
-            metaString = `CustomField:${display.replace(/\s+/g, '')}`;
+            metaString = `CustomField:${extractName(display, false)}`;
         }
     } else if (act.includes('layout')) {
-        metaString = `Layout:${display.trim()}`;
+        metaString = `Layout:${extractName(display, true)}`;
     } else if (act.includes('validation')) {
-        metaString = `ValidationRule:${display.replace(/\s+/g, '')}`;
+        metaString = `ValidationRule:${extractName(display, false)}`;
     } else if (act.includes('flow')) {
-        metaString = `Flow:${display.replace(/\s+/g, '')}`;
+        metaString = `Flow:${extractName(display, false)}`;
     } else if (act.includes('customobject')) {
         const objMatch = display.match(/([A-Za-z0-9_]+__c)/);
-        metaString = objMatch ? `CustomObject:${objMatch[1]}` : `CustomObject:${display.replace(/\s+/g, '')}`;
+        metaString = objMatch ? `CustomObject:${objMatch[1]}` : `CustomObject:${extractName(display, false)}`;
     } else {
         if (!act.includes('created') && !act.includes('changed') && !act.includes('deleted')) {
             return null;

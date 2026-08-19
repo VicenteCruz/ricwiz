@@ -31,7 +31,7 @@ export async function generatePackageXml(): Promise<void> {
     }, async () => {
         try {
             // Run the user's preferred Salesforce CLI command
-            await exec(command, { cwd });
+            await exec(command, { cwd, maxBuffer: 10 * 1024 * 1024 });
 
             vscode.window.showInformationMessage(`Ricwiz: Successfully generated package.xml!`);
             

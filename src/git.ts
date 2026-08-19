@@ -2,7 +2,14 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as util from 'util';
 
-export const exec = util.promisify(cp.exec);
+const promisifiedExec = util.promisify(cp.exec);
+export const exec = async (command: string, options?: cp.ExecOptions): Promise<{ stdout: string, stderr: string }> => {
+    const result = await promisifiedExec(command, { maxBuffer: 50 * 1024 * 1024, ...options });
+    return {
+        stdout: result.stdout.toString(),
+        stderr: result.stderr.toString()
+    };
+};
 
 /**
  * Returns the filesystem path of the first workspace folder, or undefined if none is open.

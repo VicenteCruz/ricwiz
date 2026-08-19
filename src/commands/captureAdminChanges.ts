@@ -46,7 +46,7 @@ export async function captureAdminChanges(): Promise<void> {
         cancellable: false
     }, async () => {
         try {
-            const { stdout } = await exec(command, { cwd });
+            const { stdout } = await exec(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
             const result = JSON.parse(stdout);
             
             if (!result.result || result.result.records.length === 0) {
@@ -113,7 +113,7 @@ export async function captureAdminChanges(): Promise<void> {
             
             vscode.window.showInformationMessage(`Ricwiz: Extracting ${selection.length} components...`);
             
-            const retrieveResult = await exec(retrieveCmd, { cwd });
+            const retrieveResult = await exec(retrieveCmd, { cwd, maxBuffer: 50 * 1024 * 1024 });
             
             outputChannel.appendLine(retrieveResult.stdout);
             if (retrieveResult.stderr) {

@@ -17,7 +17,7 @@ export async function resetTracking(): Promise<void> {
         cancellable: false
     }, async () => {
         try {
-            const { stdout, stderr } = await exec(command, { cwd });
+            const { stdout, stderr } = await exec(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
             
             const outputChannel = vscode.window.createOutputChannel('Ricwiz Reset Tracking');
             outputChannel.appendLine(`Executing: ${command}`);

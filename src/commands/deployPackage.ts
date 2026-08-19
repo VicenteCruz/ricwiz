@@ -26,7 +26,7 @@ export async function deployPackage(): Promise<void> {
         cancellable: false
     }, async () => {
         try {
-            const { stdout, stderr } = await exec(command, { cwd });
+            const { stdout, stderr } = await exec(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
             
             // Because Salesforce commands can output useful information or errors to stdout/stderr,
             // we should show an output channel if there's significant output.

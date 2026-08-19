@@ -78,7 +78,7 @@ export async function getBlameData(): Promise<BlameData | null> {
 
                 if (query) {
                     try {
-                        const { stdout } = await exec(`sf data query -t -q "${query}" --json`, { cwd });
+                        const { stdout } = await exec(`sf data query -t -q "${query}" --json`, { cwd, maxBuffer: 50 * 1024 * 1024 });
                         const res = JSON.parse(stdout);
                         if (res && res.result && res.result.records && res.result.records.length > 0) {
                             const record = res.result.records[0];
@@ -101,7 +101,7 @@ export async function getBlameData(): Promise<BlameData | null> {
                 // Fetch last 1500 audit trail events and filter in memory to avoid SOQL LIKE restrictions
                 try {
                     const auditQuery = `SELECT Action, Display, CreatedBy.Name, CreatedDate FROM SetupAuditTrail ORDER BY CreatedDate DESC LIMIT 1500`;
-                    const { stdout: auditOut } = await exec(`sf data query -q "${auditQuery}" --json`, { cwd });
+                    const { stdout: auditOut } = await exec(`sf data query -q "${auditQuery}" --json`, { cwd, maxBuffer: 50 * 1024 * 1024 });
                     const auditRes = JSON.parse(auditOut);
                     
                     if (auditRes && auditRes.result && auditRes.result.records) {

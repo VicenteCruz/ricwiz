@@ -130,6 +130,8 @@ export async function captureAdminChanges(): Promise<void> {
 }
 
 function translateToMetadata(action: string, display: string, section: string): string | null {
+    if (!action || !display || !section) return null;
+    
     const act = action.toLowerCase();
     const sec = section.toLowerCase();
 

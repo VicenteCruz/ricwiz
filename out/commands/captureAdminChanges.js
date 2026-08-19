@@ -110,6 +110,8 @@ async function captureAdminChanges() {
     });
 }
 function translateToMetadata(action, display, section) {
+    if (!action || !display || !section)
+        return null;
     const act = action.toLowerCase();
     const sec = section.toLowerCase();
     // 1. Filter out known noisy / non-extractable sections

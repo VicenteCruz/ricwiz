@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { exec, getWorkspaceCwd } from '../git';
 
 export async function captureAdminChanges(): Promise<void> {
@@ -57,15 +59,17 @@ export async function captureAdminChanges(): Promise<void> {
             const records = result.result.records;
 
             // Generate QuickPick items, filtering out known noisy/non-metadata events
-            const items: (vscode.QuickPickItem & { metadataFormat: string })[] = [];
+            const items: (vscode.QuickPickItem & { metadataFormat: string, isDelete: boolean })[] = [];
             
             for (const record of records) {
-                const metadataStr = translateToMetadata(record.Action, record.Display, record.Section);
-                if (metadataStr) {
+                const metaObj = translateToMetadata(record.Action, record.Display, record.Section);
+                if (metaObj) {
+                    const icon = metaObj.isDelete ? '$(trash)' : '$(plus)';
                     items.push({
-                        label: `$(plus) ${record.Section}: ${record.Display}`,
+                        label: `${icon} ${record.Section}: ${record.Display}`,
                         description: record.Action,
-                        metadataFormat: metadataStr
+                        metadataFormat: metaObj.metadataFormat,
+                        isDelete: metaObj.isDelete
                     });
                 }
             }
@@ -87,8 +91,54 @@ export async function captureAdminChanges(): Promise<void> {
                 return;
             }
 
-            // Build metadata string, ignoring unparsable ones
-            let initialMetadata = selection
+            const toDelete = selection.filter(i => i.isDelete);
+            const toRetrieve = selection.filter(i => !i.isDelete);
+
+            const outputChannel = vscode.window.createOutputChannel('Ricwiz Admin Bridge');
+            outputChannel.show();
+
+            // Handle Deletions
+            if (toDelete.length > 0) {
+                const { stdout: lsFiles } = await exec(`git ls-files`, { cwd });
+                const allFiles = lsFiles.split('\n').map((f: string) => f.trim());
+                let deletedCount = 0;
+
+                for (const del of toDelete) {
+                    const metaParts = del.metadataFormat.split(':');
+                    const metaType = metaParts[0];
+                    const metaName = metaParts[1];
+
+                    // Naive matching, we look for file ending with the name
+                    // e.g. ApexClass:MyClass -> MyClass.cls and MyClass.cls-meta.xml
+                    // CustomField:Account.Status__c -> Account/fields/Status__c.field-meta.xml
+                    let searchName = metaName;
+                    if (metaType === 'CustomField') {
+                        searchName = metaName.split('.')[1];
+                    }
+
+                    const matchingFiles = allFiles.filter((f: string) => {
+                        const base = path.basename(f);
+                        return base.startsWith(searchName + '.') && base.includes(metaType === 'CustomField' ? '.field' : '');
+                    });
+
+                    for (const f of matchingFiles) {
+                        const fullPath = path.join(cwd, f);
+                        if (fs.existsSync(fullPath)) {
+                            fs.unlinkSync(fullPath);
+                            outputChannel.appendLine(`Deleted local file: ${f}`);
+                            deletedCount++;
+                        }
+                    }
+                }
+                vscode.window.showInformationMessage(`Ricwiz: Deleted ${deletedCount} local files from Git workspace.`);
+            }
+
+            if (toRetrieve.length === 0) {
+                return;
+            }
+
+            // Build metadata string for retrieve
+            let initialMetadata = toRetrieve
                 .map(item => item.metadataFormat)
                 .filter(m => m !== '')
                 .join(', ');
@@ -107,13 +157,11 @@ export async function captureAdminChanges(): Promise<void> {
             const retrieveCmd = `sf project retrieve start -m "${finalMetadata}"`;
 
             // Run retrieve
-            const outputChannel = vscode.window.createOutputChannel('Ricwiz Admin Bridge');
-            outputChannel.show();
             outputChannel.appendLine(`Executing: ${retrieveCmd}`);
             
-            vscode.window.showInformationMessage(`Ricwiz: Extracting ${selection.length} components...`);
+            vscode.window.showInformationMessage(`Ricwiz: Extracting ${toRetrieve.length} components...`);
             
-            const retrieveResult = await exec(retrieveCmd, { cwd, maxBuffer: 50 * 1024 * 1024 });
+            const retrieveResult = await exec(retrieveCmd, { cwd });
             
             outputChannel.appendLine(retrieveResult.stdout);
             if (retrieveResult.stderr) {
@@ -129,7 +177,7 @@ export async function captureAdminChanges(): Promise<void> {
     });
 }
 
-function translateToMetadata(action: string, display: string, section: string): string | null {
+function translateToMetadata(action: string, display: string, section: string): { metadataFormat: string, isDelete: boolean } | null {
     if (!action || !display || !section) return null;
     
     const act = action.toLowerCase();
@@ -139,56 +187,48 @@ function translateToMetadata(action: string, display: string, section: string): 
     const ignoredSections = ['security controls', 'network access', 'session settings', 'data export', 'login history', 'password policies', 'identity verification', 'delegated administration'];
     if (ignoredSections.includes(sec)) return null;
 
-    // Filter out user/login/password actions specifically (this keeps "Manage Users" clean of data-only noise)
+    // Filter out user/login/password actions specifically
     if (act.includes('login') || act.includes('password') || act.includes('oauth') || act.includes('session')) return null;
 
-    // Filter out deletions or disablings, because retrieving a deleted component from Salesforce will fail and block the whole command
-    if (act.includes('delete') || act.includes('remove') || act.includes('disable')) return null;
+    const isDelete = act.includes('delete') || act.includes('remove') || act.includes('disable');
+
+    let metaString: string | null = null;
 
     // 2. Map standard metadata
     if (act.includes('profile')) {
-        // e.g., "Changed profile System Administrator"
         const parts = display.split(' ');
-        return `Profile:${parts[parts.length - 1]}`;
-    }
-    if (act.includes('permission set')) {
+        metaString = `Profile:${parts[parts.length - 1]}`;
+    } else if (act.includes('permission set')) {
         const parts = display.split(' ');
-        return `PermissionSet:${parts[parts.length - 1]}`;
-    }
-    if (act.includes('apexclass')) {
+        metaString = `PermissionSet:${parts[parts.length - 1]}`;
+    } else if (act.includes('apexclass')) {
         const parts = display.split(' ');
-        return `ApexClass:${parts[parts.length - 1]}`;
-    }
-    if (act.includes('customfield')) {
+        metaString = `ApexClass:${parts[parts.length - 1]}`;
+    } else if (act.includes('customfield')) {
         const fieldMatch = display.match(/([A-Za-z0-9_]+__c)/);
         const objMatch = display.match(/(?:on|na|for)\s+([A-Za-z0-9_]+)/i);
         if (fieldMatch && objMatch) {
-            return `CustomField:${objMatch[1]}.${fieldMatch[1]}`;
+            metaString = `CustomField:${objMatch[1]}.${fieldMatch[1]}`;
+        } else {
+            metaString = `CustomField:${display.replace(/\s+/g, '')}`;
         }
-        return `CustomField:${display.replace(/\s+/g, '')}`;
-    }
-    if (act.includes('layout')) {
-        return `Layout:${display.trim()}`;
-    }
-    if (act.includes('validation')) {
-        return `ValidationRule:${display.replace(/\s+/g, '')}`;
-    }
-    if (act.includes('flow')) {
-        return `Flow:${display.replace(/\s+/g, '')}`;
-    }
-    if (act.includes('customobject')) {
+    } else if (act.includes('layout')) {
+        metaString = `Layout:${display.trim()}`;
+    } else if (act.includes('validation')) {
+        metaString = `ValidationRule:${display.replace(/\s+/g, '')}`;
+    } else if (act.includes('flow')) {
+        metaString = `Flow:${display.replace(/\s+/g, '')}`;
+    } else if (act.includes('customobject')) {
         const objMatch = display.match(/([A-Za-z0-9_]+__c)/);
-        return objMatch ? `CustomObject:${objMatch[1]}` : `CustomObject:${display.replace(/\s+/g, '')}`;
-    }
-    
-    // Only return fallback for things we think MIGHT be metadata, otherwise null
-    // If we reach here, it's not a known clear-cut metadata type.
-    // Let's filter out general 'changed', 'deleted', 'created' unless they mention a component
-    if (act.includes('created') || act.includes('changed') || act.includes('deleted')) {
-        // If it's a generic word with no specific metadata tie, we discard it
-        return null; 
+        metaString = objMatch ? `CustomObject:${objMatch[1]}` : `CustomObject:${display.replace(/\s+/g, '')}`;
+    } else {
+        if (!act.includes('created') && !act.includes('changed') && !act.includes('deleted')) {
+            return null;
+        }
     }
 
-    // For any other unexpected action, discard to reduce noise
+    if (metaString) {
+        return { metadataFormat: metaString, isDelete };
+    }
     return null;
 }

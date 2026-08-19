@@ -66,8 +66,8 @@ export async function captureAdminChanges(): Promise<void> {
                 if (metaObj) {
                     const icon = metaObj.isDelete ? '$(trash)' : '$(plus)';
                     items.push({
-                        label: `${icon} ${record.Section}: ${record.Display}`,
-                        description: record.Action,
+                        label: `${icon} ${metaObj.metadataFormat}`,
+                        description: `${record.Action} -> ${record.Display}`,
                         metadataFormat: metaObj.metadataFormat,
                         isDelete: metaObj.isDelete
                     });

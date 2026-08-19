@@ -134,13 +134,22 @@ function translateToMetadata(action: string, display: string, section: string): 
     const sec = section.toLowerCase();
 
     // 1. Filter out known noisy / non-extractable sections
-    const ignoredSections = ['manage users', 'user profiles', 'security controls', 'network access', 'session settings', 'data export', 'login history', 'password policies', 'identity verification', 'delegated administration'];
+    const ignoredSections = ['security controls', 'network access', 'session settings', 'data export', 'login history', 'password policies', 'identity verification', 'delegated administration'];
     if (ignoredSections.includes(sec)) return null;
 
-    // Filter out user/login actions specifically
+    // Filter out user/login/password actions specifically (this keeps "Manage Users" clean of data-only noise)
     if (act.includes('login') || act.includes('password') || act.includes('oauth') || act.includes('session')) return null;
 
     // 2. Map standard metadata
+    if (act.includes('profile')) {
+        // e.g., "Changed profile System Administrator"
+        const parts = display.split(' ');
+        return `Profile:${parts[parts.length - 1]}`;
+    }
+    if (act.includes('permission set')) {
+        const parts = display.split(' ');
+        return `PermissionSet:${parts[parts.length - 1]}`;
+    }
     if (act.includes('apexclass')) {
         const parts = display.split(' ');
         return `ApexClass:${parts[parts.length - 1]}`;

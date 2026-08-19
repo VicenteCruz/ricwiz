@@ -43,7 +43,7 @@ async function captureAdminChanges() {
         cancellable: false
     }, async () => {
         try {
-            const { stdout } = await (0, git_1.exec)(command, { cwd });
+            const { stdout } = await (0, git_1.exec)(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
             const result = JSON.parse(stdout);
             if (!result.result || result.result.records.length === 0) {
                 vscode.window.showInformationMessage(`Ricwiz: No changes found for ${username} in the last ${hours} hours.`);
@@ -96,7 +96,7 @@ async function captureAdminChanges() {
             outputChannel.show();
             outputChannel.appendLine(`Executing: ${retrieveCmd}`);
             vscode.window.showInformationMessage(`Ricwiz: Extracting ${selection.length} components...`);
-            const retrieveResult = await (0, git_1.exec)(retrieveCmd, { cwd });
+            const retrieveResult = await (0, git_1.exec)(retrieveCmd, { cwd, maxBuffer: 50 * 1024 * 1024 });
             outputChannel.appendLine(retrieveResult.stdout);
             if (retrieveResult.stderr) {
                 outputChannel.appendLine('--- STDERR ---');

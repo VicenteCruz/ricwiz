@@ -26,7 +26,7 @@ async function generatePackageXml() {
     }, async () => {
         try {
             // Run the user's preferred Salesforce CLI command
-            await (0, git_1.exec)(command, { cwd });
+            await (0, git_1.exec)(command, { cwd, maxBuffer: 10 * 1024 * 1024 });
             vscode.window.showInformationMessage(`Ricwiz: Successfully generated package.xml!`);
             // Try to open the generated file
             // sfdx-git-delta usually places it in a 'package' subfolder

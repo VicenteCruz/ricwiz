@@ -21,7 +21,7 @@ async function importData() {
         cancellable: false
     }, async () => {
         try {
-            const { stdout, stderr } = await (0, git_1.exec)(command, { cwd });
+            const { stdout, stderr } = await (0, git_1.exec)(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
             const outputChannel = vscode.window.createOutputChannel('Ricwiz Import Data');
             outputChannel.appendLine(`Executing: ${command}`);
             outputChannel.appendLine(stdout);

@@ -34,7 +34,7 @@ async function listTicketFiles() {
     }, async () => {
         try {
             // Equivalent to: git --no-pager log --grep="19271" --name-only -m --first-parent --format=""
-            const { stdout } = await (0, git_1.exec)(`git --no-pager log --grep="${ticketId}" --name-only -m --first-parent --format=""`, { cwd });
+            const { stdout } = await (0, git_1.exec)(`git --no-pager log --grep="${ticketId}" --name-only -m --first-parent --format=""`, { cwd, maxBuffer: 10 * 1024 * 1024 });
             // Where-Object { $_ -match '\w' } | Sort-Object -Unique
             const lines = stdout.split('\n')
                 .map(l => l.trim())

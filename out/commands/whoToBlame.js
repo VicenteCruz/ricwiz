@@ -66,7 +66,7 @@ async function getBlameData() {
                 }
                 if (query) {
                     try {
-                        const { stdout } = await (0, git_1.exec)(`sf data query -t -q "${query}" --json`, { cwd });
+                        const { stdout } = await (0, git_1.exec)(`sf data query -t -q "${query}" --json`, { cwd, maxBuffer: 50 * 1024 * 1024 });
                         const res = JSON.parse(stdout);
                         if (res && res.result && res.result.records && res.result.records.length > 0) {
                             const record = res.result.records[0];
@@ -90,7 +90,7 @@ async function getBlameData() {
                 // Fetch last 1500 audit trail events and filter in memory to avoid SOQL LIKE restrictions
                 try {
                     const auditQuery = `SELECT Action, Display, CreatedBy.Name, CreatedDate FROM SetupAuditTrail ORDER BY CreatedDate DESC LIMIT 1500`;
-                    const { stdout: auditOut } = await (0, git_1.exec)(`sf data query -q "${auditQuery}" --json`, { cwd });
+                    const { stdout: auditOut } = await (0, git_1.exec)(`sf data query -q "${auditQuery}" --json`, { cwd, maxBuffer: 50 * 1024 * 1024 });
                     const auditRes = JSON.parse(auditOut);
                     if (auditRes && auditRes.result && auditRes.result.records) {
                         const searchName = metaInfo.name.replace('__c', ''); // broaden search

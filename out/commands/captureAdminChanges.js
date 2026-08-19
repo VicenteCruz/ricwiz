@@ -168,17 +168,28 @@ function translateToMetadata(action, display, section) {
         return null;
     const isDelete = act.includes('delete');
     let metaString = null;
+    // Explicitly ignore noisy/label-based actions that have better alternatives
+    if (act === 'permissionsetgroupcomponentadd' || act === 'permissionsetgroupcomponentdelete') {
+        return null; // We rely on the calculation started event instead, which has the API name
+    }
     const extractName = (d, allowSpaces = false) => {
         let clean = d.replace(/\(.*\)/g, '').trim();
+        // If the string is formatted like "Changed permission set MyPermSet: Edit Tasks...",
+        // the name is usually before the colon. We extract just that part to avoid parsing the rest.
+        if (clean.includes(':') && !act.includes('calculation')) {
+            clean = clean.split(':')[0];
+        }
         const stopWords = [
             'disabled', 'deleted', 'removed', 'created', 'changed', 'updated', 'from', 'to', 'on', 'assigned', 'assign', 'assignment',
             'permission', 'set', 'group', 'apex', 'class', 'trigger', 'custom', 'field', 'object', 'layout', 'validation', 'rule', 'flow', 'profile'
         ];
         let words = clean.split(/\s+/);
         if (!allowSpaces) {
-            // For API names, we want the first word that isn't a common Salesforce descriptive word.
-            const nameWord = words.find(w => !stopWords.includes(w.toLowerCase()));
-            return nameWord || clean.replace(/\s+/g, '');
+            // For API names, we want all words that aren't common Salesforce descriptive words.
+            // If the Audit Trail logged a Label (e.g., "Sith Lord"), we join them with underscores ("Sith_Lord").
+            const nameWords = words.filter(w => !stopWords.includes(w.toLowerCase()));
+            const joinedName = nameWords.join('_').replace(/[^a-zA-Z0-9_]/g, '');
+            return joinedName || clean.replace(/\s+/g, '');
         }
         else {
             // For labels (which can have spaces), we just trim the stop words from the beginning and end.
@@ -188,12 +199,18 @@ function translateToMetadata(action, display, section) {
             while (words.length > 0 && stopWords.includes(words[0].toLowerCase())) {
                 words.shift();
             }
-            return words.join(' ').trim();
+            return words.join(' ').trim().replace(/[^a-zA-Z0-9_ ]/g, '');
         }
     };
     // 2. Map standard metadata
     if (act.includes('profile')) {
         metaString = `Profile:${extractName(display, true)}`;
+    }
+    else if (act.includes('permissionsetgroupcalculation')) {
+        // e.g., "Permission set group calculation started: MyGroup_API"
+        const parts = display.split(':');
+        const apiName = parts.length > 1 ? parts[parts.length - 1].trim() : extractName(display, false);
+        metaString = `PermissionSetGroup:${apiName}`;
     }
     else if (act.includes('permission set group') || act.includes('permissionsetgroup')) {
         metaString = `PermissionSetGroup:${extractName(display, false)}`;

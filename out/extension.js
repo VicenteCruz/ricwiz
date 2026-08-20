@@ -77,7 +77,15 @@ function activate(context) {
                         if (match) {
                             const ticketId = match[1].toUpperCase();
                             const suffix = config.get('commitMessageSuffix', '- ');
-                            if (!repo.inputBox.value.toUpperCase().startsWith(ticketId)) {
+                            const existingTicketPattern = /^[A-Z]+-\d+\s*(?:-\s*|:\s*|\s+)?/i;
+                            if (existingTicketPattern.test(repo.inputBox.value)) {
+                                if (!repo.inputBox.value.toUpperCase().startsWith(ticketId)) {
+                                    // Replace the old ticket prefix with the new one
+                                    repo.inputBox.value = repo.inputBox.value.replace(existingTicketPattern, `${ticketId}${suffix}`);
+                                }
+                            }
+                            else {
+                                // Prepend the new ticket prefix
                                 repo.inputBox.value = `${ticketId}${suffix}` + repo.inputBox.value;
                             }
                             // Update status bar with ticket ID

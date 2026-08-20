@@ -73,11 +73,11 @@ function activate(context) {
                             baseBranches = Array.from(new Set(allBase));
                         }
                         catch (e) { }
-                        const match = currentBranch.match(new RegExp(`(${prefix}\\d+)`, 'i'));
+                        const match = currentBranch.match(new RegExp(`(${prefix}\\d+(?:-\\d+)?)`, 'i'));
                         if (match) {
                             const ticketId = match[1].toUpperCase();
                             const suffix = config.get('commitMessageSuffix', '- ');
-                            const existingTicketPattern = /^[A-Z]+-\d+\s*(?:-\s*|:\s*|\s+)?/i;
+                            const existingTicketPattern = /^[A-Z]+-\d+(?:-\d+)?\s*(?:-\s*|:\s*|\s+)?/i;
                             if (existingTicketPattern.test(repo.inputBox.value)) {
                                 if (!repo.inputBox.value.toUpperCase().startsWith(ticketId)) {
                                     // Replace the old ticket prefix with the new one

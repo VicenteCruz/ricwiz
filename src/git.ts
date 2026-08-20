@@ -69,7 +69,11 @@ export function extractTicketSuggestion(currentBranch: string, prefix: string, h
  * If the input is purely numeric, prepends the prefix.
  */
 export function normalizeTicketId(input: string, prefix: string): string {
-    return /^\d+$/.test(input.trim()) ? `${prefix}${input.trim()}` : input.trim().toUpperCase();
+    const trimmed = input.trim();
+    if (/^\d/.test(trimmed)) {
+        return `${prefix}${trimmed}`.toUpperCase();
+    }
+    return trimmed.toUpperCase();
 }
 
 export interface TicketInfo {

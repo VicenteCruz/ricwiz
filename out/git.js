@@ -77,7 +77,11 @@ function extractTicketSuggestion(currentBranch, prefix, handleToSuffix = false) 
  * If the input is purely numeric, prepends the prefix.
  */
 function normalizeTicketId(input, prefix) {
-    return /^\d+$/.test(input.trim()) ? `${prefix}${input.trim()}` : input.trim().toUpperCase();
+    const trimmed = input.trim();
+    if (/^\d/.test(trimmed)) {
+        return `${prefix}${trimmed}`.toUpperCase();
+    }
+    return trimmed.toUpperCase();
 }
 /**
  * Full ticket resolution flow: get branch → detect prefix → suggest ticket → prompt user → normalize.

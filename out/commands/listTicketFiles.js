@@ -30,28 +30,36 @@ async function listTicketFiles() {
         cancellable: false
     }, async () => {
         try {
-            // Find merge-base
-            let mergeBase = '';
+            const ticketId = targetBranch.replace(/-to-[a-zA-Z0-9]+$/i, '');
+            let diffLines = [];
+            // 1. Try to get diff against base branch (works for unmerged active branches)
             try {
-                const { stdout } = await (0, git_1.exec)(`git merge-base origin/${sourceBranch} ${targetBranch}`, { cwd });
-                mergeBase = stdout.trim();
-            }
-            catch {
+                let mergeBase = '';
                 try {
-                    const { stdout } = await (0, git_1.exec)(`git merge-base ${sourceBranch} ${targetBranch}`, { cwd });
+                    const { stdout } = await (0, git_1.exec)(`git merge-base origin/${sourceBranch} ${targetBranch}`, { cwd });
                     mergeBase = stdout.trim();
                 }
                 catch {
-                    vscode.window.showErrorMessage(`Ricwiz: Could not find common ancestor between ${sourceBranch} and ${targetBranch}`);
-                    return;
+                    const { stdout } = await (0, git_1.exec)(`git merge-base ${sourceBranch} ${targetBranch}`, { cwd });
+                    mergeBase = stdout.trim();
+                }
+                if (mergeBase) {
+                    const { stdout } = await (0, git_1.exec)(`git diff --name-only ${mergeBase} ${targetBranch}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
+                    diffLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                 }
             }
-            const { stdout } = await (0, git_1.exec)(`git diff --name-only ${mergeBase} ${targetBranch}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
-            const lines = stdout.split('\n')
-                .map(l => l.trim())
-                .filter(l => l.length > 0);
+            catch (e) { }
+            // 2. Fallback / Combine with git log (works for already merged tickets)
+            let logLines = [];
+            try {
+                // We use \b to ensure exact word match and avoid false positives (e.g. 1234 vs 12345)
+                const { stdout } = await (0, git_1.exec)(`git --no-pager log --grep="\\b${ticketId}\\b" -i -E --name-only -m --first-parent --format=""`, { cwd, maxBuffer: 10 * 1024 * 1024 });
+                logLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            }
+            catch (e) { }
+            const lines = [...diffLines, ...logLines];
             if (lines.length === 0) {
-                vscode.window.showInformationMessage(`Ricwiz: No modified files found in ${targetBranch} compared to ${sourceBranch}.`);
+                vscode.window.showInformationMessage(`Ricwiz: No modified files found for ${targetBranch}.`);
                 return;
             }
             const uniqueFiles = Array.from(new Set(lines)).sort();

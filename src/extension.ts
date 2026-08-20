@@ -112,14 +112,28 @@ export function activate(context: vscode.ExtensionContext) {
                                         for (const env of environments) {
                                             if (rb.endsWith(`-to-${env.name}`)) {
                                                 try {
-                                                    await exec(`git merge-base --is-ancestor ${rb} origin/${env.sourceBranch}`, { cwd });
-                                                    isMerged = true;
-                                                } catch {
+                                                    const { stdout: revRb } = await exec(`git rev-parse ${rb}`, { cwd });
+                                                    let revEnv = '';
                                                     try {
-                                                        await exec(`git merge-base --is-ancestor ${rb} ${env.sourceBranch}`, { cwd });
-                                                        isMerged = true;
-                                                    } catch {}
-                                                }
+                                                        const out = await exec(`git rev-parse origin/${env.sourceBranch}`, { cwd });
+                                                        revEnv = out.stdout;
+                                                    } catch {
+                                                        const out = await exec(`git rev-parse ${env.sourceBranch}`, { cwd });
+                                                        revEnv = out.stdout;
+                                                    }
+                                                    
+                                                    if (revRb.trim() !== revEnv.trim()) {
+                                                        try {
+                                                            await exec(`git merge-base --is-ancestor ${rb} origin/${env.sourceBranch}`, { cwd });
+                                                            isMerged = true;
+                                                        } catch {
+                                                            try {
+                                                                await exec(`git merge-base --is-ancestor ${rb} ${env.sourceBranch}`, { cwd });
+                                                                isMerged = true;
+                                                            } catch {}
+                                                        }
+                                                    }
+                                                } catch {}
                                                 break;
                                             }
                                         }
@@ -169,15 +183,28 @@ export function activate(context: vscode.ExtensionContext) {
                             if (currentBranch.endsWith(`-to-${env.name}`)) {
                                 try {
                                     const cwd = vscode.workspace.workspaceFolders![0].uri.fsPath;
-                                    await exec(`git merge-base --is-ancestor ${currentBranch} origin/${env.sourceBranch}`, { cwd });
-                                    currentBranchIsMerged = true;
-                                } catch {
+                                    const { stdout: revRb } = await exec(`git rev-parse ${currentBranch}`, { cwd });
+                                    let revEnv = '';
                                     try {
-                                        const cwd = vscode.workspace.workspaceFolders![0].uri.fsPath;
-                                        await exec(`git merge-base --is-ancestor ${currentBranch} ${env.sourceBranch}`, { cwd });
-                                        currentBranchIsMerged = true;
-                                    } catch {}
-                                }
+                                        const out = await exec(`git rev-parse origin/${env.sourceBranch}`, { cwd });
+                                        revEnv = out.stdout;
+                                    } catch {
+                                        const out = await exec(`git rev-parse ${env.sourceBranch}`, { cwd });
+                                        revEnv = out.stdout;
+                                    }
+                                    
+                                    if (revRb.trim() !== revEnv.trim()) {
+                                        try {
+                                            await exec(`git merge-base --is-ancestor ${currentBranch} origin/${env.sourceBranch}`, { cwd });
+                                            currentBranchIsMerged = true;
+                                        } catch {
+                                            try {
+                                                await exec(`git merge-base --is-ancestor ${currentBranch} ${env.sourceBranch}`, { cwd });
+                                                currentBranchIsMerged = true;
+                                            } catch {}
+                                        }
+                                    }
+                                } catch {}
                                 break;
                             }
                         }

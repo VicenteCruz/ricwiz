@@ -48,7 +48,7 @@ async function createBranches() {
             title: "Ricwiz: Creating Branches",
             cancellable: false
         }, async (progress) => {
-            let createdCount = 0;
+            const createdLocalBranches = [];
             progress.report({ message: 'Checking remote status (git fetch)...', increment: 10 });
             try {
                 await (0, git_1.exec)('git fetch', { cwd });
@@ -56,75 +56,94 @@ async function createBranches() {
             catch (e) {
                 // May fail if offline, continue anyway
             }
-            // 1. Create the main branch from the configured source branch (e.g. main)
-            if (selectedOption.value === 'all') {
-                progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 20 });
-                if (await (0, git_1.checkBranchExists)(cwd, mainBranch)) {
-                    vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
-                    // Checkout to ensure we have it locally
-                    await (0, git_1.exec)(`git checkout ${mainBranch}`, { cwd });
+            try {
+                // 1. Create the main branch from the configured source branch (e.g. main)
+                if (selectedOption.value === 'all') {
+                    progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 20 });
+                    if (await (0, git_1.checkBranchExists)(cwd, mainBranch)) {
+                        vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
+                        await (0, git_1.exec)(`git checkout ${mainBranch}`, { cwd });
+                    }
+                    else {
+                        try {
+                            await (0, git_1.exec)(`git fetch origin ${sourceBranchForTicket}`, { cwd });
+                            await (0, git_1.exec)(`git checkout -b ${mainBranch} origin/${sourceBranchForTicket}`, { cwd });
+                            createdLocalBranches.push(mainBranch);
+                        }
+                        catch (e) {
+                            try {
+                                await (0, git_1.exec)(`git checkout -b ${mainBranch} ${sourceBranchForTicket}`, { cwd });
+                                createdLocalBranches.push(mainBranch);
+                            }
+                            catch (err) {
+                                throw new Error(`Could not create main branch '${mainBranch}' from '${sourceBranchForTicket}'. Does the source branch exist?`);
+                            }
+                        }
+                    }
                 }
-                else {
+                // 2. Create environment branches based on configured source branches
+                const envProgressStep = 50 / (environments.length || 1);
+                for (const env of environments) {
+                    const envBranchName = `${ticketId}-to-${env.name}`;
+                    const sourceBranch = env.sourceBranch;
+                    progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });
+                    if (await (0, git_1.checkBranchExists)(cwd, envBranchName)) {
+                        // Already exists, skip
+                    }
+                    else {
+                        try {
+                            await (0, git_1.exec)(`git checkout ${sourceBranch}`, { cwd });
+                            try {
+                                await (0, git_1.exec)(`git pull origin ${sourceBranch}`, { cwd });
+                            }
+                            catch (e) { }
+                            await (0, git_1.exec)(`git checkout -b ${envBranchName}`, { cwd });
+                            createdLocalBranches.push(envBranchName);
+                        }
+                        catch (e) {
+                            throw new Error(`Could not create environment branch '${envBranchName}' from '${sourceBranch}'. Does the source branch exist?`);
+                        }
+                    }
+                }
+                // 3. Publish (push) all branches only at the end
+                progress.report({ message: 'Publishing branches to origin...', increment: 10 });
+                for (const b of createdLocalBranches) {
                     try {
-                        await (0, git_1.exec)(`git fetch origin ${sourceBranchForTicket}`, { cwd });
-                        await (0, git_1.exec)(`git checkout -b ${mainBranch} origin/${sourceBranchForTicket}`, { cwd });
-                        createdCount++;
+                        await (0, git_1.exec)(`git push -u origin ${b}`, { cwd });
                     }
                     catch (e) {
-                        try {
-                            await (0, git_1.exec)(`git checkout -b ${mainBranch} ${sourceBranchForTicket}`, { cwd });
-                            createdCount++;
-                        }
-                        catch (err) {
-                            vscode.window.showWarningMessage(`Ricwiz: Could not create main branch ${mainBranch} from ${sourceBranchForTicket}. Does the source branch exist?`);
-                        }
+                        vscode.window.showWarningMessage(`Ricwiz: Branch ${b} was created locally but could not be pushed to origin.`);
                     }
+                }
+                // 4. Switch back to the main branch at the end
+                if (selectedOption.value === 'all') {
+                    progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
                     try {
-                        await (0, git_1.exec)(`git push -u origin ${mainBranch}`, { cwd });
+                        await (0, git_1.exec)(`git checkout ${mainBranch}`, { cwd });
                     }
                     catch (e) { }
                 }
+                progress.report({ increment: 100 });
+                vscode.window.showInformationMessage(`Ricwiz: All set! You can start working on your branches! 🚀`);
             }
-            // 2. Create environment branches based on configured source branches
-            const envProgressStep = 60 / (environments.length || 1);
-            for (const env of environments) {
-                const envBranchName = `${ticketId}-to-${env.name}`;
-                const sourceBranch = env.sourceBranch;
-                progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });
-                if (await (0, git_1.checkBranchExists)(cwd, envBranchName)) {
-                    // Already exists, skip
-                }
-                else {
+            catch (err) {
+                // Rollback any branches created locally during this process
+                vscode.window.showErrorMessage(`Ricwiz Branch Creation Failed: ${err.message}`);
+                if (createdLocalBranches.length > 0) {
+                    // Try to checkout the source branch so we can delete the created branches safely
                     try {
-                        // Checkout source branch and pull
-                        await (0, git_1.exec)(`git checkout ${sourceBranch}`, { cwd });
+                        await (0, git_1.exec)(`git checkout ${sourceBranchForTicket}`, { cwd });
+                    }
+                    catch (e) { }
+                    for (const b of createdLocalBranches) {
                         try {
-                            await (0, git_1.exec)(`git pull origin ${sourceBranch}`, { cwd });
+                            await (0, git_1.exec)(`git branch -D ${b}`, { cwd });
                         }
                         catch (e) { }
-                        // Create the environment branch based on it
-                        await (0, git_1.exec)(`git checkout -b ${envBranchName}`, { cwd });
-                        createdCount++;
-                        // Push
-                        await (0, git_1.exec)(`git push -u origin ${envBranchName}`, { cwd });
                     }
-                    catch (e) {
-                        vscode.window.showWarningMessage(`Ricwiz: Could not create/sync branch ${envBranchName} from ${sourceBranch}. Does the source branch exist?`);
-                    }
+                    vscode.window.showWarningMessage(`Ricwiz: Rolled back (deleted) ${createdLocalBranches.length} branch(es) locally due to failure.`);
                 }
             }
-            // 3. Switch back to the main branch at the end
-            if (selectedOption.value === 'all') {
-                progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
-                try {
-                    await (0, git_1.exec)(`git checkout ${mainBranch}`, { cwd });
-                }
-                catch (e) {
-                    vscode.window.showErrorMessage(`Ricwiz: Failed to switch to main branch: ${e.message}`);
-                }
-            }
-            progress.report({ increment: 100 });
-            vscode.window.showInformationMessage(`Ricwiz: All set! You can start working on your branches! 🚀`);
         });
     }
     catch (error) {

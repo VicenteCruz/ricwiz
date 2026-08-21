@@ -61,8 +61,11 @@ async function updateBases() {
                 // 1. Merge the source branch (e.g. quality) to keep it up to date
                 try {
                     progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 2 });
-                    await (0, git_1.exec)(`git fetch ${ctx.upstreamRemote} ${sourceBranch}`, { cwd });
-                    await (0, git_1.exec)(`git merge ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
+                    const fetchRemote = ctx.getFetchRemote(sourceBranch);
+                    const fetchBranch = ctx.getFetchBranch(sourceBranch);
+                    const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                    await (0, git_1.exec)(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
+                    await (0, git_1.exec)(`git merge ${fullUpstreamPath}`, { cwd });
                 }
                 catch (e) {
                     let isConflict = false;
@@ -74,7 +77,8 @@ async function updateBases() {
                     catch (err) { }
                     const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                     if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `${ctx.upstreamRemote}/${sourceBranch}`, targetBranch, progress);
+                        const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                        const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, fullUpstreamPath, targetBranch, progress);
                         if (!resolved) {
                             abortRequested = true;
                             throw new Error('Update aborted by user.');

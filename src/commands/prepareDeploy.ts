@@ -56,15 +56,17 @@ export async function prepareDeploy(): Promise<void> {
         });
 
         progress.report({ message: 'Syncing remote information...', increment: 10 });
-        
         try {
             await exec('git fetch --all', { cwd });
+            
             const envSyncStep = 10 / (environments.length || 1);
             for (const env of environments) {
                 try {
                     if (abortRequested) throw new Error('Aborted');
                     progress.report({ message: `Fetching ${env.sourceBranch}...`, increment: envSyncStep });
-                    await exec(`git fetch ${ctx.upstreamRemote} ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
+                    const fetchRemote = ctx.getFetchRemote(env.sourceBranch);
+                    const fetchBranch = ctx.getFetchBranch(env.sourceBranch);
+                    await exec(`git fetch ${fetchRemote} ${fetchBranch}:${fetchBranch}`, { cwd });
                 } catch(e) {}
             }
         } catch(e) {}
@@ -90,8 +92,12 @@ export async function prepareDeploy(): Promise<void> {
                 // 1. Merge the source branch (e.g. quality) to keep it up to date
                 try {
                     progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
-                    await exec(`git fetch ${ctx.upstreamRemote} ${sourceBranch}`, { cwd });
-                    await exec(`git merge ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
+                    const fetchRemote = ctx.getFetchRemote(sourceBranch);
+                    const fetchBranch = ctx.getFetchBranch(sourceBranch);
+                    const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                    
+                    await exec(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
+                    await exec(`git merge ${fullUpstreamPath}`, { cwd });
                 } catch (e: any) {
                     let isConflict = false;
                     try {
@@ -101,7 +107,8 @@ export async function prepareDeploy(): Promise<void> {
                     
                     const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                     if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const resolved = await handleMergeConflict(cwd, `${ctx.upstreamRemote}/${sourceBranch}`, targetBranch, progress);
+                        const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                        const resolved = await handleMergeConflict(cwd, fullUpstreamPath, targetBranch, progress);
                         if (!resolved) {
                             abortRequested = true;
                             throw new Error('Deploy aborted by user.');

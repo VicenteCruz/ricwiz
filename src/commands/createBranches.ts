@@ -97,8 +97,12 @@ export async function createBranches(): Promise<void> {
                         await exec(`git checkout ${mainBranch}`, { cwd });
                     } else {
                         try {
-                            await exec(`git fetch ${ctx.upstreamRemote} ${sourceBranchForTicket}`, { cwd });
-                            await exec(`git checkout -b ${mainBranch} ${ctx.upstreamRemote}/${sourceBranchForTicket}`, { cwd });
+                            const fetchRemote = ctx.getFetchRemote(sourceBranchForTicket);
+                            const fetchBranch = ctx.getFetchBranch(sourceBranchForTicket);
+                            const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranchForTicket);
+                            
+                            await exec(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
+                            await exec(`git checkout -b ${mainBranch} ${fullUpstreamPath}`, { cwd });
                             createdLocalBranches.push(mainBranch);
                         } catch (e: any) {
                             try {
@@ -123,7 +127,8 @@ export async function createBranches(): Promise<void> {
                         // Already exists, skip
                     } else {
                         try {
-                            await exec(`git checkout -b ${envBranchName} ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
+                            const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                            await exec(`git checkout -b ${envBranchName} ${fullUpstreamPath}`, { cwd });
                             createdLocalBranches.push(envBranchName);
                         } catch (e: any) {
                             try {

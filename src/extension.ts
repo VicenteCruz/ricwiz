@@ -104,8 +104,9 @@ export function activate(context: vscode.ExtensionContext) {
 
                         try {
                             const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
+                            const additionalBranches = config.get<string[]>('additionalBaseBranches', []);
                             
-                            const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch)];
+                            const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch), ...additionalBranches];
                             baseBranches = Array.from(new Set(allBase));
                         } catch (e) {}
 

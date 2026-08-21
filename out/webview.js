@@ -421,11 +421,11 @@ class RicwizWebviewProvider {
                     </button>
 
                     <button class="btn" title="Reset Salesforce source tracking" onclick="sendCommand('resetTracking')">
-                        <span class="icon">dY 1</span> Reset Tracking
+                        <span class="icon">🧹</span> Reset Tracking
                     </button>
 
                     <button class="btn" title="Extract metadata components quickly from Salesforce" onclick="sendCommand('extractComponent')">
-                        <span class="icon">dY"<</span> Extract Component
+                        <span class="icon">🪄</span> Extract Component
                     </button>
 
                     <button class="btn" title="Capture manual Admin changes via SetupAuditTrail" onclick="sendCommand('captureAdminChanges')">

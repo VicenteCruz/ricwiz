@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncAll = syncAll;
 const vscode = require("vscode");
 const git_1 = require("../git");
+const conflictResolver_1 = require("../conflictResolver");
 async function syncAll() {
     const cwd = (0, git_1.getWorkspaceCwd)();
     if (!cwd) {
@@ -47,7 +48,26 @@ async function syncAll() {
                         synced++;
                     }
                     catch (e) {
-                        failed++;
+                        let isConflict = false;
+                        try {
+                            const { stdout } = await (0, git_1.exec)('git ls-files -u', { cwd });
+                            if (stdout.trim().length > 0)
+                                isConflict = true;
+                        }
+                        catch (err) { }
+                        const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
+                        if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
+                            const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `origin/${branch}`, branch, progress);
+                            if (resolved) {
+                                synced++;
+                            }
+                            else {
+                                failed++;
+                            }
+                        }
+                        else {
+                            failed++;
+                        }
                     }
                 }
                 else {
@@ -60,9 +80,34 @@ async function syncAll() {
                         // Fast-forward failed (diverged history) — try checkout+pull as fallback
                         try {
                             await (0, git_1.exec)(`git checkout ${branch}`, { cwd });
-                            await (0, git_1.exec)(`git pull origin ${branch}`, { cwd });
+                            try {
+                                await (0, git_1.exec)(`git pull origin ${branch}`, { cwd });
+                                synced++;
+                            }
+                            catch (errPull) {
+                                let isConflict = false;
+                                try {
+                                    const { stdout } = await (0, git_1.exec)('git ls-files -u', { cwd });
+                                    if (stdout.trim().length > 0)
+                                        isConflict = true;
+                                }
+                                catch (err) { }
+                                const errStr = ((errPull.stdout || '') + (errPull.stderr || '') + (errPull.message || '')).toLowerCase();
+                                if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
+                                    const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `origin/${branch}`, branch, progress);
+                                    if (resolved) {
+                                        synced++;
+                                    }
+                                    else {
+                                        failed++;
+                                    }
+                                }
+                                else {
+                                    failed++;
+                                }
+                            }
+                            // Return to original branch safely
                             await (0, git_1.exec)(`git checkout ${currentBranch}`, { cwd });
-                            synced++;
                         }
                         catch (e2) {
                             // Revert to original branch if possible

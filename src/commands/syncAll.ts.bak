@@ -1,6 +1,5 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, getCurrentBranch, promptForTicketId } from '../git';
-import { handleMergeConflict } from '../conflictResolver';
 
 export async function syncAll(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -47,24 +46,8 @@ export async function syncAll(): Promise<void> {
                     try {
                         await exec(`git pull origin ${branch}`, { cwd });
                         synced++;
-                    } catch(e: any) {
-                        let isConflict = false;
-                        try {
-                            const { stdout } = await exec('git ls-files -u', { cwd });
-                            if (stdout.trim().length > 0) isConflict = true;
-                        } catch(err) {}
-                        
-                        const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
-                        if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                            const resolved = await handleMergeConflict(cwd, `origin/${branch}`, branch, progress);
-                            if (resolved) {
-                                synced++;
-                            } else {
-                                failed++;
-                            }
-                        } else {
-                            failed++;
-                        }
+                    } catch(e) {
+                        failed++;
                     }
                 } else {
                     // For other branches, fast-forward update without checkout
@@ -72,33 +55,12 @@ export async function syncAll(): Promise<void> {
                         await exec(`git fetch origin ${branch}:${branch}`, { cwd });
                         synced++;
                     } catch(e) {
-                        // Fast-forward failed (diverged history) — try checkout+pull as fallback
+                        // Fast-forward failed (diverged history) â€” try checkout+pull as fallback
                         try {
                             await exec(`git checkout ${branch}`, { cwd });
-                            try {
-                                await exec(`git pull origin ${branch}`, { cwd });
-                                synced++;
-                            } catch(errPull: any) {
-                                let isConflict = false;
-                                try {
-                                    const { stdout } = await exec('git ls-files -u', { cwd });
-                                    if (stdout.trim().length > 0) isConflict = true;
-                                } catch(err) {}
-                                
-                                const errStr = ((errPull.stdout || '') + (errPull.stderr || '') + (errPull.message || '')).toLowerCase();
-                                if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                                    const resolved = await handleMergeConflict(cwd, `origin/${branch}`, branch, progress);
-                                    if (resolved) {
-                                        synced++;
-                                    } else {
-                                        failed++;
-                                    }
-                                } else {
-                                    failed++;
-                                }
-                            }
-                            // Return to original branch safely
+                            await exec(`git pull origin ${branch}`, { cwd });
                             await exec(`git checkout ${currentBranch}`, { cwd });
+                            synced++;
                         } catch(e2) {
                             // Revert to original branch if possible
                             try { await exec(`git checkout ${currentBranch}`, { cwd }); } catch(e3) {}
@@ -111,7 +73,7 @@ export async function syncAll(): Promise<void> {
             if (failed > 0) {
                 vscode.window.showWarningMessage(`Ricwiz: Synced ${synced}/${branches.length} branches. ${failed} branch(es) could not be synced (possible conflicts or diverged history).`);
             } else {
-                vscode.window.showInformationMessage(`Ricwiz: 🔄 All ${synced} branches for ${ticketId} are up to date!`);
+                vscode.window.showInformationMessage(`Ricwiz: ðŸ”„ All ${synced} branches for ${ticketId} are up to date!`);
             }
 
         } catch (e: any) {

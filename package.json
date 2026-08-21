@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.23",
+  "version": "4.7.24",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -116,78 +116,33 @@
     "configuration": {
       "title": "Ricwiz Branch Helper",
       "properties": {
-        "ricwiz.jiraUrl": {
-          "type": "string",
-          "default": "",
-          "description": "Base URL for Jira tickets (e.g., https://jira.company.com/browse/). Leave empty to disable."
-        },
         "ricwiz.workflowStyle": {
+          "order": 1,
           "type": "string",
           "enum": ["standard", "multi-remote"],
           "default": "standard",
           "description": "Defines the branching strategy to use (Standard single-repo vs Multi-Remote)."
         },
         "ricwiz.upstreamRemote": {
+          "order": 2,
           "type": "string",
           "default": "origin",
           "description": "The name of the remote to fetch base branches from (e.g., 'salesforce-master' or 'upstream'). Used only in multi-remote workflow. Tip: Run 'git remote -v' in your terminal to list your exact remote names."
         },
         "ricwiz.originRemote": {
+          "order": 3,
           "type": "string",
           "default": "origin",
           "description": "The name of the remote to push your branches to (e.g., 'cdb' or 'origin'). Used only in multi-remote workflow. Tip: Run 'git remote -v' in your terminal to list your exact remote names."
         },
         "ricwiz.ticketSourceBranch": {
+          "order": 4,
           "type": "string",
           "default": "main",
-          "description": "The base branch from which ticket branches are created (e.g., main, develop)."
-        },
-        "ricwiz.gitlabUrlOverride": {
-          "type": "string",
-          "default": "",
-          "description": "Base URL of the company's GitLab repository (e.g., https://gitlab.company.com/group/project). Leave empty for the extension to discover it automatically via git remote."
-        },
-        "ricwiz.packageXmlCommand": {
-          "type": "string",
-          "default": "sf sgd source delta --to \"HEAD\" --from \"origin/{baseBranch}\" --output-dir \".\"",
-          "description": "The command used to generate the package.xml file. Use {baseBranch} as a placeholder for the ticket source branch."
-        },
-        "ricwiz.deployCommand": {
-          "type": "string",
-          "default": "sf project deploy start --manifest package/package.xml --post-destructive-changes destructiveChanges/destructiveChanges.xml -c -l NoTestRun -g",
-          "description": "The command used to deploy the generated package.xml."
-        },
-        "ricwiz.importDataCommand": {
-          "type": "string",
-          "default": "sfdx force:data:tree:import --plan data/plan.json",
-          "description": "The command used to import data."
-        },
-        "ricwiz.resetTrackingCommand": {
-          "type": "string",
-          "default": "sf org disable tracking && sf project reset tracking --no-prompt",
-          "description": "The command used to reset source tracking."
-        },
-        "ricwiz.auditUsername": {
-          "type": "string",
-          "default": "admin@example.com",
-          "description": "The Salesforce username to use when querying the SetupAuditTrail for changes."
-        },
-        "ricwiz.auditHours": {
-          "type": "number",
-          "default": 8,
-          "description": "The default number of hours to look back when querying the SetupAuditTrail."
-        },
-        "ricwiz.ticketPrefix": {
-          "type": "string",
-          "default": "SFPSCA-",
-          "description": "Prefix used for branch creation."
-        },
-        "ricwiz.commitMessageSuffix": {
-          "type": "string",
-          "default": "- ",
-          "description": "Suffix to append to the ticket ID in the auto-generated commit message (e.g., '- ' or ': ')."
+          "description": "The base branch from which the main ticket branches are created (e.g., main, develop, master)."
         },
         "ricwiz.environments": {
+          "order": 5,
           "type": "array",
           "items": {
             "type": "object",
@@ -214,7 +169,67 @@
               "sourceBranch": "main"
             }
           ],
-          "description": "Environments to which deploy branches will be created, defining the source branch as well."
+          "description": "Environments to which deploy branches will be created, defining their source branches as well."
+        },
+        "ricwiz.ticketPrefix": {
+          "order": 10,
+          "type": "string",
+          "default": "SFPSCA-",
+          "description": "Prefix used for branch creation."
+        },
+        "ricwiz.commitMessageSuffix": {
+          "order": 11,
+          "type": "string",
+          "default": "- ",
+          "description": "Suffix to append to the ticket ID in the auto-generated commit message (e.g., '- ' or ': ')."
+        },
+        "ricwiz.jiraUrl": {
+          "order": 12,
+          "type": "string",
+          "default": "",
+          "description": "Base URL for Jira tickets (e.g., https://jira.company.com/browse/). Leave empty to disable."
+        },
+        "ricwiz.gitlabUrlOverride": {
+          "order": 13,
+          "type": "string",
+          "default": "",
+          "description": "Base URL of the company's GitLab repository (e.g., https://gitlab.company.com/group/project). Leave empty for the extension to discover it automatically via git remote."
+        },
+        "ricwiz.packageXmlCommand": {
+          "order": 20,
+          "type": "string",
+          "default": "sf sgd source delta --to \"HEAD\" --from \"origin/{baseBranch}\" --output-dir \".\"",
+          "description": "The command used to generate the package.xml file. Use {baseBranch} as a placeholder for the ticket source branch."
+        },
+        "ricwiz.deployCommand": {
+          "order": 21,
+          "type": "string",
+          "default": "sf project deploy start --manifest package/package.xml --post-destructive-changes destructiveChanges/destructiveChanges.xml -c -l NoTestRun -g",
+          "description": "The command used to deploy the generated package.xml."
+        },
+        "ricwiz.importDataCommand": {
+          "order": 22,
+          "type": "string",
+          "default": "sfdx force:data:tree:import --plan data/plan.json",
+          "description": "The command used to import data."
+        },
+        "ricwiz.resetTrackingCommand": {
+          "order": 23,
+          "type": "string",
+          "default": "sf org disable tracking && sf project reset tracking --no-prompt",
+          "description": "The command used to reset source tracking."
+        },
+        "ricwiz.auditUsername": {
+          "order": 30,
+          "type": "string",
+          "default": "admin@example.com",
+          "description": "The Salesforce username to use when querying the SetupAuditTrail for changes."
+        },
+        "ricwiz.auditHours": {
+          "order": 31,
+          "type": "number",
+          "default": 8,
+          "description": "The default number of hours to look back when querying the SetupAuditTrail."
         }
       }
     }

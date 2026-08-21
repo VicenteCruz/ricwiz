@@ -7,6 +7,7 @@ import { prepareDeploy } from './commands/prepareDeploy';
 import { createMergeRequests, createMergeRequestsVSCode } from './commands/mergeRequests';
 import { openJiraTicket, openJiraTicketVSCode } from './commands/jira';
 import { syncAll } from './commands/syncAll';
+import { updateBases } from './commands/updateBases';
 import { deleteUnusedBranches } from './commands/deleteUnused';
 import { checkoutBranch } from './commands/checkoutBranch';
 import { copyBranchName } from './commands/copyBranch';
@@ -252,6 +253,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.openJiraTicket', openJiraTicket),
         vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', openJiraTicketVSCode),
         vscode.commands.registerCommand('ricwiz.syncAll', syncAll),
+        vscode.commands.registerCommand('ricwiz.updateBases', updateBases),
         vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnusedBranches),
         vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch),
         vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranchName),

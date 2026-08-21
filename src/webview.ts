@@ -96,6 +96,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'syncAll':
                     vscode.commands.executeCommand('ricwiz.syncAll');
                     break;
+                case 'updateBases':
+                    vscode.commands.executeCommand('ricwiz.updateBases');
+                    break;
                 case 'deleteUnused':
                     vscode.commands.executeCommand('ricwiz.deleteUnusedBranches');
                     break;
@@ -550,6 +553,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
             <button class="btn" title="Fetch and pull all branches of the current ticket" onclick="sendCommand('syncAll')">
                 <span class="icon">🔄</span> Sync All
+            </button>
+
+            <button class="btn" title="Merge latest team changes from origin base into environment branches" onclick="sendCommand('updateBases')">
+                <span class="icon">⏬</span> Update from Base
             </button>
 
             <button class="btn" title="Delete all branches of a ticket (local and remote)" onclick="sendCommand('deleteUnused')">

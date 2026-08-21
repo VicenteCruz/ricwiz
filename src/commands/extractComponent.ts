@@ -31,10 +31,104 @@ export async function extractComponent(): Promise<void> {
         if (!metadataType) return;
     }
 
-    const componentName = await vscode.window.showInputBox({
-        prompt: `Enter component name for ${metadataType} (use * for all, or exact name e.g. Account)`,
-        placeHolder: 'e.g. MyComponent or *',
-        ignoreFocusOut: true
+    const globMap: Record<string, string> = {
+        'ApexClass': '**/*.cls',
+        'ApexTrigger': '**/*.trigger',
+        'CustomObject': '**/*.{object,object-meta.xml}',
+        'CustomField': '**/*.field-meta.xml',
+        'LightningComponentBundle': '**/lwc/*/*.js',
+        'AuraDefinitionBundle': '**/aura/*/*.cmp',
+        'Flow': '**/*.flow-meta.xml',
+        'CustomLabel': '**/*.labels-meta.xml',
+        'CustomMetadata': '**/*.md-meta.xml',
+        'StaticResource': '**/*.resource-meta.xml',
+        'Profile': '**/*.profile-meta.xml',
+        'PermissionSet': '**/*.permissionset-meta.xml',
+        'PermissionSetGroup': '**/*.permissionsetgroup-meta.xml',
+        'Layout': '**/*.layout-meta.xml',
+        'ValidationRule': '**/*.validationRule-meta.xml',
+        'RecordType': '**/*.recordType-meta.xml',
+        'ListView': '**/*.listView-meta.xml'
+    };
+
+    let localSuggestions: string[] = [];
+    const globPattern = globMap[metadataType];
+    if (globPattern) {
+        try {
+            const files = await vscode.workspace.findFiles(globPattern, '**/node_modules/**');
+            localSuggestions = files.map(f => {
+                const basename = f.fsPath.split(/[\\/]/).pop() || '';
+                // For Aura/LWC, folder name is usually the component name
+                if (metadataType === 'LightningComponentBundle' || metadataType === 'AuraDefinitionBundle') {
+                    const parts = f.fsPath.split(/[\\/]/);
+                    return parts[parts.length - 2] || basename.split('.')[0];
+                }
+                return basename.split('.')[0];
+            });
+            localSuggestions = [...new Set(localSuggestions)].sort();
+        } catch (e) {}
+    }
+
+    const componentName = await new Promise<string | undefined>((resolve) => {
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.title = `Extract ${metadataType}`;
+        quickPick.placeholder = `Type name (e.g. MyComponent) or * for all`;
+        quickPick.ignoreFocusOut = true;
+        quickPick.matchOnDescription = true;
+        
+        const updateItems = () => {
+            const val = quickPick.value.trim();
+            const items: vscode.QuickPickItem[] = [];
+            
+            if (val) {
+                items.push({
+                    label: `$(cloud-download) Extract "${val}"`,
+                    description: 'Extract exact name from Salesforce',
+                    alwaysShow: true
+                });
+            } else {
+                items.push({
+                    label: `$(cloud-download) Extract "*" (All)`,
+                    description: `Extract all ${metadataType}s`,
+                    alwaysShow: true
+                });
+            }
+            
+            localSuggestions.forEach(sug => {
+                if (!val || sug.toLowerCase().includes(val.toLowerCase())) {
+                    items.push({
+                        label: sug,
+                        description: 'Local workspace component'
+                    });
+                }
+            });
+            
+            quickPick.items = items;
+        };
+
+        quickPick.onDidChangeValue(() => updateItems());
+        
+        quickPick.onDidAccept(() => {
+            const selection = quickPick.selectedItems[0];
+            if (selection) {
+                let result = selection.label;
+                if (result.startsWith('$(cloud-download) Extract "')) {
+                    result = result.replace('$(cloud-download) Extract "', '').replace('" (All)', '').replace('"', '');
+                } else if (result === '$(cloud-download) Extract "*" (All)') {
+                    result = '*';
+                }
+                quickPick.hide();
+                resolve(result);
+            }
+        });
+
+        quickPick.onDidHide(() => {
+            quickPick.dispose();
+            resolve(undefined);
+        });
+
+        updateItems();
+        quickPick.show();
     });
 
     if (!componentName) return;

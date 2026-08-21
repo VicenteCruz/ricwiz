@@ -103,11 +103,8 @@ export function activate(context: vscode.ExtensionContext) {
                         ]);
 
                         try {
-                            const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
-                            const additionalBranches = config.get<string[]>('additionalBaseBranches', []);
-                            
-                            const allBase = [sourceBranchForTicket, ...environments.map(e => e.sourceBranch), ...additionalBranches];
-                            baseBranches = Array.from(new Set(allBase));
+                            const buttons = config.get<string[]>('workspaceCheckoutButtons', ['main', 'quality', 'validation']);
+                            baseBranches = Array.from(new Set(buttons));
                         } catch (e) {}
 
                         const match = currentBranch.match(new RegExp(`(${prefix}\\d+(?:-\\d+)?)`, 'i'));

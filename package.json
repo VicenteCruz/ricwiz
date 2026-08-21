@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.49",
+  "version": "4.7.50",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -152,14 +152,14 @@
           "default": "main",
           "description": "The base branch from which the main ticket branches are created (e.g., main, develop, master)."
         },
-        "ricwiz.additionalBaseBranches": {
+        "ricwiz.workspaceCheckoutButtons": {
           "order": 5,
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": [],
-          "description": "Additional branch names that will appear as quick checkout buttons in the Workspace panel."
+          "default": ["main", "quality", "validation"],
+          "description": "Explicit list of branch names that will appear as quick checkout buttons in the Workspace panel. Leave empty to hide all buttons."
         },
         "ricwiz.environments": {
           "order": 6,

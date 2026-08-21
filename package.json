@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.26",
+  "version": "4.7.27",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -170,6 +170,33 @@
             }
           ],
           "description": "Environments to which deploy branches will be created, defining their source branches as well."
+        },
+        "ricwiz.profiles": {
+          "order": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "workflowStyle": { "type": "string" },
+              "upstreamRemote": { "type": "string" },
+              "originRemote": { "type": "string" },
+              "ticketSourceBranch": { "type": "string" },
+              "ticketPrefix": { "type": "string" },
+              "environments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "sourceBranch": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "default": [],
+          "description": "Define multiple workflow profiles to be prompted on branch creation (e.g. L4 vs Release)."
         },
         "ricwiz.ticketPrefix": {
           "order": 10,

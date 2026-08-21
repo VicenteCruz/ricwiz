@@ -49,19 +49,19 @@ export class WorkflowContext {
     }
 
     public static async initialize(cwd: string): Promise<WorkflowContext | undefined> {
-        const configPath = path.join(cwd, 'ricwiz.json');
-        let profiles: WorkflowProfile[] = [];
+        let profiles: WorkflowProfile[] = WorkflowContext.baseConfig.get<WorkflowProfile[]>('profiles', []);
 
+        // Also check ricwiz.json as a fallback
+        const configPath = path.join(cwd, 'ricwiz.json');
         if (fs.existsSync(configPath)) {
             try {
                 const fileContent = fs.readFileSync(configPath, 'utf-8');
                 const parsed = JSON.parse(fileContent);
-                if (parsed && Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
-                    profiles = parsed.profiles;
+                if (parsed && Array.isArray(parsed.profiles)) {
+                    profiles = [...profiles, ...parsed.profiles];
                 }
             } catch (e: any) {
                 vscode.window.showErrorMessage(`Ricwiz: Error parsing ricwiz.json: ${e.message}`);
-                return undefined;
             }
         }
 

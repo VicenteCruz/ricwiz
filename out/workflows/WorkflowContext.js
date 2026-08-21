@@ -34,19 +34,19 @@ class WorkflowContext {
         this.environments = profile?.environments || config.get('environments', defaultEnv);
     }
     static async initialize(cwd) {
+        let profiles = WorkflowContext.baseConfig.get('profiles', []);
+        // Also check ricwiz.json as a fallback
         const configPath = path.join(cwd, 'ricwiz.json');
-        let profiles = [];
         if (fs.existsSync(configPath)) {
             try {
                 const fileContent = fs.readFileSync(configPath, 'utf-8');
                 const parsed = JSON.parse(fileContent);
-                if (parsed && Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
-                    profiles = parsed.profiles;
+                if (parsed && Array.isArray(parsed.profiles)) {
+                    profiles = [...profiles, ...parsed.profiles];
                 }
             }
             catch (e) {
                 vscode.window.showErrorMessage(`Ricwiz: Error parsing ricwiz.json: ${e.message}`);
-                return undefined;
             }
         }
         if (profiles.length > 0) {

@@ -45,19 +45,48 @@ export async function checkoutBranch(branchName: string): Promise<void> {
                 // Try checking out the local branch directly (Git's default magic)
                 await exec(`git checkout ${targetLocalBranch}`, { cwd });
             } catch (e: any) {
-                // If it fails, maybe it doesn't exist locally. Try to fetch and track from upstream.
-                try {
-                    const ctx = await WorkflowContext.initialize(cwd);
+                // It doesn't exist locally (or is ambiguous). Let's search for it in remotes!
+                let remoteToUse = '';
+                
+                if (branchName.includes('/')) {
+                    remoteToUse = branchName.split('/')[0];
+                } else {
+                    const { stdout: remotesOut } = await exec(`git branch -r`, { cwd });
+                    const remoteBranches = remotesOut.split('\n').map(l => l.trim()).filter(l => l);
                     
-                    if (ctx) {
-                        const remotePrefix = branchName.includes('/') ? branchName.split('/')[0] : ctx.upstreamRemote;
-                        await exec(`git fetch ${remotePrefix} ${targetLocalBranch}`, { cwd });
-                        await exec(`git checkout -b ${targetLocalBranch} --track ${remotePrefix}/${targetLocalBranch}`, { cwd });
-                    } else {
-                        throw e; // Context failed, rethrow original error
+                    const matchingRemotes = [];
+                    for (const rb of remoteBranches) {
+                        const nameOnly = rb.split(' ')[0]; // e.g. "origin/quality"
+                        if (nameOnly.endsWith(`/${targetLocalBranch}`)) {
+                            matchingRemotes.push(nameOnly.substring(0, nameOnly.lastIndexOf('/')));
+                        }
                     }
+
+                    if (matchingRemotes.length === 0) {
+                        vscode.window.showErrorMessage(`Ricwiz: A branch "${targetLocalBranch}" não existe localmente nem em nenhuma remote!`);
+                        return; // Stop execution, don't create!
+                    } else if (matchingRemotes.length === 1) {
+                        remoteToUse = matchingRemotes[0];
+                    } else {
+                        // Exists in multiple remotes
+                        const ctx = await WorkflowContext.initialize(cwd);
+                        if (matchingRemotes.includes('origin')) {
+                            remoteToUse = 'origin';
+                        } else if (ctx && matchingRemotes.includes(ctx.upstreamRemote)) {
+                            remoteToUse = ctx.upstreamRemote;
+                        } else {
+                            remoteToUse = matchingRemotes[0];
+                        }
+                    }
+                }
+
+                // We found the remote, now let's track it
+                try {
+                    await exec(`git fetch ${remoteToUse} ${targetLocalBranch}`, { cwd });
+                    await exec(`git checkout -b ${targetLocalBranch} --track ${remoteToUse}/${targetLocalBranch}`, { cwd });
                 } catch (fallbackError) {
-                    throw e; // Throw original error if fallback also fails
+                    vscode.window.showErrorMessage(`Ricwiz: Encontrou na remote ${remoteToUse} mas falhou a fazer checkout.`);
+                    return;
                 }
             }
 

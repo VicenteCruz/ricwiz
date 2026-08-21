@@ -183,6 +183,12 @@ export async function createBranches(): Promise<void> {
                             } 
                         }
                     }
+
+                    // Save the actual source branch used for this ticket into git config
+                    // so that the Merge Request command knows exactly where it came from!
+                    try {
+                        await exec(`git config branch.${mainBranch}.ricwiz-source "${sourceBranchForTicket}"`, { cwd });
+                    } catch(e) {}
                 }
 
                 // 2. Create environment branches based on configured source branches

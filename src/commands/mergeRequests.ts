@@ -45,11 +45,19 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
 
     const mrLinks: { source: string, target: string }[] = [];
 
+    let mainSourceBranch = ctx.ticketSourceBranch;
+    try {
+        const { stdout } = await exec(`git config branch.${ticketId}.ricwiz-source`, { cwd });
+        if (stdout.trim()) {
+            mainSourceBranch = stdout.trim();
+        }
+    } catch (e) {}
+
     if (ctx.environments.length === 0) {
         // If there are no environments, just open the MR for the main ticket branch
         mrLinks.push({
             source: ticketId,
-            target: ctx.ticketSourceBranch
+            target: mainSourceBranch
         });
     } else {
         // If environments exist, open MRs for them

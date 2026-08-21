@@ -1,17 +1,13 @@
 import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId } from '../git';
-import { EnvironmentConfig } from '../types';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<void> {
     const cwd = getWorkspaceCwd();
     if (!cwd) return;
 
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const environments = config.get<EnvironmentConfig[]>('environments', [
-        { name: 'Qual', sourceBranch: 'quality' },
-        { name: 'Val', sourceBranch: 'validation' },
-        { name: 'Prod', sourceBranch: 'main' }
-    ]);
+    const ctx = await WorkflowContext.initialize(cwd);
+    if (!ctx) return;
 
     const result = await promptForTicketId(cwd, {
         prompt: 'Enter the full ticket ID for the Merge Requests (e.g., SCPSCA-1234) or just the number'
@@ -19,6 +15,7 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     if (!result) return;
     const { ticketId } = result;
 
+    const config = vscode.workspace.getConfiguration('ricwiz');
     const gitlabUrlOverride = config.get<string>('gitlabUrlOverride', '');
 
     let webUrl = '';
@@ -46,13 +43,28 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
         }
     }
 
-    // Open a tab for each environment
-    for (const env of environments) {
-        const mrSourceBranch = `${ticketId}-to-${env.name}`;
-        const mrTargetBranch = env.sourceBranch;
-        
+    const mrLinks: { source: string, target: string }[] = [];
+
+    if (ctx.environments.length === 0) {
+        // If there are no environments, just open the MR for the main ticket branch
+        mrLinks.push({
+            source: ticketId,
+            target: ctx.ticketSourceBranch
+        });
+    } else {
+        // If environments exist, open MRs for them
+        for (const env of ctx.environments) {
+            mrLinks.push({
+                source: `${ticketId}-to-${env.name}`,
+                target: env.sourceBranch
+            });
+        }
+    }
+
+    // Open a tab for each branch
+    for (const link of mrLinks) {
         // GitLab MR URL Format
-        const url = `${webUrl}/-/merge_requests/new?merge_request[source_branch]=${mrSourceBranch}&merge_request[target_branch]=${mrTargetBranch}`;
+        const url = `${webUrl}/-/merge_requests/new?merge_request[source_branch]=${link.source}&merge_request[target_branch]=${link.target}`;
         
         if (openInVSCode) {
             vscode.commands.executeCommand('simpleBrowser.show', url);

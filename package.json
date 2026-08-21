@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.35",
+  "version": "4.7.36",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -91,6 +91,10 @@
       {
         "command": "ricwiz.extractComponent",
         "title": "Ricwiz: Extract Component"
+      },
+      {
+        "command": "ricwiz.deployMultiOrg",
+        "title": "Ricwiz: Deploy to Multi-Org"
       },
       {
         "command": "ricwiz.captureAdminChanges",

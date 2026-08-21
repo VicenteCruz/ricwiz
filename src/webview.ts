@@ -89,6 +89,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'extractComponent':
                     vscode.commands.executeCommand('ricwiz.extractComponent');
                     break;
+                case 'deployMultiOrg':
+                    vscode.commands.executeCommand('ricwiz.deployMultiOrg');
+                    break;
                 case 'captureAdminChanges':
                     vscode.commands.executeCommand('ricwiz.captureAdminChanges');
                     break;
@@ -461,10 +464,14 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     </button>
 
                     <button class="btn" title="Extract metadata components quickly from Salesforce" onclick="sendCommand('extractComponent')">
-                        <span class="icon">🪄</span> Extract Component
+                        <span class="icon">☁️</span> Extract Component
                     </button>
 
-                    <button class="btn" title="Capture manual Admin changes via SetupAuditTrail" onclick="sendCommand('captureAdminChanges')">
+                    <button class="btn" title="Deploy the current open file to multiple orgs simultaneously" onclick="sendCommand('deployMultiOrg')">
+                        <span class="icon">🚀</span> Deploy to Multi-Org
+                    </button>
+
+                    <button class="btn" title="Capture admin changes safely" onclick="sendCommand('captureAdminChanges')">
                         <span class="icon">🕵️</span> Capture Admin Changes
                     </button>
                     

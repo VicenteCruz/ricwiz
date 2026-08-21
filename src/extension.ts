@@ -18,6 +18,7 @@ import { importData } from './commands/importData';
 import { listTicketFiles } from './commands/listTicketFiles';
 import { resetTracking } from './commands/resetTracking';
 import { extractComponent } from './commands/extractComponent';
+import { deployMultiOrg } from './commands/deployMultiOrg';
 import { captureAdminChanges } from './commands/captureAdminChanges';
 import { openHistory } from './commands/openHistory';
 import { searchTicket } from './commands/searchTicket';
@@ -208,6 +209,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.listTicketFiles', listTicketFiles),
         vscode.commands.registerCommand('ricwiz.resetTracking', resetTracking),
         vscode.commands.registerCommand('ricwiz.extractComponent', extractComponent),
+        vscode.commands.registerCommand('ricwiz.deployMultiOrg', deployMultiOrg),
         vscode.commands.registerCommand('ricwiz.captureAdminChanges', captureAdminChanges),
         vscode.commands.registerCommand('ricwiz.openHistory', openHistory),
         vscode.commands.registerCommand('ricwiz.searchTicket', searchTicket),

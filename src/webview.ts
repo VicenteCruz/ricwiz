@@ -86,6 +86,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'resetTracking':
                     vscode.commands.executeCommand('ricwiz.resetTracking');
                     break;
+                case 'extractComponent':
+                    vscode.commands.executeCommand('ricwiz.extractComponent');
+                    break;
                 case 'captureAdminChanges':
                     vscode.commands.executeCommand('ricwiz.captureAdminChanges');
                     break;
@@ -436,7 +439,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     </button>
 
                     <button class="btn" title="Reset Salesforce source tracking" onclick="sendCommand('resetTracking')">
-                        <span class="icon">🧹</span> Reset Tracking
+                        <span class="icon">dY 1</span> Reset Tracking
+                    </button>
+
+                    <button class="btn" title="Extract metadata components quickly from Salesforce" onclick="sendCommand('extractComponent')">
+                        <span class="icon">dY"<</span> Extract Component
                     </button>
 
                     <button class="btn" title="Capture manual Admin changes via SetupAuditTrail" onclick="sendCommand('captureAdminChanges')">
@@ -594,3 +601,4 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         </html>`;
     }
 }
+

@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.27",
+  "version": "4.7.28",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -87,6 +87,10 @@
       {
         "command": "ricwiz.resetTracking",
         "title": "Ricwiz: Reset Tracking"
+      },
+      {
+        "command": "ricwiz.extractComponent",
+        "title": "Ricwiz: Extract Component"
       },
       {
         "command": "ricwiz.captureAdminChanges",

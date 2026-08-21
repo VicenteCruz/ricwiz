@@ -43,7 +43,20 @@ export async function createBranches(): Promise<void> {
         selectedOptionValue = selectedOption.value;
     }
 
-    const sourceBranchForTicket = ctx.ticketSourceBranch;
+    let sourceBranchForTicket = ctx.ticketSourceBranch;
+    if (selectedOptionValue === 'all') {
+        const userInput = await vscode.window.showInputBox({
+            prompt: 'Confirm or change the source branch for this ticket (where it branches off from)',
+            value: ctx.ticketSourceBranch,
+            title: 'Ricwiz: Ticket Source Branch'
+        });
+        
+        if (!userInput) {
+            vscode.window.showInformationMessage('Branch creation cancelled.');
+            return;
+        }
+        sourceBranchForTicket = userInput.trim();
+    }
 
     const mainBranch = ticketId;
 

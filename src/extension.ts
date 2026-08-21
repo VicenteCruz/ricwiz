@@ -197,7 +197,8 @@ export function activate(context: vscode.ExtensionContext) {
                             if (currentBranch.endsWith(`-to-${env.name}`)) {
                                 try {
                                     const cwd = vscode.workspace.workspaceFolders![0].uri.fsPath;
-                                    const logCheck = await exec(`git --no-pager log ${currentBranch} --grep="\\b${ticketId}\\b" -i -E -1 --format="%h"`, { cwd }).catch(() => ({ stdout: '' }));
+                                    const currentTicketId = currentBranch.replace(new RegExp(`-to-${env.name}$`, 'i'), '');
+                                    const logCheck = await exec(`git --no-pager log ${currentBranch} --grep="\\b${currentTicketId}\\b" -i -E -1 --format="%h"`, { cwd }).catch(() => ({ stdout: '' }));
                                     if (!logCheck.stdout.trim()) {
                                         currentBranchIsMerged = false;
                                         break;

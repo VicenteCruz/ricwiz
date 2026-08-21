@@ -10,6 +10,9 @@
 - If a pattern is used in more than one place, extract it into a reusable utility function in the appropriate shared module.
 - Prefer creating small, well-named helper functions over duplicating code across files.
 
+## Packaging & Releases
+- When generating a new version (e.g. running `vsce package`), **ALWAYS delete the older `.vsix` file** from the repository and `git rm` it. Only 1 `.vsix` file (the latest one) should ever be versioned to save repository space.
+
 ## Good Programming Practices
 - Use proper TypeScript types instead of `any` wherever possible.
 - Keep functions focused — each function should do one thing well.

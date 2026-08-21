@@ -32,7 +32,7 @@ export async function getBlameData(): Promise<BlameData | null> {
     
     try {
         const { stdout } = await exec(`git log -5 --pretty=format:"%an|%ar|%s|%h" -- "${filePath}"`, { cwd });
-        const lines = stdout.trim().split('\\n');
+        const lines = stdout.trim().split('\n');
         for (const line of lines) {
             const parts = line.split('|');
             if (parts.length >= 4) {

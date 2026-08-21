@@ -21,7 +21,7 @@ async function getBlameData() {
     let gitHistory = [];
     try {
         const { stdout } = await (0, git_1.exec)(`git log -5 --pretty=format:"%an|%ar|%s|%h" -- "${filePath}"`, { cwd });
-        const lines = stdout.trim().split('\\n');
+        const lines = stdout.trim().split('\n');
         for (const line of lines) {
             const parts = line.split('|');
             if (parts.length >= 4) {

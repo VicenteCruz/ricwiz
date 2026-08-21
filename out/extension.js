@@ -319,7 +319,7 @@
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${r.map(o=>`
-                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCheckoutCommand('${P(o.name)}', this)" title="Checkout ${P(o.name)}">
+                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${P(o.name)}', this)" title="Checkout ${P(o.name)}">
                                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${P(o.name)}</span>
                                         ${o.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>':""}
                                     </div>
@@ -331,18 +331,18 @@
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Recent Tickets</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${l.map(o=>`
-                                    <div class="btn" style="padding: 4px; font-size: 11px; justify-content: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCheckoutCommand('${P(o)}', this)" title="Checkout ${P(o)}">
-                                        ${P(o)}
+                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${P(o)}', this)" title="Checkout ${P(o)}">
+                                        <span style="font-weight: bold;">${P(o)}</span>
                                     </div>
                                 `).join("")}
                             </div>
                         </div>
                     `:""}
                     <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: center;">
-                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
                             <span class="icon" style="font-size: 12px; margin-right: 4px;">\u{1F50D}</span> Search
                         </button>
-                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCommand('openHistory')" title="View recent branches history">
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('openHistory')" title="View recent branches history">
                             <span class="icon" style="font-size: 12px; margin-right: 4px;">\u{1F570}\uFE0F</span> History
                         </button>
                     </div>
@@ -351,7 +351,7 @@
             ${a.length>0?`
                 <div style="display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center;">
                     ${a.map(o=>`
-                        <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCheckoutCommand('${P(o)}', this)" title="Checkout ${P(o)}">
+                        <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${P(o)}', this)" title="Checkout ${P(o)}">
                             ${P(o.toUpperCase())}
                         </button>
                     `).join("")}

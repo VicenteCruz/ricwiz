@@ -10,9 +10,10 @@ export async function syncAll(): Promise<void> {
         return;
     }
 
-    const ctx = new WorkflowContext();
+    const ctx = await WorkflowContext.initialize(cwd);
+    if (!ctx) return;
 
-    const result = await promptForTicketId(cwd, {
+    const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix,
         prompt: 'Enter the full ticket ID to sync all branches for (e.g., SCPSCA-1234) or just the number'
     });
     if (!result) return;
@@ -122,3 +123,4 @@ export async function syncAll(): Promise<void> {
         }
     });
 }
+

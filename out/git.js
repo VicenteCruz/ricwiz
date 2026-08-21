@@ -89,7 +89,7 @@ function normalizeTicketId(input, prefix) {
  */
 async function promptForTicketId(cwd, options) {
     const config = vscode.workspace.getConfiguration('ricwiz');
-    const configPrefix = config.get('ticketPrefix', 'SFPSCA-');
+    const configPrefix = options?.prefix ?? config.get('ticketPrefix', 'SFPSCA-');
     const currentBranch = await getCurrentBranch(cwd);
     const prefix = resolvePrefix(currentBranch, configPrefix);
     const suggestedTicket = extractTicketSuggestion(currentBranch, prefix, options?.handleToSuffix);

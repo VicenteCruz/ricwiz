@@ -11,9 +11,10 @@ async function createBranches() {
         vscode.window.showErrorMessage('Open a folder or workspace that is a Git repository.');
         return;
     }
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const ctx = new WorkflowContext_1.WorkflowContext();
-    const result = await (0, git_1.promptForTicketId)(cwd);
+    const ctx = await WorkflowContext_1.WorkflowContext.initialize(cwd);
+    if (!ctx)
+        return;
+    const result = await (0, git_1.promptForTicketId)(cwd, { prefix: ctx.ticketPrefix });
     if (!result) {
         vscode.window.showErrorMessage('Branch creation cancelled: Ticket not provided.');
         return;
@@ -31,12 +32,8 @@ async function createBranches() {
         vscode.window.showInformationMessage('Branch creation cancelled.');
         return;
     }
-    const sourceBranchForTicket = config.get('ticketSourceBranch', 'main');
-    const environments = config.get('environments', [
-        { name: 'Qual', sourceBranch: 'quality' },
-        { name: 'Val', sourceBranch: 'validation' },
-        { name: 'Prod', sourceBranch: 'main' }
-    ]);
+    const sourceBranchForTicket = ctx.ticketSourceBranch;
+    const environments = ctx.environments;
     const mainBranch = ticketId;
     // Validate inputs to prevent command injection
     if (!security_1.Security.isValidShellArg(mainBranch)) {

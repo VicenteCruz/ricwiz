@@ -20,15 +20,11 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
 
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const ctx = new WorkflowContext();
-    const environments = config.get<EnvironmentConfig[]>('environments', [
-        { name: 'Qual', sourceBranch: 'quality' },
-        { name: 'Val', sourceBranch: 'validation' },
-        { name: 'Prod', sourceBranch: 'main' }
-    ]);
+    const ctx = await WorkflowContext.initialize(cwd);
+    if (!ctx) return;
+    const environments = ctx.environments;
 
-    const result = await promptForTicketId(cwd);
+    const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix });
     if (!result) {
         vscode.window.showErrorMessage('Operation cancelled: Ticket not provided.');
         return;
@@ -182,3 +178,4 @@ export async function prepareDeploy(): Promise<void> {
         }
     });
 }
+

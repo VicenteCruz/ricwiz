@@ -11,8 +11,10 @@ async function syncAll() {
         vscode.window.showErrorMessage('Ricwiz: Open a folder or workspace that is a Git repository.');
         return;
     }
-    const ctx = new WorkflowContext_1.WorkflowContext();
-    const result = await (0, git_1.promptForTicketId)(cwd, {
+    const ctx = await WorkflowContext_1.WorkflowContext.initialize(cwd);
+    if (!ctx)
+        return;
+    const result = await (0, git_1.promptForTicketId)(cwd, { prefix: ctx.ticketPrefix,
         prompt: 'Enter the full ticket ID to sync all branches for (e.g., SCPSCA-1234) or just the number'
     });
     if (!result)

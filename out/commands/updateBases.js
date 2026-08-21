@@ -18,14 +18,11 @@ async function updateBases() {
         vscode.window.showErrorMessage('Ricwiz: The opened folder does not appear to be a valid Git repository.');
         return;
     }
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const ctx = new WorkflowContext_1.WorkflowContext();
-    const environments = config.get('environments', [
-        { name: 'Qual', sourceBranch: 'quality' },
-        { name: 'Val', sourceBranch: 'validation' },
-        { name: 'Prod', sourceBranch: 'main' }
-    ]);
-    const result = await (0, git_1.promptForTicketId)(cwd);
+    const ctx = await WorkflowContext_1.WorkflowContext.initialize(cwd);
+    if (!ctx)
+        return;
+    const environments = ctx.environments;
+    const result = await (0, git_1.promptForTicketId)(cwd, { prefix: ctx.ticketPrefix });
     if (!result) {
         return;
     }

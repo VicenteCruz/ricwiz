@@ -88,10 +88,10 @@ export interface TicketInfo {
  */
 export async function promptForTicketId(
     cwd: string,
-    options?: { prompt?: string; placeHolder?: string; handleToSuffix?: boolean }
+    options?: { prompt?: string; placeHolder?: string; handleToSuffix?: boolean; prefix?: string }
 ): Promise<TicketInfo | undefined> {
     const config = vscode.workspace.getConfiguration('ricwiz');
-    const configPrefix = config.get<string>('ticketPrefix', 'SFPSCA-');
+    const configPrefix = options?.prefix ?? config.get<string>('ticketPrefix', 'SFPSCA-');
 
     const currentBranch = await getCurrentBranch(cwd);
     const prefix = resolvePrefix(currentBranch, configPrefix);

@@ -12,10 +12,10 @@ export async function createBranches(): Promise<void> {
         return;
     }
 
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const ctx = new WorkflowContext();
+    const ctx = await WorkflowContext.initialize(cwd);
+    if (!ctx) return;
 
-    const result = await promptForTicketId(cwd);
+    const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix });
     if (!result) {
         vscode.window.showErrorMessage('Branch creation cancelled: Ticket not provided.');
         return;
@@ -37,12 +37,8 @@ export async function createBranches(): Promise<void> {
         return;
     }
 
-    const sourceBranchForTicket = config.get<string>('ticketSourceBranch', 'main');
-    const environments = config.get<EnvironmentConfig[]>('environments', [
-        { name: 'Qual', sourceBranch: 'quality' },
-        { name: 'Val', sourceBranch: 'validation' },
-        { name: 'Prod', sourceBranch: 'main' }
-    ]);
+    const sourceBranchForTicket = ctx.ticketSourceBranch;
+    const environments = ctx.environments;
 
     const mainBranch = ticketId;
 
@@ -184,3 +180,4 @@ export async function createBranches(): Promise<void> {
         vscode.window.showErrorMessage(`Ricwiz general error: ${error.message}`);
     }
 }
+

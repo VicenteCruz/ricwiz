@@ -1,29 +1,86 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { EnvironmentConfig } from '../types';
+
+export interface WorkflowProfile {
+    name: string;
+    workflowStyle?: string;
+    upstreamRemote?: string;
+    originRemote?: string;
+    ticketSourceBranch?: string;
+    ticketPrefix?: string;
+    environments?: EnvironmentConfig[];
+}
 
 export class WorkflowContext {
     public readonly style: string;
     public readonly upstreamRemote: string;
     public readonly originRemote: string;
+    public readonly ticketSourceBranch: string;
+    public readonly ticketPrefix: string;
+    public readonly environments: EnvironmentConfig[];
+    
+    // Original configuration without overrides
+    private static baseConfig = vscode.workspace.getConfiguration('ricwiz');
 
-    constructor() {
-        const config = vscode.workspace.getConfiguration('ricwiz');
-        this.style = config.get<string>('workflowStyle', 'standard');
+    private constructor(profile?: WorkflowProfile) {
+        const config = WorkflowContext.baseConfig;
+        
+        this.style = profile?.workflowStyle || config.get<string>('workflowStyle', 'standard');
         
         if (this.style === 'multi-remote') {
-            this.upstreamRemote = config.get<string>('upstreamRemote', 'salesforce-master');
-            this.originRemote = config.get<string>('originRemote', 'origin');
+            this.upstreamRemote = profile?.upstreamRemote || config.get<string>('upstreamRemote', 'salesforce-master');
+            this.originRemote = profile?.originRemote || config.get<string>('originRemote', 'origin');
         } else {
-            // Standard workflow always uses 'origin' for everything
             this.upstreamRemote = 'origin';
             this.originRemote = 'origin';
         }
+
+        this.ticketSourceBranch = profile?.ticketSourceBranch || config.get<string>('ticketSourceBranch', 'main');
+        this.ticketPrefix = profile?.ticketPrefix || config.get<string>('ticketPrefix', 'SFPSCA-');
+        
+        const defaultEnv = [
+            { name: 'Qual', sourceBranch: 'quality' },
+            { name: 'Val', sourceBranch: 'validation' },
+            { name: 'Prod', sourceBranch: 'main' }
+        ];
+        this.environments = profile?.environments || config.get<EnvironmentConfig[]>('environments', defaultEnv);
     }
 
-    /**
-     * Intelligently builds a remote/branch path.
-     * If the user explicitly provided a remote prefix (e.g. 'origin/master'), it uses it.
-     * Otherwise, it prefixes it with the upstream remote (e.g. 'salesforce-master' + '/' + 'master').
-     */
+    public static async initialize(cwd: string): Promise<WorkflowContext | undefined> {
+        const configPath = path.join(cwd, 'ricwiz.json');
+        let profiles: WorkflowProfile[] = [];
+
+        if (fs.existsSync(configPath)) {
+            try {
+                const fileContent = fs.readFileSync(configPath, 'utf-8');
+                const parsed = JSON.parse(fileContent);
+                if (parsed && Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
+                    profiles = parsed.profiles;
+                }
+            } catch (e: any) {
+                vscode.window.showErrorMessage(`Ricwiz: Error parsing ricwiz.json: ${e.message}`);
+                return undefined;
+            }
+        }
+
+        if (profiles.length > 0) {
+            const items = profiles.map(p => p.name);
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Ricwiz: Select Workflow Profile',
+                ignoreFocusOut: true
+            });
+            if (!selected) {
+                return undefined; // Cancelled
+            }
+            const profile = profiles.find(p => p.name === selected);
+            return new WorkflowContext(profile);
+        }
+
+        return new WorkflowContext(); // Default behavior without profiles
+    }
+
     public buildUpstreamPath(sourceBranch: string): string {
         if (sourceBranch.includes('/')) {
             return sourceBranch;
@@ -31,9 +88,6 @@ export class WorkflowContext {
         return `${this.upstreamRemote}/${sourceBranch}`;
     }
 
-    /**
-     * Returns just the remote name for a fetch command, based on whether the branch name includes a remote.
-     */
     public getFetchRemote(sourceBranch: string): string {
         if (sourceBranch.includes('/')) {
             return sourceBranch.split('/')[0];
@@ -41,9 +95,6 @@ export class WorkflowContext {
         return this.upstreamRemote;
     }
 
-    /**
-     * Returns just the branch name, stripping any explicit remote prefix.
-     */
     public getFetchBranch(sourceBranch: string): string {
         if (sourceBranch.includes('/')) {
             return sourceBranch.substring(sourceBranch.indexOf('/') + 1);
@@ -51,3 +102,4 @@ export class WorkflowContext {
         return sourceBranch;
     }
 }
+

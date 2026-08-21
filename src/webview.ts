@@ -582,16 +582,16 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             <div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 10px; opacity: 0.7; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; text-align: center;">Ticket Workflow</div>
                 
-                <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); font-weight: bold; justify-content: center; margin-bottom: 6px; border-radius: 4px; padding: 8px;" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
+                <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); font-weight: bold; margin-bottom: 6px; border-radius: 4px; padding: 8px;" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
                     <span class="icon">🌿</span> Create Branches
                 </button>
 
-                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); justify-content: center; margin-bottom: 6px; border-radius: 4px;" title="Sync environments and merge ticket" onclick="sendCommand('prepareDeploy')">
+                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); margin-bottom: 6px; border-radius: 4px;" title="Sync environments and merge ticket" onclick="sendCommand('prepareDeploy')">
                     <span class="icon">🔀</span> Prepare Deploy
                 </button>
 
                 <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); justify-content: center; border-radius: 4px;" title="Opens Merge Request pages in Browser" onclick="sendCommand('openMRs')">
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Opens Merge Request pages in Browser" onclick="sendCommand('openMRs')">
                         <span class="icon">🚀</span> Open MRs
                     </button>
                     <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open MRs in VS Code" onclick="sendCommand('openMRsVSCode')">
@@ -600,7 +600,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 </div>
 
                 <div style="display: flex; gap: 4px;">
-                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); justify-content: center; border-radius: 4px;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
                         <span class="icon">🎫</span> Open Jira
                     </button>
                     <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira in VS Code" onclick="sendCommand('openJiraVSCode')">

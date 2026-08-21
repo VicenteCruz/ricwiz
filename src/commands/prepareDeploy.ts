@@ -38,6 +38,22 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
 
+    const reviewerInput = await vscode.window.showInputBox({
+        prompt: 'Ricwiz: Reviewers for this deploy (optional, comma-separated)',
+        placeHolder: 'e.g. joao, maria',
+        ignoreFocusOut: true
+    });
+
+    if (reviewerInput === undefined) {
+        return; // User cancelled
+    }
+
+    if (reviewerInput.trim()) {
+        try {
+            await exec(`git config branch.${ticketId}.ricwiz-reviewers "${reviewerInput.trim()}"`, { cwd });
+        } catch(e) {}
+    }
+
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: "Ricwiz: Preparing Deploy",

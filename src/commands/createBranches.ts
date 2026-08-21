@@ -28,6 +28,7 @@ export async function createBranches(): Promise<void> {
     if (environments.length > 0) {
         const createOptions = [
             { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' },
+            { label: 'Create Main Branch Only', description: 'Creates only the main ticket branch (skips environments)', value: 'mainOnly' },
             { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' }
         ];
 
@@ -44,7 +45,7 @@ export async function createBranches(): Promise<void> {
     }
 
     let sourceBranchForTicket = ctx.ticketSourceBranch;
-    if (selectedOptionValue === 'all') {
+    if (selectedOptionValue === 'all' || selectedOptionValue === 'mainOnly') {
         let branches: string[] = [];
         try {
             const { stdout } = await exec(`git branch --all --format="%(refname:short)"`, { cwd });
@@ -160,7 +161,7 @@ export async function createBranches(): Promise<void> {
 
             try {
                 // 1. Create main ticket branch (if requested)
-                if (selectedOptionValue === 'all') {
+                if (selectedOptionValue === 'all' || selectedOptionValue === 'mainOnly') {
                     progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 10 });
                     if (await checkBranchExists(cwd, mainBranch)) {
                         vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
@@ -192,26 +193,28 @@ export async function createBranches(): Promise<void> {
                 }
 
                 // 2. Create environment branches based on configured source branches
-                const envProgressStep = 50 / (environments.length || 1);
-                for (const env of environments) {
-                    const envBranchName = `${ticketId}-to-${env.name}`;
-                    const sourceBranch = env.sourceBranch;
+                if (selectedOptionValue === 'all' || selectedOptionValue === 'envs') {
+                    const envProgressStep = 50 / (environments.length || 1);
+                    for (const env of environments) {
+                        const envBranchName = `${ticketId}-to-${env.name}`;
+                        const sourceBranch = env.sourceBranch;
 
-                    progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });
+                        progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });
 
-                    if (await checkBranchExists(cwd, envBranchName)) {
-                        // Already exists, skip
-                    } else {
-                        try {
-                            const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
-                            await exec(`git checkout -b ${envBranchName} ${fullUpstreamPath}`, { cwd });
-                            createdLocalBranches.push(envBranchName);
-                        } catch (e: any) {
+                        if (await checkBranchExists(cwd, envBranchName)) {
+                            // Already exists, skip
+                        } else {
                             try {
-                                await exec(`git checkout -b ${envBranchName} ${sourceBranch}`, { cwd });
+                                const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                                await exec(`git checkout -b ${envBranchName} ${fullUpstreamPath}`, { cwd });
                                 createdLocalBranches.push(envBranchName);
-                            } catch(err: any) {
-                                throw new Error(`Could not create environment branch '${envBranchName}' from '${sourceBranch}'. Does the source branch exist?`);
+                            } catch (e: any) {
+                                try {
+                                    await exec(`git checkout -b ${envBranchName} ${sourceBranch}`, { cwd });
+                                    createdLocalBranches.push(envBranchName);
+                                } catch(err: any) {
+                                    throw new Error(`Could not create environment branch '${envBranchName}' from '${sourceBranch}'. Does the source branch exist?`);
+                                }
                             }
                         }
                     }
@@ -228,7 +231,7 @@ export async function createBranches(): Promise<void> {
                 }
 
                 // 4. Switch back to the main branch at the end
-                if (selectedOptionValue === 'all') {
+                if (selectedOptionValue === 'all' || selectedOptionValue === 'mainOnly') {
                     progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
                     try {
                         await exec(`git checkout ${mainBranch}`, { cwd });

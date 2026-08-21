@@ -54,7 +54,10 @@ export function activate(context: vscode.ExtensionContext) {
                 let lastBranch = '';
                 
                 async function update() {
-                    const currentBranch = repo.state.HEAD?.name;
+                    const workspaceFolders = vscode.workspace.workspaceFolders;
+                    if (!workspaceFolders) return;
+                    const cwd = workspaceFolders[0].uri.fsPath;
+                    const currentBranch = await getCurrentBranch(cwd);
                     if (currentBranch && currentBranch !== lastBranch) {
                         lastBranch = currentBranch;
                         
@@ -237,7 +240,16 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 update();
-                repo.state.onDidChange(update);
+                repo.state.onDidChange(() => {
+                    lastBranch = '';
+                    update();
+                });
+                vscode.window.onDidChangeWindowState(e => {
+                    if (e.focused) {
+                        lastBranch = '';
+                        update();
+                    }
+                });
             }
         }
     }
@@ -247,6 +259,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('ricwiz.generateDestructiveChanges', generateDestructiveChanges),
         vscode.commands.registerCommand('ricwiz.runSmartTests', runSmartTests),
+        vscode.commands.registerCommand('ricwiz.refreshWebview', () => { if (webviewProvider) vscode.commands.executeCommand('workbench.action.webview.reloadWebviewAction'); }),
         vscode.commands.registerCommand('ricwiz.createBranches', createBranches),
         vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy),
         vscode.commands.registerCommand('ricwiz.createMergeRequests', createMergeRequests),
@@ -281,4 +294,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+
 

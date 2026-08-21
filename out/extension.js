@@ -49,7 +49,11 @@ function activate(context) {
             function setupRepo(repo) {
                 let lastBranch = '';
                 async function update() {
-                    const currentBranch = repo.state.HEAD?.name;
+                    const workspaceFolders = vscode.workspace.workspaceFolders;
+                    if (!workspaceFolders)
+                        return;
+                    const cwd = workspaceFolders[0].uri.fsPath;
+                    const currentBranch = await getCurrentBranch(cwd);
                     if (currentBranch && currentBranch !== lastBranch) {
                         lastBranch = currentBranch;
                         const config = vscode.workspace.getConfiguration('ricwiz');
@@ -225,13 +229,23 @@ function activate(context) {
                     }
                 }
                 update();
-                repo.state.onDidChange(update);
+                repo.state.onDidChange(() => {
+                    lastBranch = '';
+                    update();
+                });
+                vscode.window.onDidChangeWindowState(e => {
+                    if (e.focused) {
+                        lastBranch = '';
+                        update();
+                    }
+                });
             }
         }
     }
     initGit();
     // ─── Register All Commands ──────────────────────────────────────────
-    context.subscriptions.push(vscode.commands.registerCommand('ricwiz.generateDestructiveChanges', generateDestructiveChanges_1.generateDestructiveChanges), vscode.commands.registerCommand('ricwiz.runSmartTests', runSmartTests_1.runSmartTests), vscode.commands.registerCommand('ricwiz.createBranches', createBranches_1.createBranches), vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy_1.prepareDeploy), vscode.commands.registerCommand('ricwiz.createMergeRequests', mergeRequests_1.createMergeRequests), vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', mergeRequests_1.createMergeRequestsVSCode), vscode.commands.registerCommand('ricwiz.openJiraTicket', jira_1.openJiraTicket), vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', jira_1.openJiraTicketVSCode), vscode.commands.registerCommand('ricwiz.syncAll', syncAll_1.syncAll), vscode.commands.registerCommand('ricwiz.updateBases', updateBases_1.updateBases), vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnused_1.deleteUnusedBranches), vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch_1.checkoutBranch), vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranch_1.copyBranchName), vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml_1.generatePackageXml), vscode.commands.registerCommand('ricwiz.deployPackage', deployPackage_1.deployPackage), vscode.commands.registerCommand('ricwiz.importData', importData_1.importData), vscode.commands.registerCommand('ricwiz.listTicketFiles', listTicketFiles_1.listTicketFiles), vscode.commands.registerCommand('ricwiz.resetTracking', resetTracking_1.resetTracking), vscode.commands.registerCommand('ricwiz.extractComponent', extractComponent_1.extractComponent), vscode.commands.registerCommand('ricwiz.captureAdminChanges', captureAdminChanges_1.captureAdminChanges), vscode.commands.registerCommand('ricwiz.openHistory', openHistory_1.openHistory), vscode.commands.registerCommand('ricwiz.searchTicket', searchTicket_1.searchTicket), vscode.commands.registerCommand('ricwiz.whoToBlame', async () => {
+    context.subscriptions.push(vscode.commands.registerCommand('ricwiz.generateDestructiveChanges', generateDestructiveChanges_1.generateDestructiveChanges), vscode.commands.registerCommand('ricwiz.runSmartTests', runSmartTests_1.runSmartTests), vscode.commands.registerCommand('ricwiz.refreshWebview', () => { if (exports.webviewProvider)
+        vscode.commands.executeCommand('workbench.action.webview.reloadWebviewAction'); }), vscode.commands.registerCommand('ricwiz.createBranches', createBranches_1.createBranches), vscode.commands.registerCommand('ricwiz.prepareDeploy', prepareDeploy_1.prepareDeploy), vscode.commands.registerCommand('ricwiz.createMergeRequests', mergeRequests_1.createMergeRequests), vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', mergeRequests_1.createMergeRequestsVSCode), vscode.commands.registerCommand('ricwiz.openJiraTicket', jira_1.openJiraTicket), vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', jira_1.openJiraTicketVSCode), vscode.commands.registerCommand('ricwiz.syncAll', syncAll_1.syncAll), vscode.commands.registerCommand('ricwiz.updateBases', updateBases_1.updateBases), vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnused_1.deleteUnusedBranches), vscode.commands.registerCommand('ricwiz.checkoutBranch', checkoutBranch_1.checkoutBranch), vscode.commands.registerCommand('ricwiz.copyBranchName', copyBranch_1.copyBranchName), vscode.commands.registerCommand('ricwiz.generatePackageXml', generatePackageXml_1.generatePackageXml), vscode.commands.registerCommand('ricwiz.deployPackage', deployPackage_1.deployPackage), vscode.commands.registerCommand('ricwiz.importData', importData_1.importData), vscode.commands.registerCommand('ricwiz.listTicketFiles', listTicketFiles_1.listTicketFiles), vscode.commands.registerCommand('ricwiz.resetTracking', resetTracking_1.resetTracking), vscode.commands.registerCommand('ricwiz.extractComponent', extractComponent_1.extractComponent), vscode.commands.registerCommand('ricwiz.captureAdminChanges', captureAdminChanges_1.captureAdminChanges), vscode.commands.registerCommand('ricwiz.openHistory', openHistory_1.openHistory), vscode.commands.registerCommand('ricwiz.searchTicket', searchTicket_1.searchTicket), vscode.commands.registerCommand('ricwiz.whoToBlame', async () => {
         const data = await (0, whoToBlame_1.getBlameData)();
         if (data && exports.webviewProvider) {
             exports.webviewProvider.setBlameData(data);

@@ -153,7 +153,7 @@ export async function createBranches(): Promise<void> {
                 }
 
                 // 4. Switch back to the main branch at the end
-                if (selectedOption.value === 'all') {
+                if (selectedOptionValue === 'all') {
                     progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
                     try {
                         await exec(`git checkout ${mainBranch}`, { cwd });

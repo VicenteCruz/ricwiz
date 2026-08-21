@@ -4,6 +4,7 @@ exports.prepareDeploy = prepareDeploy;
 const vscode = require("vscode");
 const git_1 = require("../git");
 const conflictResolver_1 = require("../conflictResolver");
+const WorkflowContext_1 = require("../workflows/WorkflowContext");
 async function prepareDeploy() {
     const cwd = (0, git_1.getWorkspaceCwd)();
     if (!cwd) {
@@ -18,6 +19,7 @@ async function prepareDeploy() {
         return;
     }
     const config = vscode.workspace.getConfiguration('ricwiz');
+    const ctx = new WorkflowContext_1.WorkflowContext();
     const environments = config.get('environments', [
         { name: 'Qual', sourceBranch: 'quality' },
         { name: 'Val', sourceBranch: 'validation' },
@@ -46,16 +48,16 @@ async function prepareDeploy() {
         token.onCancellationRequested(() => {
             abortRequested = true;
         });
-        progress.report({ message: 'Auto-syncing base branches...', increment: 10 });
+        progress.report({ message: 'Syncing remote information...', increment: 10 });
         try {
-            await (0, git_1.exec)('git fetch', { cwd });
-            const envSyncStep = 20 / (environments.length || 1);
+            await (0, git_1.exec)('git fetch --all', { cwd });
+            const envSyncStep = 10 / (environments.length || 1);
             for (const env of environments) {
                 try {
                     if (abortRequested)
                         throw new Error('Aborted');
                     progress.report({ message: `Fetching ${env.sourceBranch}...`, increment: envSyncStep });
-                    await (0, git_1.exec)(`git fetch origin ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
+                    await (0, git_1.exec)(`git fetch ${ctx.upstreamRemote} ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
                 }
                 catch (e) { }
             }
@@ -73,14 +75,14 @@ async function prepareDeploy() {
                 await (0, git_1.exec)(`git checkout ${targetBranch}`, { cwd });
                 // Pull to ensure we have the latest remote state
                 try {
-                    await (0, git_1.exec)(`git pull origin ${targetBranch}`, { cwd });
+                    await (0, git_1.exec)(`git pull ${ctx.originRemote} ${targetBranch}`, { cwd });
                 }
                 catch (e) { } // Ignore if it fails
                 // 1. Merge the source branch (e.g. quality) to keep it up to date
                 try {
                     progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
-                    await (0, git_1.exec)(`git fetch origin ${sourceBranch}`, { cwd });
-                    await (0, git_1.exec)(`git merge origin/${sourceBranch}`, { cwd });
+                    await (0, git_1.exec)(`git fetch ${ctx.upstreamRemote} ${sourceBranch}`, { cwd });
+                    await (0, git_1.exec)(`git merge ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
                 }
                 catch (e) {
                     let isConflict = false;
@@ -92,7 +94,7 @@ async function prepareDeploy() {
                     catch (err) { }
                     const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                     if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `origin/${sourceBranch}`, targetBranch, progress);
+                        const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `${ctx.upstreamRemote}/${sourceBranch}`, targetBranch, progress);
                         if (!resolved) {
                             abortRequested = true;
                             throw new Error('Deploy aborted by user.');
@@ -131,7 +133,7 @@ async function prepareDeploy() {
                     break;
                 // 3. Push to remote
                 progress.report({ message: `Pushing ${targetBranch}...`, increment: processStep / 4 });
-                await (0, git_1.exec)(`git push origin ${targetBranch}`, { cwd });
+                await (0, git_1.exec)(`git push ${ctx.originRemote} ${targetBranch}`, { cwd });
                 successCount++;
             }
             catch (e) {

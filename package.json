@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.21",
+  "version": "4.7.22",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -120,6 +120,22 @@
           "type": "string",
           "default": "",
           "description": "Base URL for Jira tickets (e.g., https://jira.company.com/browse/). Leave empty to disable."
+        },
+        "ricwiz.workflowStyle": {
+          "type": "string",
+          "enum": ["standard", "multi-remote"],
+          "default": "standard",
+          "description": "Defines the branching strategy to use (Standard single-repo vs Multi-Remote)."
+        },
+        "ricwiz.upstreamRemote": {
+          "type": "string",
+          "default": "origin",
+          "description": "The name of the remote to fetch base branches from (e.g., 'salesforce-master' or 'upstream'). Used only in multi-remote workflow."
+        },
+        "ricwiz.originRemote": {
+          "type": "string",
+          "default": "origin",
+          "description": "The name of the remote to push your branches to (e.g., 'cdb' or 'origin')."
         },
         "ricwiz.ticketSourceBranch": {
           "type": "string",

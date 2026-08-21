@@ -4,6 +4,7 @@ exports.createBranches = createBranches;
 const vscode = require("vscode");
 const git_1 = require("../git");
 const security_1 = require("../security");
+const WorkflowContext_1 = require("../workflows/WorkflowContext");
 async function createBranches() {
     const cwd = (0, git_1.getWorkspaceCwd)();
     if (!cwd) {
@@ -11,6 +12,7 @@ async function createBranches() {
         return;
     }
     const config = vscode.workspace.getConfiguration('ricwiz');
+    const ctx = new WorkflowContext_1.WorkflowContext();
     const result = await (0, git_1.promptForTicketId)(cwd);
     if (!result) {
         vscode.window.showErrorMessage('Branch creation cancelled: Ticket not provided.');
@@ -86,8 +88,8 @@ async function createBranches() {
                     }
                     else {
                         try {
-                            await (0, git_1.exec)(`git fetch origin ${sourceBranchForTicket}`, { cwd });
-                            await (0, git_1.exec)(`git checkout -b ${mainBranch} origin/${sourceBranchForTicket}`, { cwd });
+                            await (0, git_1.exec)(`git fetch ${ctx.upstreamRemote} ${sourceBranchForTicket}`, { cwd });
+                            await (0, git_1.exec)(`git checkout -b ${mainBranch} ${ctx.upstreamRemote}/${sourceBranchForTicket}`, { cwd });
                             createdLocalBranches.push(mainBranch);
                         }
                         catch (e) {
@@ -112,7 +114,7 @@ async function createBranches() {
                     }
                     else {
                         try {
-                            await (0, git_1.exec)(`git checkout -b ${envBranchName} origin/${sourceBranch}`, { cwd });
+                            await (0, git_1.exec)(`git checkout -b ${envBranchName} ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
                             createdLocalBranches.push(envBranchName);
                         }
                         catch (e) {
@@ -127,13 +129,13 @@ async function createBranches() {
                     }
                 }
                 // 3. Publish (push) all branches only at the end
-                progress.report({ message: 'Publishing branches to origin...', increment: 10 });
+                progress.report({ message: `Publishing branches to ${ctx.originRemote}...`, increment: 10 });
                 for (const b of createdLocalBranches) {
                     try {
-                        await (0, git_1.exec)(`git push -u origin ${b}`, { cwd });
+                        await (0, git_1.exec)(`git push -u ${ctx.originRemote} ${b}`, { cwd });
                     }
                     catch (e) {
-                        vscode.window.showWarningMessage(`Ricwiz: Branch ${b} was created locally but could not be pushed to origin.`);
+                        vscode.window.showWarningMessage(`Ricwiz: Branch ${b} was created locally but could not be pushed to ${ctx.originRemote}.`);
                     }
                 }
                 // 4. Switch back to the main branch at the end

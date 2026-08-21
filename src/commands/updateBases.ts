@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists, getCurrentBranch } from '../git';
 import { EnvironmentConfig } from '../types';
 import { handleMergeConflict } from '../conflictResolver';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 export async function updateBases(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -18,6 +19,7 @@ export async function updateBases(): Promise<void> {
     }
 
     const config = vscode.workspace.getConfiguration('ricwiz');
+    const ctx = new WorkflowContext();
     const environments = config.get<EnvironmentConfig[]>('environments', [
         { name: 'Qual', sourceBranch: 'quality' },
         { name: 'Val', sourceBranch: 'validation' },
@@ -29,7 +31,6 @@ export async function updateBases(): Promise<void> {
         return;
     }
     const { ticketId, currentBranch } = result;
-    const mainBranch = ticketId;
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -68,8 +69,8 @@ export async function updateBases(): Promise<void> {
                 // 1. Merge the source branch (e.g. quality) to keep it up to date
                 try {
                     progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 2 });
-                    await exec(`git fetch origin ${sourceBranch}`, { cwd });
-                    await exec(`git merge origin/${sourceBranch}`, { cwd });
+                    await exec(`git fetch ${ctx.upstreamRemote} ${sourceBranch}`, { cwd });
+                    await exec(`git merge ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
                 } catch (e: any) {
                     let isConflict = false;
                     try {
@@ -79,7 +80,7 @@ export async function updateBases(): Promise<void> {
                     
                     const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                     if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const resolved = await handleMergeConflict(cwd, `origin/${sourceBranch}`, targetBranch, progress);
+                        const resolved = await handleMergeConflict(cwd, `${ctx.upstreamRemote}/${sourceBranch}`, targetBranch, progress);
                         if (!resolved) {
                             abortRequested = true;
                             throw new Error('Update aborted by user.');

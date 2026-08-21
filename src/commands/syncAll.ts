@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, getCurrentBranch, promptForTicketId } from '../git';
 import { handleMergeConflict } from '../conflictResolver';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 export async function syncAll(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -8,6 +9,8 @@ export async function syncAll(): Promise<void> {
         vscode.window.showErrorMessage('Ricwiz: Open a folder or workspace that is a Git repository.');
         return;
     }
+
+    const ctx = new WorkflowContext();
 
     const result = await promptForTicketId(cwd, {
         prompt: 'Enter the full ticket ID to sync all branches for (e.g., SCPSCA-1234) or just the number'
@@ -45,7 +48,7 @@ export async function syncAll(): Promise<void> {
                 if (branch === currentBranch) {
                     // For the current branch, do a pull
                     try {
-                        await exec(`git pull origin ${branch}`, { cwd });
+                        await exec(`git pull ${ctx.originRemote} ${branch}`, { cwd });
                         synced++;
                     } catch(e: any) {
                         let isConflict = false;
@@ -56,7 +59,7 @@ export async function syncAll(): Promise<void> {
                         
                         const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                         if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                            const resolved = await handleMergeConflict(cwd, `origin/${branch}`, branch, progress);
+                            const resolved = await handleMergeConflict(cwd, `${ctx.originRemote}/${branch}`, branch, progress);
                             if (resolved) {
                                 synced++;
                             } else {
@@ -69,14 +72,14 @@ export async function syncAll(): Promise<void> {
                 } else {
                     // For other branches, fast-forward update without checkout
                     try {
-                        await exec(`git fetch origin ${branch}:${branch}`, { cwd });
+                        await exec(`git fetch ${ctx.originRemote} ${branch}:${branch}`, { cwd });
                         synced++;
                     } catch(e) {
                         // Fast-forward failed (diverged history) — try checkout+pull as fallback
                         try {
                             await exec(`git checkout ${branch}`, { cwd });
                             try {
-                                await exec(`git pull origin ${branch}`, { cwd });
+                                await exec(`git pull ${ctx.originRemote} ${branch}`, { cwd });
                                 synced++;
                             } catch(errPull: any) {
                                 let isConflict = false;
@@ -87,7 +90,7 @@ export async function syncAll(): Promise<void> {
                                 
                                 const errStr = ((errPull.stdout || '') + (errPull.stderr || '') + (errPull.message || '')).toLowerCase();
                                 if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                                    const resolved = await handleMergeConflict(cwd, `origin/${branch}`, branch, progress);
+                                    const resolved = await handleMergeConflict(cwd, `${ctx.originRemote}/${branch}`, branch, progress);
                                     if (resolved) {
                                         synced++;
                                     } else {

@@ -4,12 +4,14 @@ exports.syncAll = syncAll;
 const vscode = require("vscode");
 const git_1 = require("../git");
 const conflictResolver_1 = require("../conflictResolver");
+const WorkflowContext_1 = require("../workflows/WorkflowContext");
 async function syncAll() {
     const cwd = (0, git_1.getWorkspaceCwd)();
     if (!cwd) {
         vscode.window.showErrorMessage('Ricwiz: Open a folder or workspace that is a Git repository.');
         return;
     }
+    const ctx = new WorkflowContext_1.WorkflowContext();
     const result = await (0, git_1.promptForTicketId)(cwd, {
         prompt: 'Enter the full ticket ID to sync all branches for (e.g., SCPSCA-1234) or just the number'
     });
@@ -44,7 +46,7 @@ async function syncAll() {
                 if (branch === currentBranch) {
                     // For the current branch, do a pull
                     try {
-                        await (0, git_1.exec)(`git pull origin ${branch}`, { cwd });
+                        await (0, git_1.exec)(`git pull ${ctx.originRemote} ${branch}`, { cwd });
                         synced++;
                     }
                     catch (e) {
@@ -57,7 +59,7 @@ async function syncAll() {
                         catch (err) { }
                         const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                         if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                            const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `origin/${branch}`, branch, progress);
+                            const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `${ctx.originRemote}/${branch}`, branch, progress);
                             if (resolved) {
                                 synced++;
                             }
@@ -73,7 +75,7 @@ async function syncAll() {
                 else {
                     // For other branches, fast-forward update without checkout
                     try {
-                        await (0, git_1.exec)(`git fetch origin ${branch}:${branch}`, { cwd });
+                        await (0, git_1.exec)(`git fetch ${ctx.originRemote} ${branch}:${branch}`, { cwd });
                         synced++;
                     }
                     catch (e) {
@@ -81,7 +83,7 @@ async function syncAll() {
                         try {
                             await (0, git_1.exec)(`git checkout ${branch}`, { cwd });
                             try {
-                                await (0, git_1.exec)(`git pull origin ${branch}`, { cwd });
+                                await (0, git_1.exec)(`git pull ${ctx.originRemote} ${branch}`, { cwd });
                                 synced++;
                             }
                             catch (errPull) {
@@ -94,7 +96,7 @@ async function syncAll() {
                                 catch (err) { }
                                 const errStr = ((errPull.stdout || '') + (errPull.stderr || '') + (errPull.message || '')).toLowerCase();
                                 if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                                    const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `origin/${branch}`, branch, progress);
+                                    const resolved = await (0, conflictResolver_1.handleMergeConflict)(cwd, `${ctx.originRemote}/${branch}`, branch, progress);
                                     if (resolved) {
                                         synced++;
                                     }

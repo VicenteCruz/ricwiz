@@ -4,6 +4,7 @@ import * as path from 'path';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists, getCurrentBranch } from '../git';
 import { EnvironmentConfig } from '../types';
 import { handleMergeConflict } from '../conflictResolver';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 export async function prepareDeploy(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -20,6 +21,7 @@ export async function prepareDeploy(): Promise<void> {
     }
 
     const config = vscode.workspace.getConfiguration('ricwiz');
+    const ctx = new WorkflowContext();
     const environments = config.get<EnvironmentConfig[]>('environments', [
         { name: 'Qual', sourceBranch: 'quality' },
         { name: 'Val', sourceBranch: 'validation' },
@@ -53,16 +55,16 @@ export async function prepareDeploy(): Promise<void> {
             abortRequested = true;
         });
 
-        progress.report({ message: 'Auto-syncing base branches...', increment: 10 });
+        progress.report({ message: 'Syncing remote information...', increment: 10 });
         
         try {
-            await exec('git fetch', { cwd });
-            const envSyncStep = 20 / (environments.length || 1);
+            await exec('git fetch --all', { cwd });
+            const envSyncStep = 10 / (environments.length || 1);
             for (const env of environments) {
                 try {
                     if (abortRequested) throw new Error('Aborted');
                     progress.report({ message: `Fetching ${env.sourceBranch}...`, increment: envSyncStep });
-                    await exec(`git fetch origin ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
+                    await exec(`git fetch ${ctx.upstreamRemote} ${env.sourceBranch}:${env.sourceBranch}`, { cwd });
                 } catch(e) {}
             }
         } catch(e) {}
@@ -82,14 +84,14 @@ export async function prepareDeploy(): Promise<void> {
                 
                 // Pull to ensure we have the latest remote state
                 try {
-                    await exec(`git pull origin ${targetBranch}`, { cwd });
+                    await exec(`git pull ${ctx.originRemote} ${targetBranch}`, { cwd });
                 } catch (e) {} // Ignore if it fails
                 
                 // 1. Merge the source branch (e.g. quality) to keep it up to date
                 try {
                     progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
-                    await exec(`git fetch origin ${sourceBranch}`, { cwd });
-                    await exec(`git merge origin/${sourceBranch}`, { cwd });
+                    await exec(`git fetch ${ctx.upstreamRemote} ${sourceBranch}`, { cwd });
+                    await exec(`git merge ${ctx.upstreamRemote}/${sourceBranch}`, { cwd });
                 } catch (e: any) {
                     let isConflict = false;
                     try {
@@ -99,7 +101,7 @@ export async function prepareDeploy(): Promise<void> {
                     
                     const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                     if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const resolved = await handleMergeConflict(cwd, `origin/${sourceBranch}`, targetBranch, progress);
+                        const resolved = await handleMergeConflict(cwd, `${ctx.upstreamRemote}/${sourceBranch}`, targetBranch, progress);
                         if (!resolved) {
                             abortRequested = true;
                             throw new Error('Deploy aborted by user.');
@@ -136,7 +138,7 @@ export async function prepareDeploy(): Promise<void> {
 
                 // 3. Push to remote
                 progress.report({ message: `Pushing ${targetBranch}...`, increment: processStep / 4 });
-                await exec(`git push origin ${targetBranch}`, { cwd });
+                await exec(`git push ${ctx.originRemote} ${targetBranch}`, { cwd });
                 
                 successCount++;
             } catch (e: any) {

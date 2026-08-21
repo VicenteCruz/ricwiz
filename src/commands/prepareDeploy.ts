@@ -49,25 +49,28 @@ export async function prepareDeploy(): Promise<void> {
         currentSavedReviewers = stdout.trim();
     } catch(e) {}
 
-    const reviewerInput = await vscode.window.showInputBox({
-        prompt: 'Ricwiz: Reviewers for this deploy (optional, comma-separated)',
-        placeHolder: 'e.g. @joao, 123456',
-        value: currentSavedReviewers || defaultReviewers,
-        ignoreFocusOut: true
-    });
+    // Only prompt the user if there is an established default reviewer in the settings
+    if (defaultReviewers.trim()) {
+        const reviewerInput = await vscode.window.showInputBox({
+            prompt: 'Ricwiz: Reviewers for this deploy (optional, comma-separated)',
+            placeHolder: 'e.g. @joao, 123456',
+            value: currentSavedReviewers || defaultReviewers,
+            ignoreFocusOut: true
+        });
 
-    if (reviewerInput === undefined) {
-        return; // User cancelled
-    }
-
-    // Always save it if provided, or unset if cleared
-    try {
-        if (reviewerInput.trim()) {
-            await exec(`git config branch.${ticketId}.ricwiz-reviewers "${reviewerInput.trim()}"`, { cwd });
-        } else if (currentSavedReviewers) {
-            await exec(`git config --unset branch.${ticketId}.ricwiz-reviewers`, { cwd });
+        if (reviewerInput === undefined) {
+            return; // User cancelled
         }
-    } catch(e) {}
+
+        // Always save it if provided, or unset if cleared
+        try {
+            if (reviewerInput.trim()) {
+                await exec(`git config branch.${ticketId}.ricwiz-reviewers "${reviewerInput.trim()}"`, { cwd });
+            } else if (currentSavedReviewers) {
+                await exec(`git config --unset branch.${ticketId}.ricwiz-reviewers`, { cwd });
+            }
+        } catch(e) {}
+    }
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,

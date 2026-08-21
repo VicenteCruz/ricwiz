@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.22",
+  "version": "4.7.23",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -130,12 +130,12 @@
         "ricwiz.upstreamRemote": {
           "type": "string",
           "default": "origin",
-          "description": "The name of the remote to fetch base branches from (e.g., 'salesforce-master' or 'upstream'). Used only in multi-remote workflow."
+          "description": "The name of the remote to fetch base branches from (e.g., 'salesforce-master' or 'upstream'). Used only in multi-remote workflow. Tip: Run 'git remote -v' in your terminal to list your exact remote names."
         },
         "ricwiz.originRemote": {
           "type": "string",
           "default": "origin",
-          "description": "The name of the remote to push your branches to (e.g., 'cdb' or 'origin')."
+          "description": "The name of the remote to push your branches to (e.g., 'cdb' or 'origin'). Used only in multi-remote workflow. Tip: Run 'git remote -v' in your terminal to list your exact remote names."
         },
         "ricwiz.ticketSourceBranch": {
           "type": "string",

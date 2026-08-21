@@ -38,9 +38,21 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
 
+    // Get default reviewers from settings
+    const config = vscode.workspace.getConfiguration('ricwiz');
+    const defaultReviewers = config.get<string>('defaultReviewers', '');
+
+    // Try to get already saved reviewers for this specific branch
+    let currentSavedReviewers = '';
+    try {
+        const { stdout } = await exec(`git config branch.${ticketId}.ricwiz-reviewers`, { cwd });
+        currentSavedReviewers = stdout.trim();
+    } catch(e) {}
+
     const reviewerInput = await vscode.window.showInputBox({
         prompt: 'Ricwiz: Reviewers for this deploy (optional, comma-separated)',
-        placeHolder: 'e.g. joao, maria',
+        placeHolder: 'e.g. @joao, 123456',
+        value: currentSavedReviewers || defaultReviewers,
         ignoreFocusOut: true
     });
 
@@ -48,11 +60,14 @@ export async function prepareDeploy(): Promise<void> {
         return; // User cancelled
     }
 
-    if (reviewerInput.trim()) {
-        try {
+    // Always save it if provided, or unset if cleared
+    try {
+        if (reviewerInput.trim()) {
             await exec(`git config branch.${ticketId}.ricwiz-reviewers "${reviewerInput.trim()}"`, { cwd });
-        } catch(e) {}
-    }
+        } else if (currentSavedReviewers) {
+            await exec(`git config --unset branch.${ticketId}.ricwiz-reviewers`, { cwd });
+        }
+    } catch(e) {}
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,

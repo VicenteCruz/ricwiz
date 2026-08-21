@@ -120,6 +120,12 @@ export function activate(context: vscode.ExtensionContext) {
                                         for (const env of environments) {
                                             if (rb.endsWith(`-to-${env.name}`)) {
                                                 try {
+                                                    const logCheck = await exec(`git --no-pager log ${rb} --grep="\\b${ticketId}\\b" -i -E -1 --format="%h"`, { cwd }).catch(() => ({ stdout: '' }));
+                                                    if (!logCheck.stdout.trim()) {
+                                                        isMerged = false;
+                                                        break;
+                                                    }
+
                                                     const { stdout: revRb } = await exec(`git rev-parse ${rb}`, { cwd });
                                                     let revEnv = '';
                                                     try {
@@ -191,6 +197,12 @@ export function activate(context: vscode.ExtensionContext) {
                             if (currentBranch.endsWith(`-to-${env.name}`)) {
                                 try {
                                     const cwd = vscode.workspace.workspaceFolders![0].uri.fsPath;
+                                    const logCheck = await exec(`git --no-pager log ${currentBranch} --grep="\\b${ticketId}\\b" -i -E -1 --format="%h"`, { cwd }).catch(() => ({ stdout: '' }));
+                                    if (!logCheck.stdout.trim()) {
+                                        currentBranchIsMerged = false;
+                                        break;
+                                    }
+
                                     const { stdout: revRb } = await exec(`git rev-parse ${currentBranch}`, { cwd });
                                     let revEnv = '';
                                     try {

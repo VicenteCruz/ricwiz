@@ -40,14 +40,36 @@ export async function createBranches(): Promise<void> {
         { name: 'Prod', sourceBranch: 'main' }
     ]);
 
+    const mainBranch = ticketId;
+
+    // Validate inputs to prevent command injection
+    const isValidShellArg = (arg: string) => /^[a-zA-Z0-9\-_/.]+$/.test(arg);
+
+    if (!isValidShellArg(mainBranch)) {
+        vscode.window.showErrorMessage(`Invalid format for ticket ID: ${mainBranch}`);
+        return;
+    }
+    if (!isValidShellArg(sourceBranchForTicket)) {
+        vscode.window.showErrorMessage(`Invalid format for ticketSourceBranch in settings: ${sourceBranchForTicket}`);
+        return;
+    }
+    for (const env of environments) {
+        if (!isValidShellArg(env.name)) {
+            vscode.window.showErrorMessage(`Invalid format for environment name in settings: ${env.name}`);
+            return;
+        }
+        if (!isValidShellArg(env.sourceBranch)) {
+            vscode.window.showErrorMessage(`Invalid format for environment sourceBranch in settings: ${env.sourceBranch}`);
+            return;
+        }
+    }
+
     try {
         await exec('git status', { cwd });
     } catch (e) {
         vscode.window.showErrorMessage('The opened folder does not appear to be a valid Git repository.');
         return;
     }
-
-    const mainBranch = ticketId;
 
     try {
         await vscode.window.withProgress({

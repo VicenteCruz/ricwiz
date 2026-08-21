@@ -45,10 +45,66 @@ export async function createBranches(): Promise<void> {
 
     let sourceBranchForTicket = ctx.ticketSourceBranch;
     if (selectedOptionValue === 'all') {
-        const userInput = await vscode.window.showInputBox({
-            prompt: 'Confirm or change the source branch for this ticket (where it branches off from)',
-            value: ctx.ticketSourceBranch,
-            title: 'Ricwiz: Ticket Source Branch'
+        let branches: string[] = [];
+        try {
+            const { stdout } = await exec(`git branch --all --format="%(refname:short)"`, { cwd });
+            branches = stdout.split('\n')
+                .map(b => b.trim())
+                .filter(b => b && b !== 'origin');
+            branches = [...new Set(branches)];
+        } catch(e) {}
+
+        const userInput = await new Promise<string | undefined>((resolve) => {
+            const quickPick = vscode.window.createQuickPick();
+            quickPick.title = 'Ricwiz: Ticket Source Branch';
+            quickPick.placeholder = 'Confirm or change the source branch for this ticket';
+            quickPick.value = ctx.ticketSourceBranch;
+            quickPick.ignoreFocusOut = true;
+            
+            const updateItems = () => {
+                const val = quickPick.value.trim();
+                const items: vscode.QuickPickItem[] = [];
+                
+                if (val) {
+                    items.push({
+                        label: val,
+                        description: 'Use typed branch'
+                    });
+                }
+                
+                branches.forEach(b => {
+                    if (b === val) return;
+                    if (!val || b.toLowerCase().includes(val.toLowerCase())) {
+                        items.push({
+                            label: b,
+                            description: b.startsWith('origin/') || b.includes('/') ? 'Remote branch' : 'Local branch'
+                        });
+                    }
+                });
+                
+                quickPick.items = items;
+            };
+
+            quickPick.onDidChangeValue(() => updateItems());
+            
+            quickPick.onDidAccept(() => {
+                const selection = quickPick.selectedItems[0];
+                if (selection) {
+                    quickPick.hide();
+                    resolve(selection.label);
+                } else if (quickPick.value.trim()) {
+                    quickPick.hide();
+                    resolve(quickPick.value.trim());
+                }
+            });
+
+            quickPick.onDidHide(() => {
+                quickPick.dispose();
+                resolve(undefined);
+            });
+
+            updateItems();
+            quickPick.show();
         });
         
         if (!userInput) {

@@ -5,6 +5,7 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = require("vscode");
 const git_1 = require("./git");
+const branchStatus_1 = require("./branchStatus");
 const webview_1 = require("./webview");
 const createBranches_1 = require("./commands/createBranches");
 const prepareDeploy_1 = require("./commands/prepareDeploy");
@@ -35,6 +36,18 @@ function activate(context) {
     statusBarItem.command = 'ricwiz.openJiraTicket';
     context.subscriptions.push(statusBarItem);
     // ─── Git Integration (Auto Commit Message, Webview Update, Status Bar Update) ───
+    /** Exposed so the manual refresh command can trigger an update from outside setupRepo */
+    let forceUpdate;
+    // Initialize auto-refresh from VS Code settings
+    const initialAutoRefresh = vscode.workspace.getConfiguration('ricwiz').get('autoRefresh', true);
+    exports.webviewProvider.setAutoRefresh(initialAutoRefresh);
+    // Keep webview toggle in sync when the user changes the setting via Settings UI
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('ricwiz.autoRefresh')) {
+            const enabled = vscode.workspace.getConfiguration('ricwiz').get('autoRefresh', true);
+            exports.webviewProvider?.setAutoRefresh(enabled);
+        }
+    }));
     async function initGit() {
         const gitExtension = vscode.extensions.getExtension('vscode.git');
         if (gitExtension) {
@@ -48,6 +61,7 @@ function activate(context) {
             git.onDidOpenRepository((repo) => setupRepo(repo));
             function setupRepo(repo) {
                 let lastBranch = '';
+                let updateTimer;
                 async function update() {
                     const workspaceFolders = vscode.workspace.workspaceFolders;
                     if (!workspaceFolders)
@@ -98,56 +112,10 @@ function activate(context) {
                             statusBarItem.text = `$(bookmark) ${ticketId}`;
                             statusBarItem.tooltip = `Branch: ${currentBranch}\nClick to open Jira ticket`;
                             statusBarItem.show();
+                            // Fetch related branches and their merge status in parallel
                             try {
-                                const workspaceFolders = vscode.workspace.workspaceFolders;
-                                if (workspaceFolders) {
-                                    const cwd = workspaceFolders[0].uri.fsPath;
-                                    const { stdout } = await (0, git_1.exec)(`git branch --list "*${ticketId}*"`, { cwd });
-                                    const relatedBranchesRaw = stdout.split('\n')
-                                        .map((b) => b.replace('*', '').trim())
-                                        .filter((b) => b && b !== currentBranch);
-                                    // Determine if sister branches are merged into their target org branch
-                                    for (const rb of relatedBranchesRaw) {
-                                        let isMerged = false;
-                                        for (const env of environments) {
-                                            if (rb.endsWith(`-to-${env.name}`)) {
-                                                try {
-                                                    const logCheck = await (0, git_1.exec)(`git --no-pager log ${rb} --grep="\\b${ticketId}\\b" -i -E -1 --format="%h"`, { cwd }).catch(() => ({ stdout: '' }));
-                                                    if (!logCheck.stdout.trim()) {
-                                                        isMerged = false;
-                                                        break;
-                                                    }
-                                                    const { stdout: revRb } = await (0, git_1.exec)(`git rev-parse ${rb}`, { cwd });
-                                                    let revEnv = '';
-                                                    try {
-                                                        const out = await (0, git_1.exec)(`git rev-parse origin/${env.sourceBranch}`, { cwd });
-                                                        revEnv = out.stdout;
-                                                    }
-                                                    catch {
-                                                        const out = await (0, git_1.exec)(`git rev-parse ${env.sourceBranch}`, { cwd });
-                                                        revEnv = out.stdout;
-                                                    }
-                                                    if (revRb.trim() !== revEnv.trim()) {
-                                                        try {
-                                                            await (0, git_1.exec)(`git merge-base --is-ancestor ${rb} origin/${env.sourceBranch}`, { cwd });
-                                                            isMerged = true;
-                                                        }
-                                                        catch {
-                                                            try {
-                                                                await (0, git_1.exec)(`git merge-base --is-ancestor ${rb} ${env.sourceBranch}`, { cwd });
-                                                                isMerged = true;
-                                                            }
-                                                            catch { }
-                                                        }
-                                                    }
-                                                }
-                                                catch { }
-                                                break;
-                                            }
-                                        }
-                                        relatedBranches.push({ name: rb, isMerged });
-                                    }
-                                }
+                                const relatedBranchNames = await (0, branchStatus_1.findRelatedBranches)(cwd, ticketId, currentBranch);
+                                relatedBranches = await (0, branchStatus_1.getRelatedBranchesStatus)(cwd, relatedBranchNames, ticketId, environments);
                             }
                             catch (e) { }
                         }
@@ -155,88 +123,42 @@ function activate(context) {
                             // Not on a ticket branch — hide status bar
                             statusBarItem.hide();
                             try {
-                                const workspaceFolders = vscode.workspace.workspaceFolders;
-                                if (workspaceFolders) {
-                                    const cwd = workspaceFolders[0].uri.fsPath;
-                                    const { stdout } = await (0, git_1.exec)(`git for-each-ref --sort=-committerdate --format="%(refname:short)" refs/heads/`, { cwd });
-                                    const allBranches = stdout.split('\n').map((b) => b.trim()).filter((b) => b);
-                                    // Match ticket patterns (e.g., SFPSC-11111) but NOT environment branches (-to-Qual)
-                                    const ticketPattern = /^[A-Z]+-\d+$/i;
-                                    recentTickets = allBranches.filter((b) => ticketPattern.test(b)).slice(0, 3);
-                                }
+                                recentTickets = await (0, branchStatus_1.getRecentTickets)(cwd);
                             }
                             catch (e) { }
                         }
-                        // Fetch recent commits for the Git Log
-                        try {
-                            const workspaceFolders = vscode.workspace.workspaceFolders;
-                            if (workspaceFolders) {
-                                const cwd = workspaceFolders[0].uri.fsPath;
-                                const { stdout } = await (0, git_1.exec)(`git log --oneline -10 --format="%h|||%s|||%ar"`, { cwd });
-                                commits = stdout.split('\n')
-                                    .filter((line) => line.trim())
-                                    .map((line) => {
-                                    const parts = line.split('|||');
-                                    return {
-                                        hash: parts[0] || '',
-                                        message: parts.length >= 3 ? parts.slice(1, -1).join('|||') : (parts[1] || ''),
-                                        timeAgo: parts.length >= 3 ? parts[parts.length - 1] : ''
-                                    };
-                                });
-                            }
-                        }
-                        catch (e) { }
-                        let currentBranchIsMerged = false;
-                        for (const env of environments) {
-                            if (currentBranch.endsWith(`-to-${env.name}`)) {
-                                try {
-                                    const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
-                                    const currentTicketId = currentBranch.replace(new RegExp(`-to-${env.name}$`, 'i'), '');
-                                    const logCheck = await (0, git_1.exec)(`git --no-pager log ${currentBranch} --grep="\\b${currentTicketId}\\b" -i -E -1 --format="%h"`, { cwd }).catch(() => ({ stdout: '' }));
-                                    if (!logCheck.stdout.trim()) {
-                                        currentBranchIsMerged = false;
-                                        break;
-                                    }
-                                    const { stdout: revRb } = await (0, git_1.exec)(`git rev-parse ${currentBranch}`, { cwd });
-                                    let revEnv = '';
-                                    try {
-                                        const out = await (0, git_1.exec)(`git rev-parse origin/${env.sourceBranch}`, { cwd });
-                                        revEnv = out.stdout;
-                                    }
-                                    catch {
-                                        const out = await (0, git_1.exec)(`git rev-parse ${env.sourceBranch}`, { cwd });
-                                        revEnv = out.stdout;
-                                    }
-                                    if (revRb.trim() !== revEnv.trim()) {
-                                        try {
-                                            await (0, git_1.exec)(`git merge-base --is-ancestor ${currentBranch} origin/${env.sourceBranch}`, { cwd });
-                                            currentBranchIsMerged = true;
-                                        }
-                                        catch {
-                                            try {
-                                                await (0, git_1.exec)(`git merge-base --is-ancestor ${currentBranch} ${env.sourceBranch}`, { cwd });
-                                                currentBranchIsMerged = true;
-                                            }
-                                            catch { }
-                                        }
-                                    }
-                                }
-                                catch { }
-                                break;
-                            }
-                        }
+                        // Fetch recent commits and current branch merge status in parallel
+                        const [fetchedCommits, currentBranchIsMerged] = await Promise.all([
+                            (0, branchStatus_1.getRecentCommits)(cwd, 10),
+                            (0, branchStatus_1.getCurrentBranchMergeStatus)(cwd, currentBranch, environments)
+                        ]);
+                        commits = fetchedCommits;
                         exports.webviewProvider?.updateBranch(currentBranch, currentBranchIsMerged, relatedBranches, commits, baseBranches, recentTickets);
                     }
                 }
-                update();
-                repo.state.onDidChange(() => {
-                    lastBranch = '';
-                    update();
-                });
-                vscode.window.onDidChangeWindowState(e => {
-                    if (e.focused) {
+                /** Debounced update to avoid git command storms on rapid state changes */
+                function scheduleUpdate() {
+                    if (!exports.webviewProvider?.isAutoRefreshEnabled()) {
+                        return;
+                    }
+                    if (updateTimer) {
+                        clearTimeout(updateTimer);
+                    }
+                    updateTimer = setTimeout(() => {
                         lastBranch = '';
                         update();
+                    }, 300);
+                }
+                /** Expose a way to force a manual refresh from outside this closure */
+                forceUpdate = () => {
+                    lastBranch = '';
+                    update();
+                };
+                update();
+                repo.state.onDidChange(() => scheduleUpdate());
+                vscode.window.onDidChangeWindowState(e => {
+                    if (e.focused) {
+                        scheduleUpdate();
                     }
                 });
             }
@@ -250,6 +172,17 @@ function activate(context) {
         if (data && exports.webviewProvider) {
             exports.webviewProvider.setBlameData(data);
             exports.webviewProvider.setPage('blame');
+        }
+    }), vscode.commands.registerCommand('ricwiz.manualRefresh', () => {
+        if (forceUpdate) {
+            forceUpdate();
+        }
+    }), vscode.commands.registerCommand('ricwiz.toggleAutoRefresh', () => {
+        if (exports.webviewProvider) {
+            const newState = !exports.webviewProvider.isAutoRefreshEnabled();
+            exports.webviewProvider.setAutoRefresh(newState);
+            // Persist to VS Code settings so it survives restarts
+            vscode.workspace.getConfiguration('ricwiz').update('autoRefresh', newState, vscode.ConfigurationTarget.Global);
         }
     }), vscode.commands.registerCommand('ricwiz.openSettings', () => {
         vscode.commands.executeCommand('workbench.action.openSettings', 'ricwiz');

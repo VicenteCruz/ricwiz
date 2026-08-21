@@ -121,6 +121,12 @@ class RicwizWebviewProvider {
                 case 'searchTicket':
                     vscode.commands.executeCommand('ricwiz.searchTicket');
                     break;
+                case 'manualRefresh':
+                    vscode.commands.executeCommand('ricwiz.manualRefresh');
+                    break;
+                case 'toggleAutoRefresh':
+                    vscode.commands.executeCommand('ricwiz.toggleAutoRefresh');
+                    break;
                 case 'openHistory':
                     vscode.commands.executeCommand('ricwiz.openHistory');
                     break;
@@ -151,8 +157,18 @@ class RicwizWebviewProvider {
     recentTicketsCache = [];
     currentPage = 'main';
     blameDataCache = null;
+    autoRefreshEnabled = true;
     setBlameData(data) {
         this.blameDataCache = data;
+    }
+    /** Updates the auto-refresh toggle state and refreshes the view */
+    setAutoRefresh(enabled) {
+        this.autoRefreshEnabled = enabled;
+        this.updateView();
+    }
+    /** Returns whether auto-refresh is currently enabled */
+    isAutoRefreshEnabled() {
+        return this.autoRefreshEnabled;
     }
     setPage(page) {
         this.currentPage = page;
@@ -456,6 +472,15 @@ class RicwizWebviewProvider {
         <body>
             <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
                 <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9;" />
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-bottom: 6px; padding: 0 4px;">
+                <button class="copy-btn" onclick="sendCommand('manualRefresh')" title="Refresh branch status" style="font-size: 13px; padding: 2px 6px; opacity: 0.8;">
+                    🔄
+                </button>
+                <button class="copy-btn" id="autoRefreshToggle" onclick="sendCommand('toggleAutoRefresh')" title="${this.autoRefreshEnabled ? 'Auto-refresh is ON — click to disable' : 'Auto-refresh is OFF — click to enable'}" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; ${this.autoRefreshEnabled ? 'opacity: 0.9; background-color: var(--vscode-button-secondaryBackground);' : 'opacity: 0.5;'}">
+                    ${this.autoRefreshEnabled ? '⚡ Auto' : '⏸️ Auto'}
+                </button>
             </div>
 
             ${currentBranch ?

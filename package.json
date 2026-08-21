@@ -261,6 +261,12 @@
           "type": "number",
           "default": 8,
           "description": "The default number of hours to look back when querying the SetupAuditTrail."
+        },
+        "ricwiz.autoRefresh": {
+          "order": 40,
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh branch status when the repository state changes or the window regains focus. Disable to only refresh manually via the 🔄 button."
         }
       }
     }

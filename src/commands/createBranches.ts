@@ -22,23 +22,28 @@ export async function createBranches(): Promise<void> {
     }
     const { ticketId } = result;
 
-    const createOptions = [
-        { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' },
-        { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' }
-    ];
+    const environments = ctx.environments;
+    let selectedOptionValue = 'all';
 
-    const selectedOption = await vscode.window.showQuickPick(createOptions, {
-        placeHolder: 'What branches do you want to create?',
-        title: 'Ricwiz Branch Creation'
-    });
+    if (environments.length > 0) {
+        const createOptions = [
+            { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' },
+            { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' }
+        ];
 
-    if (!selectedOption) {
-        vscode.window.showInformationMessage('Branch creation cancelled.');
-        return;
+        const selectedOption = await vscode.window.showQuickPick(createOptions, {
+            placeHolder: 'What branches do you want to create?',
+            title: 'Ricwiz Branch Creation'
+        });
+
+        if (!selectedOption) {
+            vscode.window.showInformationMessage('Branch creation cancelled.');
+            return;
+        }
+        selectedOptionValue = selectedOption.value;
     }
 
     const sourceBranchForTicket = ctx.ticketSourceBranch;
-    const environments = ctx.environments;
 
     const mainBranch = ticketId;
 
@@ -85,9 +90,9 @@ export async function createBranches(): Promise<void> {
             }
 
             try {
-                // 1. Create the main branch from the configured source branch (e.g. main)
-                if (selectedOption.value === 'all') {
-                    progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 20 });
+                // 1. Create main ticket branch (if requested)
+                if (selectedOptionValue === 'all') {
+                    progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 10 });
                     if (await checkBranchExists(cwd, mainBranch)) {
                         vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
                         await exec(`git checkout ${mainBranch}`, { cwd });

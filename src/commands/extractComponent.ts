@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, getWorkspaceCwd } from '../git';
+import { exec, getWorkspaceCwd, ricwizLogger } from '../git';
 
 export async function extractComponent(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -12,7 +12,7 @@ export async function extractComponent(): Promise<void> {
         'ApexClass', 'ApexTrigger', 'CustomObject', 'CustomField',
         'LightningComponentBundle', 'AuraDefinitionBundle', 'Flow',
         'CustomLabel', 'CustomMetadata', 'StaticResource',
-        'Profile', 'PermissionSet', 'Layout', 'ValidationRule',
+        'Profile', 'PermissionSet', 'PermissionSetGroup', 'Layout', 'ValidationRule',
         'RecordType', 'ListView', 'Report', 'EmailTemplate', 'Other (Type manually)...'
     ];
 
@@ -45,14 +45,17 @@ export async function extractComponent(): Promise<void> {
         cancellable: true
     }, async (progress, token) => {
         try {
-            // Check if they want to retrieve just one or multiple (if multiple comma separated we handle it)
-            // But usually the syntax is -m Type:Name,Type2:Name2
+            ricwizLogger.show(true); // show without taking focus
             const manifestStr = `${metadataType}:${componentName}`;
-            // Use sf project retrieve start
-            const { stdout } = await exec(`sf project retrieve start -m "${manifestStr}"`, { cwd });
+            const { stdout, stderr } = await exec(`sf project retrieve start -m "${manifestStr}"`, { cwd });
+            if (stdout) ricwizLogger.appendLine(stdout);
+            if (stderr) ricwizLogger.appendLine(stderr);
             vscode.window.showInformationMessage(`Ricwiz: Successfully extracted ${manifestStr}.`);
         } catch (e: any) {
-            vscode.window.showErrorMessage(`Ricwiz: Extraction failed. ${e.message}`);
+            ricwizLogger.appendLine(`ERROR: ${e.message}`);
+            if (e.stdout) ricwizLogger.appendLine(e.stdout);
+            if (e.stderr) ricwizLogger.appendLine(e.stderr);
+            vscode.window.showErrorMessage(`Ricwiz: Extraction failed. See Output channel for details.`);
         }
     });
 }

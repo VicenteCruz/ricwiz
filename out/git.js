@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exec = void 0;
+exports.exec = exports.ricwizLogger = void 0;
 exports.getWorkspaceCwd = getWorkspaceCwd;
 exports.getCurrentBranch = getCurrentBranch;
 exports.resolvePrefix = resolvePrefix;
@@ -12,7 +12,9 @@ const vscode = require("vscode");
 const cp = require("child_process");
 const util = require("util");
 const promisifiedExec = util.promisify(cp.exec);
+exports.ricwizLogger = vscode.window.createOutputChannel("Ricwiz");
 const exec = async (command, options) => {
+    exports.ricwizLogger.appendLine(`[EXEC] ${command}`);
     const result = await promisifiedExec(command, { maxBuffer: 50 * 1024 * 1024, ...options });
     return {
         stdout: result.stdout.toString(),

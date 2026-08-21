@@ -13,7 +13,7 @@ async function extractComponent() {
         'ApexClass', 'ApexTrigger', 'CustomObject', 'CustomField',
         'LightningComponentBundle', 'AuraDefinitionBundle', 'Flow',
         'CustomLabel', 'CustomMetadata', 'StaticResource',
-        'Profile', 'PermissionSet', 'Layout', 'ValidationRule',
+        'Profile', 'PermissionSet', 'PermissionSetGroup', 'Layout', 'ValidationRule',
         'RecordType', 'ListView', 'Report', 'EmailTemplate', 'Other (Type manually)...'
     ];
     let metadataType = await vscode.window.showQuickPick(commonTypes, {
@@ -43,15 +43,22 @@ async function extractComponent() {
         cancellable: true
     }, async (progress, token) => {
         try {
-            // Check if they want to retrieve just one or multiple (if multiple comma separated we handle it)
-            // But usually the syntax is -m Type:Name,Type2:Name2
+            git_1.ricwizLogger.show(true); // show without taking focus
             const manifestStr = `${metadataType}:${componentName}`;
-            // Use sf project retrieve start
-            const { stdout } = await (0, git_1.exec)(`sf project retrieve start -m "${manifestStr}"`, { cwd });
+            const { stdout, stderr } = await (0, git_1.exec)(`sf project retrieve start -m "${manifestStr}"`, { cwd });
+            if (stdout)
+                git_1.ricwizLogger.appendLine(stdout);
+            if (stderr)
+                git_1.ricwizLogger.appendLine(stderr);
             vscode.window.showInformationMessage(`Ricwiz: Successfully extracted ${manifestStr}.`);
         }
         catch (e) {
-            vscode.window.showErrorMessage(`Ricwiz: Extraction failed. ${e.message}`);
+            git_1.ricwizLogger.appendLine(`ERROR: ${e.message}`);
+            if (e.stdout)
+                git_1.ricwizLogger.appendLine(e.stdout);
+            if (e.stderr)
+                git_1.ricwizLogger.appendLine(e.stderr);
+            vscode.window.showErrorMessage(`Ricwiz: Extraction failed. See Output channel for details.`);
         }
     });
 }

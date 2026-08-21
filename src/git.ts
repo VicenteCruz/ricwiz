@@ -3,7 +3,11 @@ import * as cp from 'child_process';
 import * as util from 'util';
 
 const promisifiedExec = util.promisify(cp.exec);
+
+export const ricwizLogger = vscode.window.createOutputChannel("Ricwiz");
+
 export const exec = async (command: string, options?: cp.ExecOptions): Promise<{ stdout: string, stderr: string }> => {
+    ricwizLogger.appendLine(`[EXEC] ${command}`);
     const result = await promisifiedExec(command, { maxBuffer: 50 * 1024 * 1024, ...options });
     return {
         stdout: result.stdout.toString(),

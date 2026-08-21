@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.33",
+  "version": "4.7.34",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -123,7 +123,10 @@
         "ricwiz.workflowStyle": {
           "order": 1,
           "type": "string",
-          "enum": ["standard", "multi-remote"],
+          "enum": [
+            "standard",
+            "multi-remote"
+          ],
           "default": "standard",
           "description": "Defines the branching strategy to use (Standard single-repo vs Multi-Remote)."
         },
@@ -181,19 +184,35 @@
           "items": {
             "type": "object",
             "properties": {
-              "name": { "type": "string" },
-              "workflowStyle": { "type": "string" },
-              "upstreamRemote": { "type": "string" },
-              "originRemote": { "type": "string" },
-              "ticketSourceBranch": { "type": "string" },
-              "ticketPrefix": { "type": "string" },
+              "name": {
+                "type": "string"
+              },
+              "workflowStyle": {
+                "type": "string"
+              },
+              "upstreamRemote": {
+                "type": "string"
+              },
+              "originRemote": {
+                "type": "string"
+              },
+              "ticketSourceBranch": {
+                "type": "string"
+              },
+              "ticketPrefix": {
+                "type": "string"
+              },
               "environments": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "name": { "type": "string" },
-                    "sourceBranch": { "type": "string" }
+                    "name": {
+                      "type": "string"
+                    },
+                    "sourceBranch": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -272,9 +291,10 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run package",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js --production",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
@@ -282,9 +302,8 @@
   "devDependencies": {
     "@types/node": "^18.19.130",
     "@types/vscode": "^1.80.0",
-    "typescript": "^5.1.3"
-  },
-  "dependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^5.1.3",
     "xmlbuilder2": "^4.0.3"
   }
 }

@@ -53,7 +53,7 @@ function activate(context) {
                     if (!workspaceFolders)
                         return;
                     const cwd = workspaceFolders[0].uri.fsPath;
-                    const currentBranch = await getCurrentBranch(cwd);
+                    const currentBranch = await (0, git_1.getCurrentBranch)(cwd);
                     if (currentBranch && currentBranch !== lastBranch) {
                         lastBranch = currentBranch;
                         const config = vscode.workspace.getConfiguration('ricwiz');

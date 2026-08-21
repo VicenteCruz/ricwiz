@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec } from './git';
+import { exec, getCurrentBranch } from './git';
 import { CommitEntry, EnvironmentConfig } from './types';
 import { RicwizWebviewProvider } from './webview';
 import { createBranches } from './commands/createBranches';

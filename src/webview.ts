@@ -499,123 +499,134 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         </head>
         <body>
             <div style="text-align: center; margin-bottom: 12px; margin-top: 8px;">
-                <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9;" />
+                <img src="${logoUri}" alt="Ricwiz Logo" style="width: 80px; height: 80px; opacity: 0.9; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));" />
             </div>
 
-            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-bottom: 6px; padding: 0 4px;">
-                <button class="copy-btn" onclick="sendCommand('manualRefresh')" title="Refresh branch status" style="font-size: 13px; padding: 2px 6px; opacity: 0.8;">
-                    🔄
+            <!-- SETTINGS & DEV TOOLS (Top Level) -->
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button class="btn" style="flex: 1; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" title="Developer Utilities" onclick="sendCommand('openDevTools')">
+                    <span class="icon">🛠️</span> Dev Tools
                 </button>
-                <button class="copy-btn" id="autoRefreshToggle" onclick="sendCommand('toggleAutoRefresh')" title="${this.autoRefreshEnabled ? 'Auto-refresh is ON — click to disable' : 'Auto-refresh is OFF — click to enable'}" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; ${this.autoRefreshEnabled ? 'opacity: 0.9; background-color: var(--vscode-button-secondaryBackground);' : 'opacity: 0.5;'}">
-                    ${this.autoRefreshEnabled ? '⚡ Auto' : '⏸️ Auto'}
+                <button class="btn" style="flex: 1; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" title="Extension Settings" onclick="sendCommand('openSettings')">
+                    <span class="icon">⚙️</span> Settings
                 </button>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding: 0 4px;">
+                <div style="font-size: 11px; font-weight: bold; opacity: 0.8; text-transform: uppercase;">Workspace</div>
+                <div style="display: flex; gap: 4px;">
+                    <button class="copy-btn" onclick="sendCommand('manualRefresh')" title="Refresh branch status" style="font-size: 13px; padding: 2px 6px; opacity: 0.8; border: 1px solid var(--vscode-panel-border);">
+                        🔄
+                    </button>
+                    <button class="copy-btn" id="autoRefreshToggle" onclick="sendCommand('toggleAutoRefresh')" title="${this.autoRefreshEnabled ? 'Auto-refresh is ON — click to disable' : 'Auto-refresh is OFF — click to enable'}" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--vscode-panel-border); ${this.autoRefreshEnabled ? 'opacity: 0.9; background-color: var(--vscode-button-secondaryBackground);' : 'opacity: 0.5;'}">
+                        ${this.autoRefreshEnabled ? '⚡ Auto' : '⏸️ Auto'}
+                    </button>
+                </div>
             </div>
 
             ${currentBranch ? 
-                `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 8px; border-radius: 4px; margin-bottom: 12px; text-align: center;">
-                    <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; text-transform: uppercase;">
                         Current Ticket / Branch
                         <button class="copy-btn" onclick="sendCommand('copyBranch')" title="Copy branch name to clipboard">📋</button>
                     </div>
-                    <div style="font-weight: bold; font-size: 13px; word-break: break-all;">
-                        ${escapeHtml(currentBranch)} ${this.currentBranchIsMergedCache ? '<span style="margin-left: 4px;" title="Merged to target env">✅</span>' : ''}
+                    <div style="font-weight: bold; font-size: 14px; word-break: break-all; text-align: center; color: var(--vscode-textLink-foreground);">
+                        ${escapeHtml(currentBranch)} ${this.currentBranchIsMergedCache ? '<span style="margin-left: 4px; background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                     </div>
                     ${relatedBranches.length > 0 ? `
-                        <div style="margin-top: 8px; border-top: 1px solid var(--vscode-panel-border); padding-top: 8px;">
-                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Sister Branches</div>
+                        <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
+                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${relatedBranches.map(b => `
-                                    <div class="btn" style="padding: 4px; font-size: 11px; justify-content: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCheckoutCommand('${escapeHtml(b.name)}', this)" title="Checkout ${escapeHtml(b.name)}">
-                                        ${escapeHtml(b.name)} ${b.isMerged ? '<span style="margin-left: 4px;" title="Merged to target env">✅</span>' : ''}
+                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}', this)" title="Checkout ${escapeHtml(b.name)}">
+                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name.split('-to-').pop() || b.name)}</span>
+                                        ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                     ` : (recentTickets.length > 0 ? `
-                        <div style="margin-top: 8px; border-top: 1px solid var(--vscode-panel-border); padding-top: 8px;">
-                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px;">Recent Tickets</div>
+                        <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
+                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Recent Tickets</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${recentTickets.map(b => `
-                                    <div class="btn" style="padding: 4px; font-size: 11px; justify-content: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                                    <div class="btn" style="padding: 4px; font-size: 11px; justify-content: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
                                         ${escapeHtml(b)}
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                     ` : '')}
-                    <div style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-end;">
-                        <button class="btn" style="width: auto; padding: 4px 6px; font-size: 11px; opacity: 0.8; border: 1px solid var(--vscode-panel-border);" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
-                            <span class="icon" style="font-size: 12px; margin-right: 2px;">🔍</span> Search
+                    <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: center;">
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
+                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🔍</span> Search
                         </button>
-                        <button class="btn" style="width: auto; padding: 4px 6px; font-size: 11px; opacity: 0.8; border: 1px solid var(--vscode-panel-border);" onclick="sendCommand('openHistory')" title="View recent branches history">
-                            <span class="icon" style="font-size: 12px; margin-right: 2px;">🕰️</span> History
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCommand('openHistory')" title="View recent branches history">
+                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🕰️</span> History
                         </button>
                     </div>
                 </div>` : ''
             }
 
             ${baseBranches.length > 0 ? `
-                <div style="display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center;">
+                <div style="display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center;">
                     ${baseBranches.map(b => `
-                        <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border);" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                        <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: 1px solid var(--vscode-panel-border); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
                             ${escapeHtml(b.toUpperCase())}
                         </button>
                     `).join('')}
                 </div>
             ` : ''}
 
-            <button class="btn" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
-                <span class="icon">🌿</span> Create Branches
-            </button>
-
-            <button class="btn" title="Sync environments and merge ticket" onclick="sendCommand('prepareDeploy')">
-                <span class="icon">🔀</span> Prepare Deploy
-            </button>
-
-            <div style="display: flex; gap: 4px;">
-                <button class="btn" style="flex: 1;" title="Opens Merge Request pages in Browser" onclick="sendCommand('openMRs')">
-                    <span class="icon">🚀</span> Open MRs
+            <!-- PRIMARY ACTIONS CARD -->
+            <div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 10px; opacity: 0.7; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; text-align: center;">Ticket Workflow</div>
+                
+                <button class="btn" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); font-weight: bold; justify-content: center; margin-bottom: 6px; border-radius: 4px; padding: 8px;" title="Generates the main and environment branches" onclick="sendCommand('createBranches')">
+                    <span class="icon">🌿</span> Create Branches
                 </button>
-                <button class="btn" style="width: auto; padding: 6px 8px; font-weight: bold; justify-content: center;" title="Open MRs in VS Code" onclick="sendCommand('openMRsVSCode')">
-                    VS
+
+                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); justify-content: center; margin-bottom: 6px; border-radius: 4px;" title="Sync environments and merge ticket" onclick="sendCommand('prepareDeploy')">
+                    <span class="icon">🔀</span> Prepare Deploy
                 </button>
+
+                <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); justify-content: center; border-radius: 4px;" title="Opens Merge Request pages in Browser" onclick="sendCommand('openMRs')">
+                        <span class="icon">🚀</span> Open MRs
+                    </button>
+                    <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open MRs in VS Code" onclick="sendCommand('openMRsVSCode')">
+                        VS
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 4px;">
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); justify-content: center; border-radius: 4px;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
+                        <span class="icon">🎫</span> Open Jira
+                    </button>
+                    <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira in VS Code" onclick="sendCommand('openJiraVSCode')">
+                        VS
+                    </button>
+                </div>
             </div>
 
-            <div style="display: flex; gap: 4px;">
-                <button class="btn" style="flex: 1;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
-                    <span class="icon">🎫</span> Open Jira Ticket
+            <!-- SECONDARY ACTIONS CARD -->
+            <div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size: 10px; opacity: 0.7; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; text-align: center;">Git Operations</div>
+                
+                <button class="btn" style="margin-bottom: 6px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Fetch and pull all branches of the current ticket" onclick="sendCommand('syncAll')">
+                    <span class="icon">🔄</span> Sync All
                 </button>
-                <button class="btn" style="width: auto; padding: 6px 8px; font-weight: bold; justify-content: center;" title="Open Jira in VS Code" onclick="sendCommand('openJiraVSCode')">
-                    VS
+
+                <button class="btn" style="margin-bottom: 6px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Merge latest team changes from origin base into environment branches" onclick="sendCommand('updateBases')">
+                    <span class="icon">⏬</span> Update from Base
+                </button>
+
+                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Delete all branches of a ticket (local and remote)" onclick="sendCommand('deleteUnused')">
+                    <span class="icon">🗑️</span> Delete Unused Branches
                 </button>
             </div>
-
-            <div class="separator"></div>
-
-            <button class="btn" title="Fetch and pull all branches of the current ticket" onclick="sendCommand('syncAll')">
-                <span class="icon">🔄</span> Sync All
-            </button>
-
-            <button class="btn" title="Merge latest team changes from origin base into environment branches" onclick="sendCommand('updateBases')">
-                <span class="icon">⏬</span> Update from Base
-            </button>
-
-            <button class="btn" title="Delete all branches of a ticket (local and remote)" onclick="sendCommand('deleteUnused')">
-                <span class="icon">🗑️</span> Delete Unused Branches
-            </button>
 
             ${commitsHtml}
-
-            <div class="separator"></div>
-
-            <div style="display: flex; gap: 4px;">
-                <button class="btn" style="flex: 1; opacity: 0.8;" title="Extension Settings" onclick="sendCommand('openSettings')">
-                    <span class="icon">⚙️</span> Settings
-                </button>
-                <button class="btn" style="flex: 1; opacity: 0.8;" title="Developer Utilities" onclick="sendCommand('openDevTools')">
-                    <span class="icon">🛠️</span> Dev Tools
-                </button>
-            </div>
             
             <script>
                 const vscode = acquireVsCodeApi();
@@ -635,4 +646,3 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         </html>`;
     }
 }
-

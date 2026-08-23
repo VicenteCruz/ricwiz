@@ -310,6 +310,20 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     opacity: 1;
                     background-color: var(--vscode-list-hoverBackground);
                 }
+                .icon-button {
+                    background: transparent;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--vscode-foreground);
+                    padding: 4px;
+                    border-radius: 4px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .icon-button:hover {
+                    background: var(--vscode-list-hoverBackground);
+                }
             </style>
         `;
 
@@ -494,7 +508,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" style="font-weight: bold; font-size: 16px;" title="Back">&larr;</button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" style="font-weight: bold; font-size: 16px;" title="Back">⬅️</button>
                     <span style="font-weight: 600; font-size: 13px;">${ticketId} Details</span>
                 </div>
                 
@@ -514,6 +528,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 </div>
                 </div>
 
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    function sendCommand(cmd, args) {
+                        vscode.postMessage({ command: cmd, args: args });
+                    }
                 </script>
             </body>
             </html>`;
@@ -575,23 +594,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         width: 100%;
                         font-family: var(--vscode-font-family);
                     }
-                    .icon-button {
-                        color: var(--vscode-foreground);
-                        background: transparent;
-                        border: none;
-                        cursor: pointer;
-                        color: var(--vscode-foreground);
-                        padding: 4px;
-                        border-radius: 4px;
-                    }
-                    .icon-button:hover {
-                        background: var(--vscode-list-hoverBackground);
-                    }
                 </style>
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" style="font-weight: bold; font-size: 16px;" title="Back">&larr;</button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" style="font-weight: bold; font-size: 16px;" title="Back">⬅️</button>
                     <span style="font-weight: 600; font-size: 13px; flex: 1;">Ticket Dashboard</span>
                     <button class="icon-button" onclick="sendCommand('refreshDashboard')" title="Refresh">🔄</button>
                 </div>

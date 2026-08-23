@@ -145,7 +145,7 @@ export interface JiraSearchResult {
 }
 
 export async function searchJira(jql: string): Promise<JiraSearchResult[]> {
-    const json = await jiraRequest<any>('POST', '/rest/api/3/search', {
+    const json = await jiraRequest<any>('POST', '/rest/api/3/search/jql', {
         jql,
         maxResults: 50,
         fields: ['summary', 'status', 'assignee']

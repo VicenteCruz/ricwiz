@@ -21,8 +21,8 @@ export async function setGitlabTokenCommand(): Promise<void> {
             try {
                 // Try to infer base URL from git remote, default to gitlab.com if not inside a repo
                 const config = vscode.workspace.getConfiguration('ricwiz');
-                let webUrl = config.get<string>('gitlabUrlOverride', 'https://gitlab.com');
-                if (vscode.workspace.workspaceFolders) {
+                let webUrl = config.get<string>('gitlabUrlOverride', '').trim();
+                if (!webUrl && vscode.workspace.workspaceFolders) {
                     try {
                         const { exec } = require('../git');
                         const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
@@ -32,6 +32,10 @@ export async function setGitlabTokenCommand(): Promise<void> {
                         if (remoteUrl.endsWith('.git')) remoteUrl = remoteUrl.slice(0, -4);
                         webUrl = remoteUrl;
                     } catch (e) {}
+                }
+                
+                if (!webUrl) {
+                    webUrl = 'https://gitlab.com';
                 }
                 
                 const urlObj = new URL(webUrl);

@@ -45,6 +45,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'openMRsVSCode':
                     vscode.commands.executeCommand('ricwiz.createMergeRequestsVSCode');
                     break;
+                case 'openExternal':
+                    if (data.args) {
+                        vscode.env.openExternal(vscode.Uri.parse(data.args));
+                    }
+                    break;
                 case 'openJira':
                     vscode.commands.executeCommand('ricwiz.openJiraTicket');
                     break;
@@ -780,7 +785,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                             ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 10px;">${pipelineIcon}</span>` : ''}
                                         </div>
                                         <div style="display: flex; gap: 4px; align-items: center;">
-                                            ${b.mrUrl ? `<a href="${b.mrUrl}" onclick="event.stopPropagation();" title="Open Merge Request" style="text-decoration: none; font-size: 10px;">🔗</a>` : ''}
+                                            ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">🔗</span>` : ''}
                                             ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                                         </div>
                                     </div>

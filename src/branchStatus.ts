@@ -154,8 +154,25 @@ export async function getRecentTickets(cwd: string, limit: number = 3): Promise<
  * @returns Array of matching branch names
  */
 export async function findRelatedBranches(cwd: string, ticketId: string, currentBranch: string): Promise<string[]> {
-    const { stdout } = await exec(`git branch --list "*${ticketId}*"`, { cwd });
-    return stdout.split('\n')
-        .map((b: string) => b.replace('*', '').trim())
-        .filter((b: string) => b && b !== currentBranch);
+    const { stdout } = await exec(`git branch --all --list "*${ticketId}*"`, { cwd });
+    
+    const branches = new Set<string>();
+    
+    stdout.split('\n').forEach((b: string) => {
+        let cleanName = b.replace('*', '').trim();
+        if (!cleanName) return;
+        
+        if (cleanName.startsWith('remotes/')) {
+            const parts = cleanName.split('/');
+            if (parts.length > 2) {
+                cleanName = parts.slice(2).join('/');
+            }
+        }
+        
+        if (cleanName && cleanName !== currentBranch && !cleanName.includes('HEAD')) {
+            branches.add(cleanName);
+        }
+    });
+
+    return Array.from(branches);
 }

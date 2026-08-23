@@ -69,6 +69,7 @@ async function gitlabRequest<T>(cwd: string, method: string, path: string): Prom
     return new Promise((resolve, reject) => {
         const req = https.request(url, {
             method,
+            timeout: 5000,
             headers: {
                 'PRIVATE-TOKEN': token,
                 'Accept': 'application/json'
@@ -90,6 +91,11 @@ async function gitlabRequest<T>(cwd: string, method: string, path: string): Prom
             });
         });
 
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('GitLab request timed out'));
+        });
+        
         req.on('error', (e) => reject(new Error(`Network error: ${e.message}`)));
         req.end();
     });

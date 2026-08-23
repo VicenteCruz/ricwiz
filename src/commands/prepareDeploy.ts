@@ -38,9 +38,8 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
 
-    // Get default reviewers from settings
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const defaultReviewers = config.get<string>('defaultReviewers', '');
+    // Get default reviewers from settings or active profile
+    const defaultReviewers = ctx.getConfig<string>('defaultReviewers', '');
 
     // Try to get already saved reviewers for this specific branch
     let currentSavedReviewers = '';

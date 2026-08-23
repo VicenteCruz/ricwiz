@@ -5,12 +5,7 @@ import { EnvironmentConfig } from '../types';
 
 export interface WorkflowProfile {
     name: string;
-    workflowStyle?: string;
-    upstreamRemote?: string;
-    originRemote?: string;
-    ticketSourceBranch?: string;
-    ticketPrefix?: string;
-    environments?: EnvironmentConfig[];
+    [key: string]: any; // Allow arbitrary property overrides (like defaultReviewers, jiraUrl, etc)
 }
 
 export class WorkflowContext {
@@ -23,8 +18,10 @@ export class WorkflowContext {
     
     // Original configuration without overrides
     private static baseConfig = vscode.workspace.getConfiguration('ricwiz');
+    private activeProfile?: WorkflowProfile;
 
     private constructor(profile?: WorkflowProfile) {
+        this.activeProfile = profile;
         const config = WorkflowContext.baseConfig;
         
         this.style = profile?.workflowStyle || config.get<string>('workflowStyle', 'standard');
@@ -46,6 +43,16 @@ export class WorkflowContext {
             { name: 'Prod', sourceBranch: 'main' }
         ];
         this.environments = profile?.environments || config.get<EnvironmentConfig[]>('environments', defaultEnv);
+    }
+
+    /**
+     * Gets a configuration value, prioritizing the active profile override, then global settings, then default.
+     */
+    public getConfig<T>(key: string, defaultValue: T): T {
+        if (this.activeProfile && this.activeProfile[key] !== undefined) {
+            return this.activeProfile[key] as T;
+        }
+        return WorkflowContext.baseConfig.get<T>(key, defaultValue);
     }
 
     public static async initialize(cwd: string): Promise<WorkflowContext | undefined> {

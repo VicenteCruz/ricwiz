@@ -116,7 +116,9 @@
 
                 <script>
                     const vscode = acquireVsCodeApi();
-                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                    function sendCommand(cmd, args) {
+                    vscode.postMessage({ command: cmd, args: args });
+                }
                     function sendOpenFileCommand(file) { vscode.postMessage({ command: 'openFile', file: file }); }
                 </script>
             </body>
@@ -130,7 +132,7 @@
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="btn" style="width: auto; padding: 4px 8px; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCommand('openDevTools')">\u2B05\uFE0F Back</button>
+                    <button class="btn" style="width: auto; padding: 4px 8px; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCommand('openDevTools')">\u2190 Back</button>
                     <div style="font-weight: bold; font-size: 13px; flex: 1; text-align: center;">Who to Blame</div>
                 </div>
 
@@ -198,7 +200,9 @@
 
                 <script>
                     const vscode = acquireVsCodeApi();
-                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                    function sendCommand(cmd, args) {
+                    vscode.postMessage({ command: cmd, args: args });
+                }
                 </script>
             </body>
             </html>`}if(f==="jira"){let o=this.jiraDataCache,n=o?.ticketId||"Jira",d=o?.summary||"No Title",c=o?.description||"No description provided.";return`<!DOCTYPE html>
@@ -229,7 +233,7 @@
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">\u2B05\uFE0F</button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">\u2190</button>
                     <span style="font-weight: 600; font-size: 13px;">${n} Details</span>
                 </div>
                 
@@ -315,7 +319,7 @@
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">\u2B05\uFE0F</button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">\u2190</button>
                     <span style="font-weight: 600; font-size: 13px; flex: 1;">Ticket Dashboard</span>
                     <button class="icon-button" onclick="sendCommand('refreshDashboard')" title="Refresh">\u{1F504}</button>
                 </div>
@@ -351,7 +355,7 @@
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="btn" style="width: auto; padding: 4px 8px; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCommand('openMain')">\u2B05\uFE0F Back</button>
+                    <button class="btn" style="width: auto; padding: 4px 8px; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);" onclick="sendCommand('openMain')">\u2190 Back</button>
                     <div style="font-weight: bold; font-size: 13px; flex: 1; text-align: center;">Developer Utilities</div>
                 </div>
 
@@ -405,7 +409,9 @@
                 
                 <script>
                     const vscode = acquireVsCodeApi();
-                    function sendCommand(cmd) { vscode.postMessage({ command: cmd }); }
+                    function sendCommand(cmd, args) {
+                    vscode.postMessage({ command: cmd, args: args });
+                }
                 </script>
             </body>
             </html>`:`<!DOCTYPE html>
@@ -552,8 +558,8 @@
             
             <script>
                 const vscode = acquireVsCodeApi();
-                function sendCommand(cmd) {
-                    vscode.postMessage({ command: cmd });
+                function sendCommand(cmd, args) {
+                    vscode.postMessage({ command: cmd, args: args });
                 }
                 function sendCheckoutCommand(branchName, element) {
                     if (element) {

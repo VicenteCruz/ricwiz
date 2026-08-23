@@ -107,8 +107,8 @@ async function gitlabRequest<T>(cwd: string, method: string, path: string): Prom
 const mrCache = new Map<string, { data: GitLabMRStatus, timestamp: number }>();
 const CACHE_TTL = 30 * 1000; // 30 seconds
 
-export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch: string): Promise<GitLabMRStatus | null> {
-    const cacheKey = `${cwd}:${sourceBranch}:${targetBranch}`;
+export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string): Promise<GitLabMRStatus | null> {
+    const cacheKey = `${cwd}:${sourceBranch}:${targetBranch || 'any'}`;
     const cached = mrCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         return cached.data;
@@ -116,8 +116,11 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
 
     try {
         const { projectPath } = await getGitlabAuthAndBaseUrl(cwd);
-        // We query MRs where source_branch = sourceBranch and target_branch = targetBranch
-        const path = `/api/v4/projects/${projectPath}/merge_requests?source_branch=${encodeURIComponent(sourceBranch)}&target_branch=${encodeURIComponent(targetBranch)}&order_by=updated_at&sort=desc`;
+        // We query MRs where source_branch = sourceBranch and optionally target_branch = targetBranch
+        let path = `/api/v4/projects/${projectPath}/merge_requests?source_branch=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
+        if (targetBranch) {
+            path += `&target_branch=${encodeURIComponent(targetBranch)}`;
+        }
         
         const mrs = await gitlabRequest<any[]>(cwd, 'GET', path);
         if (mrs && mrs.length > 0) {

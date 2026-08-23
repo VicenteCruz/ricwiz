@@ -40,12 +40,12 @@ export async function getRelatedBranchesStatus(
     const results = await Promise.all(
         branches.map(async (branch): Promise<RelatedBranch> => {
             const env = findMatchingEnv(branch, environments);
-            if (!env) {
-                return { name: branch, isMerged: false };
-            }
 
             if (hasGitlab) {
-                const mrStatus = await fetchMergeRequestStatus(cwd, branch, env.sourceBranch);
+                // If it's a deploy branch, we know exactly what target branch to look for.
+                // If it's the main branch, we just look for any MR originating from it.
+                const targetBranch = env ? env.sourceBranch : undefined;
+                const mrStatus = await fetchMergeRequestStatus(cwd, branch, targetBranch);
                 if (mrStatus) {
                     return { 
                         name: branch, 

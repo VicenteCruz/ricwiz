@@ -48,6 +48,15 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'showJiraDetails':
                     vscode.commands.executeCommand('ricwiz.showJiraDetails');
                     break;
+                case 'changeJiraStatus':
+                    vscode.commands.executeCommand('ricwiz.changeJiraStatus');
+                    break;
+                case 'addJiraComment':
+                    vscode.commands.executeCommand('ricwiz.addJiraComment');
+                    break;
+                case 'setPage':
+                    this.setPage(data.args);
+                    break;
                 case 'openJiraVSCode':
                     vscode.commands.executeCommand('ricwiz.openJiraTicketVSCode');
                     break;
@@ -459,13 +468,21 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">dY! </button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">⬅️</button>
                     <span style="font-weight: 600; font-size: 13px;">${ticketId} Details</span>
                 </div>
                 
                 <div class="card" style="padding: 16px;">
                     <div class="jira-title">${escapeHtml(summary)}</div>
                     <div class="jira-desc">${escapeHtml(desc)}</div>
+                <div style="display: flex; gap: 4px; margin-top: 16px;">
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('changeJiraStatus')">
+                        <span class="icon">🔄</span> Change Status
+                    </button>
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('addJiraComment')">
+                        <span class="icon">💬</span> Add Comment
+                    </button>
+                </div>
                 </div>
 
                 <script>

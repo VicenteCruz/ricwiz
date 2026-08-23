@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.8.2",
+  "version": "4.8.3",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -35,6 +35,14 @@
       {
         "command": "ricwiz.showJiraDetails",
         "title": "Ricwiz: Show Jira Details"
+      },
+      {
+        "command": "ricwiz.changeJiraStatus",
+        "title": "Ricwiz: Change Jira Status"
+      },
+      {
+        "command": "ricwiz.addJiraComment",
+        "title": "Ricwiz: Add Jira Comment"
       },
       {
         "command": "ricwiz.generateDestructiveChanges",

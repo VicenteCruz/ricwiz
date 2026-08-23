@@ -11,121 +11,6 @@ export interface RelatedBranch {
 }
 
 /**
- * Creates a ref-resolution cache that avoids calling `git rev-parse` multiple
- * times for the same ref within a single update cycle.
- */
-function createRefCache() {
-    const cache = new Map<string, Promise<string>>();
-
-    /**
-     * Resolves a git ref to its SHA, returning a cached promise if available.
-     * Tries `origin/<ref>` first, falls back to `<ref>`.
-     */
-    function resolveEnvRef(cwd: string, sourceBranch: string): Promise<string> {
-        const key = sourceBranch;
-        const cached = cache.get(key);
-        if (cached) {
-            return cached;
-        }
-
-        const promise = (async () => {
-            try {
-                const { stdout } = await exec(`git rev-parse origin/${sourceBranch}`, { cwd });
-                return stdout.trim();
-            } catch {
-                const { stdout } = await exec(`git rev-parse ${sourceBranch}`, { cwd });
-                return stdout.trim();
-            }
-        })();
-
-        cache.set(key, promise);
-        return promise;
-    }
-
-    /**
-     * Resolves the SHA of a specific branch ref.
-     */
-    function resolveBranchRef(cwd: string, branch: string): Promise<string> {
-        const key = `branch:${branch}`;
-        const cached = cache.get(key);
-        if (cached) {
-            return cached;
-        }
-
-        const promise = (async () => {
-            const { stdout } = await exec(`git rev-parse ${branch}`, { cwd });
-            return stdout.trim();
-        })();
-
-        cache.set(key, promise);
-        return promise;
-    }
-
-    return { resolveEnvRef, resolveBranchRef };
-}
-
-/**
- * Checks whether a branch has been merged into its target environment branch.
- *
- * The check involves:
- * 1. Verifying the branch has a commit mentioning the ticket ID (via git log)
- * 2. Comparing SHAs — if identical, the branch tip is the env tip (merged)
- * 3. Using `git merge-base --is-ancestor` to confirm ancestry
- *
- * @param cwd - The workspace directory
- * @param branch - The branch to check (e.g., "SFPSC-1234-to-Qual")
- * @param ticketId - The ticket ID to grep for in commit messages
- * @param env - The target environment config
- * @param refCache - A ref cache to avoid duplicate rev-parse calls
- * @returns true if the branch is merged into the environment
- */
-async function checkBranchMergeStatus(
-    cwd: string,
-    branch: string,
-    ticketId: string,
-    env: EnvironmentConfig,
-    refCache: ReturnType<typeof createRefCache>
-): Promise<boolean> {
-    try {
-        // 1. Check if the branch has commits mentioning this ticket
-        const logCheck = await exec(
-            `git --no-pager log ${branch} --grep="\\\\b${ticketId}\\\\b" -i -E -1 --format="%h"`,
-            { cwd }
-        ).catch(() => ({ stdout: '', stderr: '' }));
-
-        if (!logCheck.stdout.trim()) {
-            return false;
-        }
-
-        // 2. Compare branch SHA vs environment SHA
-        const [branchSha, envSha] = await Promise.all([
-            refCache.resolveBranchRef(cwd, branch),
-            refCache.resolveEnvRef(cwd, env.sourceBranch)
-        ]);
-
-        if (branchSha === envSha) {
-            // Same commit — branch tip is the env tip, consider not merged (same as original logic)
-            return false;
-        }
-
-        // 3. Check ancestry: is the branch an ancestor of the env branch?
-        try {
-            await exec(`git merge-base --is-ancestor ${branch} origin/${env.sourceBranch}`, { cwd });
-            return true;
-        } catch {
-            try {
-                await exec(`git merge-base --is-ancestor ${branch} ${env.sourceBranch}`, { cwd });
-                return true;
-            } catch {
-                return false;
-            }
-        }
-    } catch {
-        return false;
-    }
-}
-
-/**
  * Finds the matching environment for a `-to-<EnvName>` style branch.
  * Returns undefined if the branch doesn't match any environment.
  */
@@ -134,18 +19,13 @@ function findMatchingEnv(branch: string, environments: EnvironmentConfig[]): Env
 }
 
 /**
- * Collects merge status for all related branches in parallel.
- *
- * For each branch that matches a `-to-<Env>` pattern, checks whether it has
- * been merged into the corresponding environment. Branches that don't match
- * any environment are marked as not merged.
- *
- * Uses a shared ref cache so that `rev-parse` for the same environment ref
- * (e.g., `origin/quality`) is only executed once across all branches.
+ * Collects merge status for all related branches in parallel using GitLab API.
+ * Branches that don't match any environment are marked as not merged.
+ * If no GitLab token is configured, no merge status will be retrieved.
  *
  * @param cwd - The workspace directory
  * @param branches - Array of related branch names
- * @param ticketId - The ticket ID to verify in commit messages
+ * @param ticketId - The ticket ID (unused now, kept for signature compatibility)
  * @param environments - The configured environments
  * @returns Array of RelatedBranch objects with merge status
  */
@@ -155,8 +35,6 @@ export async function getRelatedBranchesStatus(
     ticketId: string,
     environments: EnvironmentConfig[]
 ): Promise<RelatedBranch[]> {
-    const refCache = createRefCache();
-
     const hasGitlab = await hasGitlabToken();
 
     const results = await Promise.all(
@@ -178,8 +56,7 @@ export async function getRelatedBranchesStatus(
                 }
             }
 
-            const isMerged = await checkBranchMergeStatus(cwd, branch, ticketId, env, refCache);
-            return { name: branch, isMerged };
+            return { name: branch, isMerged: false };
         })
     );
 
@@ -205,8 +82,6 @@ export async function getCurrentBranchMergeStatus(
         return false;
     }
 
-    const currentTicketId = currentBranch.replace(new RegExp(`-to-${env.name}$`, 'i'), '');
-    
     if (await hasGitlabToken()) {
         const mrStatus = await fetchMergeRequestStatus(cwd, currentBranch, env.sourceBranch);
         if (mrStatus) {
@@ -214,8 +89,7 @@ export async function getCurrentBranchMergeStatus(
         }
     }
 
-    const refCache = createRefCache();
-    return checkBranchMergeStatus(cwd, currentBranch, currentTicketId, env, refCache);
+    return false;
 }
 
 /**

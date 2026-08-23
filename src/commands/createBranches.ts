@@ -12,7 +12,7 @@ export async function createBranches(): Promise<void> {
         return;
     }
 
-    const ctx = await WorkflowContext.initialize(cwd);
+    const ctx = await WorkflowContext.initialize(cwd, { forcePrompt: true });
     if (!ctx) return;
 
     const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix });
@@ -25,23 +25,22 @@ export async function createBranches(): Promise<void> {
     const environments = ctx.environments;
     let selectedOptionValue = 'all';
 
-    if (environments.length > 0) {
-        const createOptions = [
-            { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' },
-            { label: 'Create Main Branch Only', description: 'Creates only the main ticket branch (skips environments)', value: 'mainOnly' },
-            { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' }
-        ];
+    const quickPickOptions: vscode.QuickPickItem[] = [
+        { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' } as any,
+        { label: 'Create Main Branch Only', description: 'Creates only the main ticket branch (skips environments)', value: 'mainOnly' } as any,
+        { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' } as any
+    ];
 
-        const selectedOption = await vscode.window.showQuickPick(createOptions, {
-            placeHolder: 'What branches do you want to create?',
-            title: 'Ricwiz Branch Creation'
+    if (environments.length > 0) {
+        const selectedOption = await vscode.window.showQuickPick(quickPickOptions, {
+            placeHolder: 'Ricwiz: What do you want to create?',
+            ignoreFocusOut: true
         });
 
         if (!selectedOption) {
-            vscode.window.showInformationMessage('Branch creation cancelled.');
             return;
         }
-        selectedOptionValue = selectedOption.value;
+        selectedOptionValue = (selectedOption as any).value;
     }
 
     let sourceBranchForTicket = ctx.ticketSourceBranch;
@@ -55,59 +54,39 @@ export async function createBranches(): Promise<void> {
             branches = [...new Set(branches)];
         } catch(e) {}
 
-        const userInput = await new Promise<string | undefined>((resolve) => {
-            const quickPick = vscode.window.createQuickPick();
-            quickPick.title = 'Ricwiz: Ticket Source Branch';
-            quickPick.placeholder = 'Confirm or change the source branch for this ticket';
-            quickPick.value = ctx.ticketSourceBranch;
-            quickPick.ignoreFocusOut = true;
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.title = 'Ricwiz: Ticket Source Branch';
+        quickPick.placeholder = 'Confirm or change the source branch for this ticket';
+        quickPick.value = ctx.ticketSourceBranch;
+        quickPick.ignoreFocusOut = true;
+        
+        const updateItems = () => {
+            const val = quickPick.value.trim();
+            const items: vscode.QuickPickItem[] = [];
             
-            const updateItems = () => {
-                const val = quickPick.value.trim();
-                const items: vscode.QuickPickItem[] = [];
-                
-                if (val) {
-                    items.push({
-                        label: val,
-                        description: 'Use typed branch'
-                    });
-                }
-                
-                branches.forEach(b => {
-                    if (b === val) return;
-                    if (!val || b.toLowerCase().includes(val.toLowerCase())) {
-                        items.push({
-                            label: b,
-                            description: b.startsWith('origin/') || b.includes('/') ? 'Remote branch' : 'Local branch'
-                        });
-                    }
+            if (val) {
+                items.push({
+                    label: val,
+                    description: 'Use typed branch'
                 });
-                
-                quickPick.items = items;
-            };
+            }
+            items.push(...branches.map(b => ({ label: b })));
+            quickPick.items = items;
+        };
 
-            quickPick.onDidChangeValue(() => updateItems());
-            
+        quickPick.onDidChangeValue(updateItems);
+        updateItems();
+
+        const userInput = await new Promise<string | undefined>(resolve => {
             quickPick.onDidAccept(() => {
-                const selection = quickPick.selectedItems[0];
-                if (selection) {
-                    quickPick.hide();
-                    resolve(selection.label);
-                } else if (quickPick.value.trim()) {
-                    quickPick.hide();
-                    resolve(quickPick.value.trim());
-                }
+                const selected = quickPick.selectedItems[0];
+                resolve(selected ? selected.label : quickPick.value);
+                quickPick.hide();
             });
-
-            quickPick.onDidHide(() => {
-                quickPick.dispose();
-                resolve(undefined);
-            });
-
-            updateItems();
+            quickPick.onDidHide(() => resolve(undefined));
             quickPick.show();
         });
-        
+
         if (!userInput) {
             vscode.window.showInformationMessage('Branch creation cancelled.');
             return;
@@ -189,6 +168,10 @@ export async function createBranches(): Promise<void> {
                     // so that the Merge Request command knows exactly where it came from!
                     try {
                         await exec(`git config branch.${mainBranch}.ricwiz-source "${sourceBranchForTicket}"`, { cwd });
+                        
+                        if (ctx.profileName) {
+                            await exec(`git config branch.${mainBranch}.ricwiz-profile "${ctx.profileName}"`, { cwd });
+                        }
                     } catch(e) {}
                 }
 

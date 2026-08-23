@@ -19,9 +19,11 @@ export class WorkflowContext {
     // Original configuration without overrides
     private static baseConfig = vscode.workspace.getConfiguration('ricwiz');
     private activeProfile?: WorkflowProfile;
+    public readonly profileName?: string;
 
     private constructor(profile?: WorkflowProfile) {
         this.activeProfile = profile;
+        this.profileName = profile?.name;
         const config = WorkflowContext.baseConfig;
         
         this.style = profile?.workflowStyle || config.get<string>('workflowStyle', 'standard');
@@ -55,7 +57,7 @@ export class WorkflowContext {
         return WorkflowContext.baseConfig.get<T>(key, defaultValue);
     }
 
-    public static async initialize(cwd: string): Promise<WorkflowContext | undefined> {
+    public static async initialize(cwd: string, options?: { forcePrompt?: boolean }): Promise<WorkflowContext | undefined> {
         let profiles: WorkflowProfile[] = WorkflowContext.baseConfig.get<WorkflowProfile[]>('profiles', []);
 
         // Also check ricwiz.json as a fallback
@@ -73,6 +75,29 @@ export class WorkflowContext {
         }
 
         if (profiles.length > 0) {
+            // Try to auto-detect saved profile for the current branch
+            if (!options?.forcePrompt) {
+                try {
+                    const { exec } = require('../git');
+                    const { stdout: branchOut } = await exec('git branch --show-current', { cwd });
+                    const currentBranch = branchOut.trim();
+                    let ticketId = currentBranch;
+                    if (currentBranch.includes('-to-')) {
+                        ticketId = currentBranch.split('-to-')[0];
+                    }
+                    const { stdout: profileOut } = await exec(`git config branch.${ticketId}.ricwiz-profile`, { cwd });
+                    const savedProfileName = profileOut.trim();
+                    if (savedProfileName) {
+                        const profile = profiles.find(p => p.name === savedProfileName);
+                        if (profile) {
+                            return new WorkflowContext(profile);
+                        }
+                    }
+                } catch (e) {
+                    // Fallback to prompting if no saved profile found or an error occurred
+                }
+            }
+
             const items = profiles.map(p => p.name);
             const selected = await vscode.window.showQuickPick(items, {
                 placeHolder: 'Ricwiz: Select Workflow Profile',

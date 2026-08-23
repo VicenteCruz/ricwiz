@@ -60,6 +60,18 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'setPage':
                     this.setPage(data.args);
                     break;
+                case 'openDashboard':
+                    vscode.commands.executeCommand('ricwiz.openJiraDashboard');
+                    break;
+                case 'openJiraDetailsForId':
+                    vscode.commands.executeCommand('ricwiz.openJiraDetailsForId', data.args);
+                    break;
+                case 'refreshDashboard':
+                    vscode.commands.executeCommand('ricwiz.openJiraDashboard');
+                    break;
+                case 'switchDashboardQuery':
+                    vscode.commands.executeCommand('ricwiz.openJiraDashboard', parseInt(data.args));
+                    break;
                 case 'openJiraVSCode':
                     vscode.commands.executeCommand('ricwiz.openJiraTicketVSCode');
                     break;
@@ -164,7 +176,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.updateView();
     }
 
-    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = []) {
+    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = [], ticketTitle: string = '') {
         if (!this.webviewView) return;
         this.currentBranchCache = branchName;
         this.currentBranchIsMergedCache = isMerged;
@@ -172,6 +184,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.commitsCache = commits;
         this.baseBranchesCache = baseBranches;
         this.recentTicketsCache = recentTickets;
+        this.ticketTitleCache = ticketTitle;
         this.updateView();
     }
 
@@ -181,9 +194,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     private commitsCache: CommitEntry[] = [];
     private baseBranchesCache: string[] = [];
     private recentTicketsCache: string[] = [];
-    private currentPage: 'main' | 'devtools' | 'blame' | 'jira' = 'main';
+    private ticketTitleCache = '';
+    private currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard' = 'main';
     private blameDataCache: any = null;
     private jiraDataCache: any = null;
+    private dashboardDataCache: any = null;
     private autoRefreshEnabled: boolean = true;
 
     public setBlameData(data: any) {
@@ -192,6 +207,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
     public setJiraData(data: any) {
         this.jiraDataCache = data;
+    }
+
+    public setDashboardData(data: any) {
+        this.dashboardDataCache = data;
     }
 
     /** Updates the auto-refresh toggle state and refreshes the view */
@@ -205,7 +224,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         return this.autoRefreshEnabled;
     }
 
-    public setPage(page: 'main' | 'devtools' | 'blame' | 'jira') {
+    public setPage(page: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard') {
         this.currentPage = page;
         this.updateView();
     }
@@ -218,7 +237,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache, this.currentPage);
     }
 
-    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira') {
+    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard') {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -491,6 +510,101 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 </div>
                 </div>
 
+                </script>
+            </body>
+            </html>`;
+        }
+
+        if (currentPage === 'dashboard') {
+            const data = this.dashboardDataCache || { queries: [], selectedIndex: 0, results: [], error: null };
+            
+            const queriesHtml = data.queries.map((q: any, idx: number) => `
+                <option value="${idx}" ${idx === data.selectedIndex ? 'selected' : ''}>${escapeHtml(q.name)}</option>
+            `).join('');
+
+            const resultsHtml = data.error ? `
+                <div style="color: var(--vscode-errorForeground); padding: 12px; text-align: center; background: var(--vscode-editorError-background); border-radius: 4px;">
+                    ⚠️ ${escapeHtml(data.error)}
+                </div>
+            ` : data.results.length === 0 ? `
+                <div style="padding: 20px; text-align: center; opacity: 0.7;">No tickets found for this query.</div>
+            ` : `
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--vscode-panel-border); opacity: 0.7; text-align: left;">
+                            <th style="padding: 6px;">Key</th>
+                            <th style="padding: 6px;">Summary</th>
+                            <th style="padding: 6px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.results.map((r: any) => `
+                            <tr style="border-bottom: 1px solid var(--vscode-panel-border); cursor: pointer;" class="tr-hover" onclick="sendCommand('openJiraDetailsForId', '${escapeHtml(r.key)}')">
+                                <td style="padding: 6px; font-weight: bold; color: var(--vscode-textLink-foreground); white-space: nowrap;">${escapeHtml(r.key)}</td>
+                                <td style="padding: 6px; overflow: hidden; text-overflow: ellipsis; max-width: 150px; white-space: nowrap;" title="${escapeHtml(r.summary)}">${escapeHtml(r.summary)}</td>
+                                <td style="padding: 6px; white-space: nowrap;">
+                                    <span style="background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 4px; border-radius: 3px; font-size: 9px;">${escapeHtml(r.status)}</span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Ricwiz Ticket Dashboard</title>
+                ${styleHtml}
+                <style>
+                    .tr-hover:hover {
+                        background-color: var(--vscode-list-hoverBackground);
+                    }
+                    select {
+                        background-color: var(--vscode-dropdown-background);
+                        color: var(--vscode-dropdown-foreground);
+                        border: 1px solid var(--vscode-dropdown-border);
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        width: 100%;
+                        font-family: var(--vscode-font-family);
+                    }
+                    .icon-button {
+                        background: transparent;
+                        border: none;
+                        cursor: pointer;
+                        color: var(--vscode-foreground);
+                        padding: 4px;
+                        border-radius: 4px;
+                    }
+                    .icon-button:hover {
+                        background: var(--vscode-list-hoverBackground);
+                    }
+                </style>
+            </head>
+            <body>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">⬅️</button>
+                    <span style="font-weight: 600; font-size: 13px; flex: 1;">Ticket Dashboard</span>
+                    <button class="icon-button" onclick="sendCommand('refreshDashboard')" title="Refresh">🔄</button>
+                </div>
+                
+                ${data.queries.length > 0 ? `
+                <div style="margin-bottom: 12px;">
+                    <select id="querySelect" onchange="sendCommand('switchDashboardQuery', this.value)">
+                        ${queriesHtml}
+                    </select>
+                </div>
+                ` : `
+                <div style="padding: 12px; opacity: 0.7; text-align: center;">No queries defined in settings.</div>
+                `}
+
+                <div style="background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                    ${resultsHtml}
+                </div>
+
                 <script>
                     const vscode = acquireVsCodeApi();
                     function sendCommand(command, args) {
@@ -617,6 +731,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     <div style="font-weight: bold; font-size: 14px; word-break: break-all; text-align: center; color: var(--vscode-textLink-foreground);">
                         ${escapeHtml(currentBranch)} ${this.currentBranchIsMergedCache ? '<span style="margin-left: 4px; background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                     </div>
+                    ${this.ticketTitleCache ? `<div style="font-size: 12px; margin-top: 6px; text-align: center; opacity: 0.9; font-style: italic;">${escapeHtml(this.ticketTitleCache)}</div>` : ''}
                     ${relatedBranches.length > 0 ? `
                         <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
@@ -691,6 +806,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         Details
                     </button>
                 </div>
+
+                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); margin-top: 6px; border-radius: 4px;" title="View Jira Tickets Dashboard" onclick="sendCommand('openDashboard')">
+                    <span class="icon">📊</span> Ticket Dashboard
+                </button>
             </div>
 
             <!-- SECONDARY ACTIONS CARD -->

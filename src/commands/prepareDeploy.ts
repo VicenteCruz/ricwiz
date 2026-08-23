@@ -118,57 +118,42 @@ export async function prepareDeploy(): Promise<void> {
                     await exec(`git pull ${ctx.originRemote} ${targetBranch}`, { cwd });
                 } catch (e) {} // Ignore if it fails
                 
-                // 1. Merge the source branch (e.g. quality) to keep it up to date
-                try {
-                    progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
-                    const fetchRemote = ctx.getFetchRemote(sourceBranch);
-                    const fetchBranch = ctx.getFetchBranch(sourceBranch);
-                    const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
-                    
-                    await exec(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
-                    await exec(`git merge ${fullUpstreamPath}`, { cwd });
-                } catch (e: any) {
-                    let isConflict = false;
+                // Helper function for merging and handling conflicts
+                const performSafeMerge = async (branchToMerge: string) => {
                     try {
-                        const { stdout } = await exec('git ls-files -u', { cwd });
-                        if (stdout.trim().length > 0) isConflict = true;
-                    } catch(err) {}
-                    
-                    const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
-                    if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
-                        const resolved = await handleMergeConflict(cwd, fullUpstreamPath, targetBranch, progress);
-                        if (!resolved) {
-                            abortRequested = true;
-                            throw new Error('Deploy aborted by user.');
+                        await exec(`git merge ${branchToMerge}`, { cwd });
+                    } catch (e: any) {
+                        let isConflict = false;
+                        try {
+                            const { stdout } = await exec('git ls-files -u', { cwd });
+                            if (stdout.trim().length > 0) isConflict = true;
+                        } catch(err) {}
+                        
+                        const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
+                        if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
+                            const resolved = await handleMergeConflict(cwd, branchToMerge, targetBranch, progress);
+                            if (!resolved) {
+                                abortRequested = true;
+                                throw new Error('Deploy aborted by user.');
+                            }
+                        } else {
+                            throw e;
                         }
-                    } else {
-                        throw e;
                     }
-                }
+                };
+
+                // 1. Merge the source branch (e.g. quality) to keep it up to date
+                progress.report({ message: `Merging ${sourceBranch} into ${targetBranch}...`, increment: processStep / 4 });
+                const fetchRemote = ctx.getFetchRemote(sourceBranch);
+                const fetchBranch = ctx.getFetchBranch(sourceBranch);
+                const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                
+                await exec(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
+                await performSafeMerge(fullUpstreamPath);
 
                 // 2. Merge the main branch (the ticket changes)
-                try {
-                    progress.report({ message: `Merging ${mainBranch} into ${targetBranch}...`, increment: processStep / 4 });
-                    await exec(`git merge ${mainBranch}`, { cwd });
-                } catch (e: any) {
-                    let isConflict = false;
-                    try {
-                        const { stdout } = await exec('git ls-files -u', { cwd });
-                        if (stdout.trim().length > 0) isConflict = true;
-                    } catch(err) {}
-                    
-                    const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
-                    if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                        const resolved = await handleMergeConflict(cwd, mainBranch, targetBranch, progress);
-                        if (!resolved) {
-                            abortRequested = true;
-                            throw new Error('Deploy aborted by user.');
-                        }
-                    } else {
-                        throw e;
-                    }
-                }
+                progress.report({ message: `Merging ${mainBranch} into ${targetBranch}...`, increment: processStep / 4 });
+                await performSafeMerge(mainBranch);
                 
                 if (abortRequested) break;
 

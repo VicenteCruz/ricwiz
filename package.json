@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.8.5",
+  "version": "4.9.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -178,7 +178,11 @@
           "items": {
             "type": "string"
           },
-          "default": ["main", "quality", "validation"],
+          "default": [
+            "main",
+            "quality",
+            "validation"
+          ],
           "description": "Explicit list of branch names that will appear as quick checkout buttons in the Workspace panel. Leave empty to hide all buttons."
         },
         "ricwiz.defaultReviewers": {
@@ -216,6 +220,36 @@
             }
           ],
           "description": "Environments to which deploy branches will be created, defining their source branches as well."
+        },
+        "ricwiz.jiraDashboards": {
+          "order": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "jql": {
+                "type": "string"
+              }
+            }
+          },
+          "default": [
+            {
+              "name": "My Open Tickets",
+              "jql": "assignee = currentUser() AND resolution = Unresolved ORDER BY updated DESC"
+            },
+            {
+              "name": "Reported by Me",
+              "jql": "reporter = currentUser() ORDER BY created DESC"
+            },
+            {
+              "name": "Recently Updated",
+              "jql": "assignee = currentUser() ORDER BY updated DESC"
+            }
+          ],
+          "description": "JQL Queries to fetch and display in the Ticket Dashboard."
         },
         "ricwiz.profiles": {
           "order": 6,

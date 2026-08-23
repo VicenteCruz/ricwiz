@@ -126,3 +126,28 @@ export async function addJiraLabel(ticketId: string, label: string): Promise<voi
         }
     });
 }
+
+export interface JiraSearchResult {
+    key: string;
+    summary: string;
+    status: string;
+    assignee: string;
+}
+
+export async function searchJira(jql: string): Promise<JiraSearchResult[]> {
+    const json = await jiraRequest<any>('POST', '/rest/api/2/search', {
+        jql,
+        maxResults: 50,
+        fields: ['summary', 'status', 'assignee']
+    });
+    
+    if (json && json.issues) {
+        return json.issues.map((issue: any) => ({
+            key: issue.key,
+            summary: issue.fields?.summary || 'No Title',
+            status: issue.fields?.status?.name || 'Unknown',
+            assignee: issue.fields?.assignee?.displayName || 'Unassigned'
+        }));
+    }
+    return [];
+}

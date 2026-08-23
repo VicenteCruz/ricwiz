@@ -20,7 +20,7 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
 
     let webUrl = '';
     if (gitlabUrlOverride && gitlabUrlOverride.trim() !== '') {
-        webUrl = gitlabUrlOverride.trim();
+        webUrl = gitlabUrlOverride.trim().replace(/\/+$/, '');
     } else {
         let remoteUrl = '';
         try {

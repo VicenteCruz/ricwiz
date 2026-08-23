@@ -55,6 +55,8 @@ async function getGitlabAuthAndBaseUrl(cwd: string) {
     if (!projectPath) {
         let path = urlObj.pathname;
         if (path.startsWith('/')) path = path.substring(1);
+        if (path.endsWith('/')) path = path.slice(0, -1);
+        if (path.endsWith('.git')) path = path.slice(0, -4);
         projectPath = encodeURIComponent(path);
         projectPathCache[cwd] = projectPath;
     }

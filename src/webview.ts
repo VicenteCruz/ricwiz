@@ -487,6 +487,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             const ticketId = data?.ticketId || 'Jira';
             const summary = data?.summary || 'No Title';
             const desc = data?.description || 'No description provided.';
+            const relatedBranches = data?.relatedBranches || [];
             
             return `<!DOCTYPE html>
             <html lang="en">
@@ -523,6 +524,36 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 <div class="card" style="padding: 16px;">
                     <div class="jira-title">${escapeHtml(summary)}</div>
                     <div class="jira-desc">${escapeHtml(desc)}</div>
+                    
+                    ${relatedBranches.length > 0 ? `
+                        <div style="margin-top: 16px; border-top: 1px solid var(--vscode-panel-border); padding-top: 12px;">
+                            <div style="font-size: 11px; opacity: 0.7; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;"><span class="icon">🌿</span> Related Branches & MRs</div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${relatedBranches.map((b: any) => {
+                                    let pipelineIcon = '';
+                                    if (b.pipelineStatus === 'running') pipelineIcon = '⏳';
+                                    else if (b.pipelineStatus === 'success') pipelineIcon = '✅';
+                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '❌';
+                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '🛑';
+                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⏭️';
+                                    
+                                    return `
+                                    <div class="btn" style="padding: 6px 10px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}')" title="Checkout ${escapeHtml(b.name)}">
+                                        <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name)}</span>
+                                            ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 11px;">${pipelineIcon}</span>` : ''}
+                                        </div>
+                                        <div style="display: flex; gap: 6px; align-items: center;">
+                                            ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">🔗</span>` : ''}
+                                            ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 2px 6px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
+                                        </div>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
                 <div style="display: flex; gap: 4px; margin-top: 16px;">
                     <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('changeJiraStatus')">
                         <span class="icon">🔄</span> Change Status
@@ -540,6 +571,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     const vscode = acquireVsCodeApi();
                     function sendCommand(cmd, args) {
                         vscode.postMessage({ command: cmd, args: args });
+                    }
+                    function sendCheckoutCommand(branchName) {
+                        vscode.postMessage({ command: 'checkout', branch: branchName });
                     }
                 </script>
             </body>

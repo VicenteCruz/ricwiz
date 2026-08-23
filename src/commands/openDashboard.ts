@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { searchJira, fetchJiraIssue } from '../jiraApi';
 import { RicwizWebviewProvider } from '../webview';
+import { getWorkspaceCwd } from '../git';
 
 let currentSelectedIndex = 0;
 
@@ -74,7 +75,22 @@ export async function openJiraDetailsForId(webviewProvider: RicwizWebviewProvide
         try {
             const data = await fetchJiraIssue(ticketId);
             if (data) {
-                webviewProvider.setJiraData({ ticketId, ...data });
+                let relatedBranches: any[] = [];
+                const cwd = getWorkspaceCwd();
+                if (cwd) {
+                    try {
+                        const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
+                        const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                            { name: 'Qual', sourceBranch: 'quality' },
+                            { name: 'Val', sourceBranch: 'validation' },
+                            { name: 'Prod', sourceBranch: 'main' }
+                        ]);
+                        const relatedBranchNames = await findRelatedBranches(cwd, ticketId, '');
+                        relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments);
+                    } catch(e) {}
+                }
+                
+                webviewProvider.setJiraData({ ticketId, relatedBranches, ...data });
                 webviewProvider.setPage('jira');
             } else {
                 vscode.window.showErrorMessage(`Ricwiz: No data found for ticket ${ticketId}.`);

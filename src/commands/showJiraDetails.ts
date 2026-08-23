@@ -27,8 +27,20 @@ export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): P
         }, async (progress) => {
             const data = await fetchJiraIssue(ticketId);
             if (data) {
+                let relatedBranches: any[] = [];
+                try {
+                    const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
+                    const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                        { name: 'Qual', sourceBranch: 'quality' },
+                        { name: 'Val', sourceBranch: 'validation' },
+                        { name: 'Prod', sourceBranch: 'main' }
+                    ]);
+                    const relatedBranchNames = await findRelatedBranches(cwd, ticketId, '');
+                    relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments);
+                } catch(e) {}
+
                 // Pass the data to the webview and switch the page
-                webviewProvider.setJiraData({ ticketId, ...data });
+                webviewProvider.setJiraData({ ticketId, relatedBranches, ...data });
                 webviewProvider.setPage('jira');
             } else {
                 vscode.window.showErrorMessage('Ricwiz: No data found for this ticket.');

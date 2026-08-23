@@ -50,19 +50,29 @@ async function jiraRequest<T>(method: string, path: string, body?: any): Promise
                 ...(body ? { 'Content-Type': 'application/json' } : {})
             }
         }, (res) => {
-            if (res.statusCode === 401 || res.statusCode === 403) {
-                return reject(new Error(`Authentication failed (HTTP ${res.statusCode}). Please check your Jira settings.`));
-            }
-            if (res.statusCode === 404) {
-                return reject(new Error(`Resource not found (HTTP 404).`));
-            }
-            if (res.statusCode && res.statusCode >= 400) {
-                return reject(new Error(`Jira API returned HTTP status ${res.statusCode}`));
-            }
-
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
+                if (res.statusCode === 401 || res.statusCode === 403) {
+                    return reject(new Error(`Authentication failed (HTTP ${res.statusCode}). Please check your Jira settings.`));
+                }
+                
+                if (res.statusCode && res.statusCode >= 400) {
+                    let jiraErrorStr = '';
+                    try {
+                        const errJson = JSON.parse(data);
+                        if (errJson.errorMessages && errJson.errorMessages.length > 0) {
+                            jiraErrorStr = errJson.errorMessages.join(', ');
+                        }
+                    } catch(e) {}
+                    
+                    if (res.statusCode === 404 || res.statusCode === 410) {
+                        return reject(new Error(`Ticket not found or deleted (HTTP ${res.statusCode}). ${jiraErrorStr}`));
+                    }
+                    
+                    return reject(new Error(`Jira API returned HTTP status ${res.statusCode}. ${jiraErrorStr}`));
+                }
+
                 if (!data) return resolve({} as T);
                 try {
                     const json = JSON.parse(data);

@@ -494,7 +494,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">←</button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" style="font-weight: bold; font-size: 16px;" title="Back">&larr;</button>
                     <span style="font-weight: 600; font-size: 13px;">${ticketId} Details</span>
                 </div>
                 
@@ -576,6 +576,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         font-family: var(--vscode-font-family);
                     }
                     .icon-button {
+                        color: var(--vscode-foreground);
                         background: transparent;
                         border: none;
                         cursor: pointer;
@@ -590,7 +591,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </head>
             <body>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
-                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">←</button>
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" style="font-weight: bold; font-size: 16px;" title="Back">&larr;</button>
                     <span style="font-weight: 600; font-size: 13px; flex: 1;">Ticket Dashboard</span>
                     <button class="icon-button" onclick="sendCommand('refreshDashboard')" title="Refresh">🔄</button>
                 </div>

@@ -124,8 +124,16 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
         
         const mrs = await gitlabRequest<any[]>(cwd, 'GET', path);
         if (mrs && mrs.length > 0) {
-            const mr = mrs[0]; // most recently updated
+            let mr = mrs[0]; // most recently updated
             
+            try {
+                // The list endpoint often omits head_pipeline for performance, so we fetch the single MR details
+                const detailedMr = await gitlabRequest<any>(cwd, 'GET', `/api/v4/projects/${projectPath}/merge_requests/${mr.iid}`);
+                if (detailedMr) {
+                    mr = detailedMr;
+                }
+            } catch (e) {}
+
             let pipelineStatus: GitLabMRStatus['pipelineStatus'] = 'none';
             if (mr.head_pipeline && mr.head_pipeline.status) {
                 // GitLab statuses: running, pending, success, failed, canceled, skipped

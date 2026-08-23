@@ -115,3 +115,13 @@ export async function addJiraComment(ticketId: string, comment: string): Promise
         body: comment
     });
 }
+
+export async function addJiraLabel(ticketId: string, label: string): Promise<void> {
+    await jiraRequest('PUT', `/rest/api/2/issue/${ticketId}`, {
+        update: {
+            labels: [
+                { add: label }
+            ]
+        }
+    });
+}

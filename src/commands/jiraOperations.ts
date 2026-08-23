@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getWorkspaceCwd, getCurrentBranch } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
-import { fetchJiraTransitions, transitionJiraIssue, addJiraComment } from '../jiraApi';
+import { fetchJiraTransitions, transitionJiraIssue, addJiraComment, addJiraLabel } from '../jiraApi';
 
 async function getTicketId(): Promise<string | undefined> {
     const cwd = getWorkspaceCwd();
@@ -71,6 +71,33 @@ export async function addJiraCommentCommand(): Promise<void> {
                 cancellable: false
             }, () => addJiraComment(ticketId, comment));
             vscode.window.showInformationMessage(`Ricwiz: Comment added to ${ticketId}.`);
+        }
+    } catch (e: any) {
+        vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+    }
+}
+
+export async function addJiraLabelCommand(): Promise<void> {
+    try {
+        const ticketId = await getTicketId();
+        if (!ticketId) {
+            vscode.window.showErrorMessage('Ricwiz: You are not on a valid ticket branch.');
+            return;
+        }
+
+        const label = await vscode.window.showInputBox({
+            prompt: `Add a label to ${ticketId}`,
+            placeHolder: 'e.g. Needs-Review, Bug, High-Priority',
+            ignoreFocusOut: true
+        });
+
+        if (label && label.trim()) {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Adding label to ${ticketId}...`,
+                cancellable: false
+            }, () => addJiraLabel(ticketId, label.trim()));
+            vscode.window.showInformationMessage(`Ricwiz: Label '${label.trim()}' added to ${ticketId}.`);
         }
     } catch (e: any) {
         vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);

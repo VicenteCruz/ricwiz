@@ -54,6 +54,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'addJiraComment':
                     vscode.commands.executeCommand('ricwiz.addJiraComment');
                     break;
+                case 'addJiraLabel':
+                    vscode.commands.executeCommand('ricwiz.addJiraLabel');
+                    break;
                 case 'setPage':
                     this.setPage(data.args);
                     break;
@@ -481,6 +484,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     </button>
                     <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('addJiraComment')">
                         <span class="icon">💬</span> Add Comment
+                    </button>
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('addJiraLabel')">
+                        <span class="icon">🏷️</span> Add Label
                     </button>
                 </div>
                 </div>

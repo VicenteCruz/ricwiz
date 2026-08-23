@@ -26,11 +26,13 @@ import { getBlameData } from './commands/whoToBlame';
 import { generateDestructiveChanges } from './commands/generateDestructiveChanges';
 import { runSmartTests } from './commands/runSmartTests';
 import { showJiraDetails } from './commands/showJiraDetails';
-import { changeJiraStatus, addJiraCommentCommand, addJiraLabelCommand } from './commands/jiraOperations';
+import { changeJiraStatus, addJiraCommentCommand, addJiraLabelCommand, setJiraTokenCommand } from './commands/jiraOperations';
+import { initializeSecrets } from './secrets';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
+    initializeSecrets(context);
     webviewProvider = new RicwizWebviewProvider(context.extensionUri);
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider('ricwiz-webview', webviewProvider)
@@ -202,6 +204,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.changeJiraStatus', changeJiraStatus),
         vscode.commands.registerCommand('ricwiz.addJiraComment', addJiraCommentCommand),
         vscode.commands.registerCommand('ricwiz.addJiraLabel', addJiraLabelCommand),
+        vscode.commands.registerCommand('ricwiz.setJiraToken', setJiraTokenCommand),
         vscode.commands.registerCommand('ricwiz.syncAll', syncAll),
         vscode.commands.registerCommand('ricwiz.updateBases', updateBases),
         vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnusedBranches),

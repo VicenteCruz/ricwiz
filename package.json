@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.8.4",
+  "version": "4.8.5",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -47,6 +47,10 @@
       {
         "command": "ricwiz.addJiraLabel",
         "title": "Ricwiz: Add Jira Label"
+      },
+      {
+        "command": "ricwiz.setJiraToken",
+        "title": "Ricwiz: Set Secure Jira API Token"
       },
       {
         "command": "ricwiz.generateDestructiveChanges",
@@ -281,14 +285,8 @@
           "default": "",
           "description": "Your Jira Email address (required for fetching Jira ticket details via API)."
         },
-        "ricwiz.jiraApiToken": {
-          "order": 14,
-          "type": "string",
-          "default": "",
-          "description": "Your Jira API Token (or Personal Access Token). Generate this in your Jira Security settings."
-        },
         "ricwiz.gitlabUrlOverride": {
-          "order": 13,
+          "order": 14,
           "type": "string",
           "default": "",
           "description": "Base URL of the company's GitLab repository (e.g., https://gitlab.company.com/group/project). Leave empty for the extension to discover it automatically via git remote."

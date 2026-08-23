@@ -1,5 +1,6 @@
 import * as https from 'https';
 import * as vscode from 'vscode';
+import { getJiraToken } from './secrets';
 
 export interface JiraIssueData {
     summary: string;
@@ -11,14 +12,14 @@ export interface JiraTransition {
     name: string;
 }
 
-function getJiraAuthAndBaseUrl() {
+async function getJiraAuthAndBaseUrl() {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const jiraUrlStr = config.get<string>('jiraUrl', '');
     const email = config.get<string>('jiraEmail', '')?.trim();
-    const token = config.get<string>('jiraApiToken', '')?.trim();
+    const token = (await getJiraToken())?.trim();
 
     if (!jiraUrlStr || !token) {
-        throw new Error('Jira API Token is not configured in Ricwiz Settings.');
+        throw new Error('Jira API Token is not securely configured. Please run the "Ricwiz: Set Secure Jira API Token" command.');
     }
 
     let baseUrl = jiraUrlStr;
@@ -37,7 +38,7 @@ function getJiraAuthAndBaseUrl() {
 }
 
 async function jiraRequest<T>(method: string, path: string, body?: any): Promise<T> {
-    const { baseUrl, headerAuth } = getJiraAuthAndBaseUrl();
+    const { baseUrl, headerAuth } = await getJiraAuthAndBaseUrl();
     const url = new URL(`${baseUrl}${path}`);
 
     return new Promise((resolve, reject) => {

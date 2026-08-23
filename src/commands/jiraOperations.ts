@@ -46,7 +46,15 @@ export async function changeJiraStatus(): Promise<void> {
             vscode.window.showInformationMessage(`Ricwiz: Status for ${ticketId} updated to ${selected.label}.`);
         }
     } catch (e: any) {
-        vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        if (e.message.includes('securely configured')) {
+            vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
+                if (action === 'Set Token Now') {
+                    vscode.commands.executeCommand('ricwiz.setJiraToken');
+                }
+            });
+        } else {
+            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        }
     }
 }
 
@@ -73,7 +81,15 @@ export async function addJiraCommentCommand(): Promise<void> {
             vscode.window.showInformationMessage(`Ricwiz: Comment added to ${ticketId}.`);
         }
     } catch (e: any) {
-        vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        if (e.message.includes('securely configured')) {
+            vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
+                if (action === 'Set Token Now') {
+                    vscode.commands.executeCommand('ricwiz.setJiraToken');
+                }
+            });
+        } else {
+            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        }
     }
 }
 
@@ -100,6 +116,33 @@ export async function addJiraLabelCommand(): Promise<void> {
             vscode.window.showInformationMessage(`Ricwiz: Label '${label.trim()}' added to ${ticketId}.`);
         }
     } catch (e: any) {
-        vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        if (e.message.includes('securely configured')) {
+            vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
+                if (action === 'Set Token Now') {
+                    vscode.commands.executeCommand('ricwiz.setJiraToken');
+                }
+            });
+        } else {
+            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        }
+    }
+}
+
+import { storeJiraToken } from '../secrets';
+
+export async function setJiraTokenCommand(): Promise<void> {
+    const token = await vscode.window.showInputBox({
+        prompt: 'Enter your Jira API Token (or Personal Access Token). It will be securely stored in your OS keychain.',
+        password: true,
+        ignoreFocusOut: true
+    });
+    
+    if (token) {
+        try {
+            await storeJiraToken(token.trim());
+            vscode.window.showInformationMessage('Ricwiz: Jira API Token securely stored!');
+        } catch (e: any) {
+            vscode.window.showErrorMessage(`Ricwiz: Failed to store token: ${e.message}`);
+        }
     }
 }

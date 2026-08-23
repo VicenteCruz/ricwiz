@@ -35,6 +35,13 @@ export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): P
             }
         });
     } catch (e: any) {
-        vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        if (e.message.includes('securely configured')) {
+            const action = await vscode.window.showErrorMessage(e.message, 'Set Token Now');
+            if (action === 'Set Token Now') {
+                vscode.commands.executeCommand('ricwiz.setJiraToken');
+            }
+        } else {
+            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+        }
     }
 }

@@ -33,6 +33,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'createBranches':
                     vscode.commands.executeCommand('ricwiz.createBranches');
                     break;
+                case 'createBranchForTicket':
+                    vscode.commands.executeCommand('ricwiz.createBranches', data.args);
+                    break;
                 case 'prepareDeploy':
                     vscode.commands.executeCommand('ricwiz.prepareDeploy');
                     break;
@@ -558,6 +561,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                             <th style="padding: 6px;">Key</th>
                             <th style="padding: 6px;">Summary</th>
                             <th style="padding: 6px;">Status</th>
+                            <th style="padding: 6px; text-align: center;">Branch</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -567,6 +571,17 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                 <td style="padding: 6px; overflow: hidden; text-overflow: ellipsis; max-width: 150px; white-space: nowrap;" title="${escapeHtml(r.summary)}">${escapeHtml(r.summary)}</td>
                                 <td style="padding: 6px; white-space: nowrap;">
                                     <span style="background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 4px; border-radius: 3px; font-size: 9px;">${escapeHtml(r.status)}</span>
+                                </td>
+                                <td style="padding: 6px; white-space: nowrap; text-align: center;">
+                                    ${r.branch ? `
+                                        <button class="icon-button" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 10px; padding: 2px 6px;" title="Checkout ${escapeHtml(r.branch)}" onclick="event.stopPropagation(); sendCommand('checkout', { branch: '${escapeHtml(r.branch)}' })">
+                                            🌿 Checkout
+                                        </button>
+                                    ` : `
+                                        <button class="icon-button" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); font-size: 10px; padding: 2px 6px;" title="Create Branch for ${escapeHtml(r.key)}" onclick="event.stopPropagation(); sendCommand('createBranchForTicket', '${escapeHtml(r.key)}')">
+                                            ➕ Create
+                                        </button>
+                                    `}
                                 </td>
                             </tr>
                         `).join('')}

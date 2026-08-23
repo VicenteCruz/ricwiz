@@ -30,7 +30,30 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
 
     try {
         const results = await searchJira(currentQuery.jql);
-        webviewProvider.setDashboardData({ queries, selectedIndex: currentSelectedIndex, results, error: null });
+        
+        // Find existing branches for these tickets
+        const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        let localBranches: string[] = [];
+        if (cwd) {
+            try {
+                // Inline exec to get branches quickly
+                const cp = require('child_process');
+                const util = require('util');
+                const exec = util.promisify(cp.exec);
+                const { stdout } = await exec('git branch', { cwd });
+                localBranches = stdout.split('\n').map((b: string) => b.replace('*', '').trim()).filter((b: string) => b);
+            } catch(e) {}
+        }
+        
+        const enrichedResults = results.map((r: any) => {
+            const matchingBranch = localBranches.find(b => b.includes(r.key));
+            return {
+                ...r,
+                branch: matchingBranch || null
+            };
+        });
+
+        webviewProvider.setDashboardData({ queries, selectedIndex: currentSelectedIndex, results: enrichedResults, error: null });
         webviewProvider.setPage('dashboard');
     } catch (e: any) {
         let msg = e.message;

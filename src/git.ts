@@ -92,14 +92,14 @@ export interface TicketInfo {
  */
 export async function promptForTicketId(
     cwd: string,
-    options?: { prompt?: string; placeHolder?: string; handleToSuffix?: boolean; prefix?: string }
+    options?: { prompt?: string; placeHolder?: string; handleToSuffix?: boolean; prefix?: string; suggestedValue?: string }
 ): Promise<TicketInfo | undefined> {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const configPrefix = options?.prefix ?? config.get<string>('ticketPrefix', 'SFPSCA-');
 
     const currentBranch = await getCurrentBranch(cwd);
     const prefix = resolvePrefix(currentBranch, configPrefix);
-    const suggestedTicket = extractTicketSuggestion(currentBranch, prefix, options?.handleToSuffix);
+    const suggestedTicket = options?.suggestedValue ?? extractTicketSuggestion(currentBranch, prefix, options?.handleToSuffix);
 
     const input = await vscode.window.showInputBox({
         prompt: options?.prompt || 'Enter the full ticket ID (e.g., SCPSCA-1234) or just the number',

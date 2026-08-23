@@ -5,7 +5,7 @@ import { EnvironmentConfig } from '../types';
 import { Security } from '../security';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 
-export async function createBranches(): Promise<void> {
+export async function createBranches(prefilledTicket?: any): Promise<void> {
     const cwd = getWorkspaceCwd();
     if (!cwd) {
         vscode.window.showErrorMessage('Open a folder or workspace that is a Git repository.');
@@ -15,7 +15,8 @@ export async function createBranches(): Promise<void> {
     const ctx = await WorkflowContext.initialize(cwd, { forcePrompt: true });
     if (!ctx) return;
 
-    const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix });
+    const suggestedTicket = typeof prefilledTicket === 'string' ? prefilledTicket : undefined;
+    const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix, suggestedValue: suggestedTicket });
     if (!result) {
         vscode.window.showErrorMessage('Branch creation cancelled: Ticket not provided.');
         return;

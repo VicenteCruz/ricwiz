@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.9.5",
+  "version": "4.9.6",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -51,6 +51,10 @@
       {
         "command": "ricwiz.setJiraToken",
         "title": "Ricwiz: Set Secure Jira API Token"
+      },
+      {
+        "command": "ricwiz.setGitlabToken",
+        "title": "Ricwiz: Set Secure GitLab API Token"
       },
       {
         "command": "ricwiz.generateDestructiveChanges",

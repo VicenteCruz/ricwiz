@@ -179,7 +179,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.updateView();
     }
 
-    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = [], ticketTitle: string = '') {
+    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = [], ticketTitle: string = '') {
         if (!this.webviewView) return;
         this.currentBranchCache = branchName;
         this.currentBranchIsMergedCache = isMerged;
@@ -193,7 +193,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
     private currentBranchCache = '';
     private currentBranchIsMergedCache = false;
-    private relatedBranchesCache: { name: string, isMerged: boolean }[] = [];
+    private relatedBranchesCache: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string }[] = [];
     private commitsCache: CommitEntry[] = [];
     private baseBranchesCache: string[] = [];
     private recentTicketsCache: string[] = [];
@@ -240,7 +240,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache, this.currentPage);
     }
 
-    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard') {
+    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard') {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -765,12 +765,27 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${relatedBranches.map(b => `
+                                ${relatedBranches.map(b => {
+                                    let pipelineIcon = '';
+                                    if (b.pipelineStatus === 'running') pipelineIcon = '⏳';
+                                    else if (b.pipelineStatus === 'success') pipelineIcon = '✅';
+                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '❌';
+                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '🛑';
+                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⏭️';
+                                    
+                                    return `
                                     <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}', this)" title="Checkout ${escapeHtml(b.name)}">
-                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name)}</span>
-                                        ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
+                                        <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name)}</span>
+                                            ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 10px;">${pipelineIcon}</span>` : ''}
+                                        </div>
+                                        <div style="display: flex; gap: 4px; align-items: center;">
+                                            ${b.mrUrl ? `<a href="${b.mrUrl}" onclick="event.stopPropagation();" title="Open Merge Request" style="text-decoration: none; font-size: 10px;">🔗</a>` : ''}
+                                            ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
+                                        </div>
                                     </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                     ` : (recentTickets.length > 0 ? `

@@ -8,6 +8,7 @@ import { openJiraTicket, openJiraTicketVSCode } from './jira';
 import { showJiraDetails } from './showJiraDetails';
 import { openJiraDashboard, openJiraDetailsForId } from './openDashboard';
 import { changeJiraStatus, addJiraCommentCommand, addJiraLabelCommand, setJiraTokenCommand } from './jiraOperations';
+import { setGitlabTokenCommand } from './gitlabOperations';
 import { syncAll } from './syncAll';
 import { updateBases } from './updateBases';
 import { deleteUnusedBranches } from './deleteUnused';
@@ -48,6 +49,7 @@ export function registerAllCommands(
         vscode.commands.registerCommand('ricwiz.addJiraComment', addJiraCommentCommand),
         vscode.commands.registerCommand('ricwiz.addJiraLabel', addJiraLabelCommand),
         vscode.commands.registerCommand('ricwiz.setJiraToken', setJiraTokenCommand),
+        vscode.commands.registerCommand('ricwiz.setGitlabToken', setGitlabTokenCommand),
         vscode.commands.registerCommand('ricwiz.syncAll', syncAll),
         vscode.commands.registerCommand('ricwiz.updateBases', updateBases),
         vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnusedBranches),

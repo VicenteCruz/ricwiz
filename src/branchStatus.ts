@@ -1,10 +1,13 @@
 import { exec } from './git';
 import { CommitEntry, EnvironmentConfig } from './types';
+import { fetchMergeRequestStatus, hasGitlabToken } from './gitlabApi';
 
 /** A related branch with its merge status */
 export interface RelatedBranch {
     name: string;
     isMerged: boolean;
+    pipelineStatus?: 'running' | 'success' | 'failed' | 'canceled' | 'skipped' | 'none';
+    mrUrl?: string;
 }
 
 /**
@@ -154,12 +157,27 @@ export async function getRelatedBranchesStatus(
 ): Promise<RelatedBranch[]> {
     const refCache = createRefCache();
 
+    const hasGitlab = await hasGitlabToken();
+
     const results = await Promise.all(
         branches.map(async (branch): Promise<RelatedBranch> => {
             const env = findMatchingEnv(branch, environments);
             if (!env) {
                 return { name: branch, isMerged: false };
             }
+
+            if (hasGitlab) {
+                const mrStatus = await fetchMergeRequestStatus(cwd, branch, env.sourceBranch);
+                if (mrStatus) {
+                    return { 
+                        name: branch, 
+                        isMerged: mrStatus.isMerged, 
+                        pipelineStatus: mrStatus.pipelineStatus,
+                        mrUrl: mrStatus.webUrl
+                    };
+                }
+            }
+
             const isMerged = await checkBranchMergeStatus(cwd, branch, ticketId, env, refCache);
             return { name: branch, isMerged };
         })
@@ -188,6 +206,14 @@ export async function getCurrentBranchMergeStatus(
     }
 
     const currentTicketId = currentBranch.replace(new RegExp(`-to-${env.name}$`, 'i'), '');
+    
+    if (await hasGitlabToken()) {
+        const mrStatus = await fetchMergeRequestStatus(cwd, currentBranch, env.sourceBranch);
+        if (mrStatus) {
+            return mrStatus.isMerged;
+        }
+    }
+
     const refCache = createRefCache();
     return checkBranchMergeStatus(cwd, currentBranch, currentTicketId, env, refCache);
 }

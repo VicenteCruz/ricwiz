@@ -45,6 +45,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'openJira':
                     vscode.commands.executeCommand('ricwiz.openJiraTicket');
                     break;
+                case 'showJiraDetails':
+                    vscode.commands.executeCommand('ricwiz.showJiraDetails');
+                    break;
                 case 'openJiraVSCode':
                     vscode.commands.executeCommand('ricwiz.openJiraTicketVSCode');
                     break;
@@ -166,12 +169,17 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     private commitsCache: CommitEntry[] = [];
     private baseBranchesCache: string[] = [];
     private recentTicketsCache: string[] = [];
-    private currentPage: 'main' | 'devtools' | 'blame' = 'main';
+    private currentPage: 'main' | 'devtools' | 'blame' | 'jira' = 'main';
     private blameDataCache: any = null;
+    private jiraDataCache: any = null;
     private autoRefreshEnabled: boolean = true;
 
     public setBlameData(data: any) {
         this.blameDataCache = data;
+    }
+
+    public setJiraData(data: any) {
+        this.jiraDataCache = data;
     }
 
     /** Updates the auto-refresh toggle state and refreshes the view */
@@ -185,7 +193,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         return this.autoRefreshEnabled;
     }
 
-    public setPage(page: 'main' | 'devtools' | 'blame') {
+    public setPage(page: 'main' | 'devtools' | 'blame' | 'jira') {
         this.currentPage = page;
         this.updateView();
     }
@@ -198,7 +206,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.webviewView.webview.html = this._getHtmlForWebview(logoUri, this.currentBranchCache, this.relatedBranchesCache, this.commitsCache, this.baseBranchesCache, this.recentTicketsCache, this.currentPage);
     }
 
-    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame') {
+    private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira') {
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -417,6 +425,59 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </html>`;
         }
 
+        if (currentPage === 'jira') {
+            const data = this.jiraDataCache;
+            const ticketId = data?.ticketId || 'Jira';
+            const summary = data?.summary || 'No Title';
+            const desc = data?.description || 'No description provided.';
+            
+            return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Ricwiz Jira Details</title>
+                ${styleHtml}
+                <style>
+                    .jira-title {
+                        font-size: 16px;
+                        font-weight: 600;
+                        margin-bottom: 12px;
+                        line-height: 1.4;
+                    }
+                    .jira-desc {
+                        font-size: 12px;
+                        line-height: 1.5;
+                        opacity: 0.9;
+                        white-space: pre-wrap;
+                        background: var(--vscode-editor-background);
+                        padding: 12px;
+                        border-radius: 4px;
+                        border: 1px solid var(--vscode-panel-border);
+                    }
+                </style>
+            </head>
+            <body>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; margin-top: 8px;">
+                    <button class="icon-button" onclick="sendCommand('setPage', 'main')" title="Back">dY! </button>
+                    <span style="font-weight: 600; font-size: 13px;">${ticketId} Details</span>
+                </div>
+                
+                <div class="card" style="padding: 16px;">
+                    <div class="jira-title">${escapeHtml(summary)}</div>
+                    <div class="jira-desc">${escapeHtml(desc)}</div>
+                </div>
+
+                <script>
+                    const vscode = acquireVsCodeApi();
+                    function sendCommand(command, args) {
+                        vscode.postMessage({ command, args });
+                    }
+                </script>
+            </body>
+            </html>`;
+        }
+
         if (currentPage === 'devtools') {
             return `<!DOCTYPE html>
             <html lang="en">
@@ -603,8 +664,8 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
                         <span class="icon">🎫</span> Open Jira
                     </button>
-                    <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira in VS Code" onclick="sendCommand('openJiraVSCode')">
-                        VS
+                    <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="View Jira Details in Ricwiz" onclick="sendCommand('showJiraDetails')">
+                        Details
                     </button>
                 </div>
             </div>

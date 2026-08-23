@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.7.54",
+  "version": "4.8.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -32,6 +32,10 @@
       ]
     },
     "commands": [
+      {
+        "command": "ricwiz.showJiraDetails",
+        "title": "Ricwiz: Show Jira Details"
+      },
       {
         "command": "ricwiz.generateDestructiveChanges",
         "title": "Ricwiz: Auto DestructiveChanges.xml"
@@ -257,6 +261,18 @@
           "type": "string",
           "default": "",
           "description": "Base URL for Jira tickets (e.g., https://jira.company.com/browse/). Leave empty to disable."
+        },
+        "ricwiz.jiraEmail": {
+          "order": 13,
+          "type": "string",
+          "default": "",
+          "description": "Your Jira Email address (required for fetching Jira ticket details via API)."
+        },
+        "ricwiz.jiraApiToken": {
+          "order": 14,
+          "type": "string",
+          "default": "",
+          "description": "Your Jira API Token (or Personal Access Token). Generate this in your Jira Security settings."
         },
         "ricwiz.gitlabUrlOverride": {
           "order": 13,

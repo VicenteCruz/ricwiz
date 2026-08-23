@@ -25,6 +25,7 @@ import { searchTicket } from './commands/searchTicket';
 import { getBlameData } from './commands/whoToBlame';
 import { generateDestructiveChanges } from './commands/generateDestructiveChanges';
 import { runSmartTests } from './commands/runSmartTests';
+import { showJiraDetails } from './commands/showJiraDetails';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
@@ -196,6 +197,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('ricwiz.createMergeRequestsVSCode', createMergeRequestsVSCode),
         vscode.commands.registerCommand('ricwiz.openJiraTicket', openJiraTicket),
         vscode.commands.registerCommand('ricwiz.openJiraTicketVSCode', openJiraTicketVSCode),
+        vscode.commands.registerCommand('ricwiz.showJiraDetails', () => { if (webviewProvider) showJiraDetails(webviewProvider); }),
         vscode.commands.registerCommand('ricwiz.syncAll', syncAll),
         vscode.commands.registerCommand('ricwiz.updateBases', updateBases),
         vscode.commands.registerCommand('ricwiz.deleteUnusedBranches', deleteUnusedBranches),

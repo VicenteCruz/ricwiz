@@ -187,7 +187,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.updateView();
     }
 
-    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = [], ticketTitle: string = '') {
+    public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = [], ticketTitle: string = '', ticketStatus: string = '') {
         if (!this.webviewView) return;
         this.currentBranchCache = branchName;
         this.currentBranchIsMergedCache = isMerged;
@@ -196,6 +196,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.baseBranchesCache = baseBranches;
         this.recentTicketsCache = recentTickets;
         this.ticketTitleCache = ticketTitle;
+        this.ticketStatusCache = ticketStatus;
         this.updateView();
     }
 
@@ -206,6 +207,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     private baseBranchesCache: string[] = [];
     private recentTicketsCache: string[] = [];
     private ticketTitleCache = '';
+    private ticketStatusCache = '';
     private currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard' = 'main';
     private blameDataCache: any = null;
     private jiraDataCache: any = null;
@@ -820,7 +822,12 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         const sisterBranches = relatedBranches.filter(b => b.name !== currentBranch);
 
         const currentBranchHtml = currentBranch ? 
-                `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
+                    ${this.ticketTitleCache && this.ticketStatusCache ? `
+                    <div style="position: absolute; top: 6px; right: 6px; cursor: pointer; font-size: 9px; padding: 2px 6px; border-radius: 4px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); opacity: 0.9; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 4px;" onclick="sendCommand('changeJiraStatus')" title="Update Jira Status">
+                        <span>📝</span> ${escapeHtml(this.ticketStatusCache)}
+                    </div>
+                    ` : ''}
                     <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; text-transform: uppercase;">
                         Current Ticket / Branch
                         <button class="copy-btn" onclick="sendCommand('copyBranch')" title="Copy branch name to clipboard">📋</button>

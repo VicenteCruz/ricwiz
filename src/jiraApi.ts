@@ -5,6 +5,7 @@ import { getJiraToken } from './secrets';
 export interface JiraIssueData {
     summary: string;
     description: string;
+    status: string;
 }
 
 export interface JiraTransition {
@@ -96,7 +97,8 @@ export async function fetchJiraIssue(ticketId: string): Promise<JiraIssueData | 
     if (json && json.fields) {
         return {
             summary: json.fields.summary || '',
-            description: json.fields.description || 'No description provided.'
+            description: json.fields.description || 'No description provided.',
+            status: json.fields.status?.name || 'Unknown'
         };
     }
     return null;

@@ -123,14 +123,15 @@ export function initializeGitMonitor(
                                 if (msg.includes('ENOTFOUND') || msg.includes('network')) {
                                     msg = 'No Internet or Invalid URL';
                                 }
-                                return { summary: `⚠️ Jira Error: ${msg}`, description: '' };
+                                return { summary: `⚠️ Jira Error: ${msg}`, description: '', status: '' };
                             }) : Promise.resolve(null)
                         ]);
                         commits = fetchedCommits;
 
                         const ticketTitle = jiraIssue ? jiraIssue.summary : '';
+                        const ticketStatus = jiraIssue ? (jiraIssue as any).status || '' : '';
 
-                        webviewProvider?.updateBranch(currentBranch, currentBranchIsMerged, relatedBranches, commits, baseBranches, recentTickets, ticketTitle);
+                        webviewProvider?.updateBranch(currentBranch, currentBranchIsMerged, relatedBranches, commits, baseBranches, recentTickets, ticketTitle, ticketStatus);
                     }
                 }
 

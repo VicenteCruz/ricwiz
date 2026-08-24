@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import { searchJira, fetchJiraIssue } from '../jiraApi';
 import { RicwizWebviewProvider } from '../webview';
-import { getWorkspaceCwd } from '../git';
+import { getWorkspaceCwd, exec } from '../git';
+import { WorkflowContext } from '../workflows/WorkflowContext';
+import { findRelatedBranches, getRelatedBranchesStatus } from '../branchStatus';
+import { EnrichedJiraSearchResult, JiraDashboardQuery, RelatedBranch } from '../types';
 
 let currentSelectedIndex = 0;
 
 export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, indexOverride?: number): Promise<void> {
     const config = vscode.workspace.getConfiguration('ricwiz');
-    const queries = config.get<{ name: string, jql: string }[]>('jiraDashboards', []);
+    const queries = config.get<JiraDashboardQuery[]>('jiraDashboards', []);
 
     if (indexOverride !== undefined) {
         currentSelectedIndex = indexOverride;
@@ -33,35 +36,29 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
         const results = await searchJira(currentQuery.jql);
         
         // Find existing branches for these tickets
-        const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const cwd = getWorkspaceCwd();
         let localBranches: string[] = [];
         const showAllBranches = webviewProvider.getDashboardShowBranches();
         
         if (cwd) {
             try {
-                // Inline exec to get branches quickly
-                const cp = require('child_process');
-                const util = require('util');
-                const exec = util.promisify(cp.exec);
                 const { stdout } = await exec('git branch', { cwd });
                 localBranches = stdout.split('\n').map((b: string) => b.replace('*', '').trim()).filter((b: string) => b);
             } catch(e) {}
         }
         
-        let enrichedResults: any[] = [];
+        let enrichedResults: EnrichedJiraSearchResult[] = [];
         
         if (showAllBranches && cwd) {
             try {
-                const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
-                const { WorkflowContext } = require('../workflows/WorkflowContext');
                 const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-                const environments = ctx?.environments || vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                const environments = ctx?.environments || config.get('environments', [
                     { name: 'Qual', sourceBranch: 'quality' },
                     { name: 'Val', sourceBranch: 'validation' },
                     { name: 'Prod', sourceBranch: 'main' }
                 ]);
                 
-                enrichedResults = await Promise.all(results.map(async (r: any) => {
+                enrichedResults = await Promise.all(results.map(async (r): Promise<EnrichedJiraSearchResult> => {
                     const relatedBranchNames = await findRelatedBranches(cwd, r.key, '');
                     const detailedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, r.key, environments, ctx);
                     return {
@@ -73,7 +70,7 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
                 enrichedResults = results;
             }
         } else {
-            enrichedResults = results.map((r: any) => {
+            enrichedResults = results.map((r): EnrichedJiraSearchResult => {
                 const matchingBranch = localBranches.find(b => b.includes(r.key));
                 return {
                     ...r,
@@ -86,7 +83,7 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
         webviewProvider.setPage('dashboard');
     } catch (e: any) {
         let msg = e.message;
-        if (msg.includes('ENOTFOUND') || msg.includes('network')) {
+        if (msg && (msg.includes('ENOTFOUND') || msg.includes('network'))) {
             msg = 'No Internet or Invalid URL';
         }
         webviewProvider.setDashboardData({ queries, selectedIndex: currentSelectedIndex, results: [], error: msg });
@@ -103,14 +100,12 @@ export async function openJiraDetailsForId(webviewProvider: RicwizWebviewProvide
         try {
             const data = await fetchJiraIssue(ticketId);
             if (data) {
-                let relatedBranches: any[] = [];
+                let relatedBranches: RelatedBranch[] = [];
                 const cwd = getWorkspaceCwd();
                 if (cwd) {
                     try {
-                        const { WorkflowContext } = require('../workflows/WorkflowContext');
                         const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-                        const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
-                        const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                        const environments = ctx?.environments || vscode.workspace.getConfiguration('ricwiz').get('environments', [
                             { name: 'Qual', sourceBranch: 'quality' },
                             { name: 'Val', sourceBranch: 'validation' },
                             { name: 'Prod', sourceBranch: 'main' }

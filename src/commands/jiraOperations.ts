@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getWorkspaceCwd, getCurrentBranch, resolvePrefix, extractTicketSuggestion } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 import { fetchJiraTransitions, transitionJiraIssue, addJiraComment, addJiraLabel } from '../jiraApi';
+import { storeJiraToken } from '../secrets';
 
 async function getTicketId(): Promise<string | undefined> {
     const cwd = getWorkspaceCwd();
@@ -20,6 +21,18 @@ async function getTicketId(): Promise<string | undefined> {
     
     // Fallback just in case
     return currentBranch.split('-to-')[0];
+}
+
+function handleJiraError(e: any): void {
+    if (e.message && e.message.includes('securely configured')) {
+        vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
+            if (action === 'Set Token Now') {
+                vscode.commands.executeCommand('ricwiz.setJiraToken');
+            }
+        });
+    } else {
+        vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+    }
 }
 
 export async function changeJiraStatus(): Promise<void> {
@@ -56,15 +69,7 @@ export async function changeJiraStatus(): Promise<void> {
             vscode.window.showInformationMessage(`Ricwiz: Status for ${ticketId} updated to ${selected.label}.`);
         }
     } catch (e: any) {
-        if (e.message.includes('securely configured')) {
-            vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
-                if (action === 'Set Token Now') {
-                    vscode.commands.executeCommand('ricwiz.setJiraToken');
-                }
-            });
-        } else {
-            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
-        }
+        handleJiraError(e);
     }
 }
 
@@ -91,15 +96,7 @@ export async function addJiraCommentCommand(): Promise<void> {
             vscode.window.showInformationMessage(`Ricwiz: Comment added to ${ticketId}.`);
         }
     } catch (e: any) {
-        if (e.message.includes('securely configured')) {
-            vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
-                if (action === 'Set Token Now') {
-                    vscode.commands.executeCommand('ricwiz.setJiraToken');
-                }
-            });
-        } else {
-            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
-        }
+        handleJiraError(e);
     }
 }
 
@@ -126,19 +123,9 @@ export async function addJiraLabelCommand(): Promise<void> {
             vscode.window.showInformationMessage(`Ricwiz: Label '${label.trim()}' added to ${ticketId}.`);
         }
     } catch (e: any) {
-        if (e.message.includes('securely configured')) {
-            vscode.window.showErrorMessage(e.message, 'Set Token Now').then(action => {
-                if (action === 'Set Token Now') {
-                    vscode.commands.executeCommand('ricwiz.setJiraToken');
-                }
-            });
-        } else {
-            vscode.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
-        }
+        handleJiraError(e);
     }
 }
-
-import { storeJiraToken } from '../secrets';
 
 export async function setJiraTokenCommand(): Promise<void> {
     const token = await vscode.window.showInputBox({

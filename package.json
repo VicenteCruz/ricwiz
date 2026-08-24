@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.9.50",
+  "version": "5.0.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -354,7 +354,7 @@
         "ricwiz.importDataCommand": {
           "order": 22,
           "type": "string",
-          "default": "sfdx force:data:tree:import --plan data/plan.json",
+          "default": "sf data import tree --plan data/plan.json",
           "description": "The command used to import data."
         },
         "ricwiz.resetTrackingCommand": {
@@ -390,8 +390,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "lint": "npx tsc --noEmit",
+    "test": "npx tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^18.19.130",

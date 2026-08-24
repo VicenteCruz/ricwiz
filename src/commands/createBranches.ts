@@ -1,11 +1,9 @@
 import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists } from '../git';
-import { EnvironmentConfig } from '../types';
-
 import { Security } from '../security';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 
-export async function createBranches(prefilledTicket?: any): Promise<void> {
+export async function createBranches(prefilledTicket?: string): Promise<void> {
     const cwd = getWorkspaceCwd();
     if (!cwd) {
         vscode.window.showErrorMessage('Open a folder or workspace that is a Git repository.');
@@ -26,10 +24,14 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
     const environments = ctx.environments;
     let selectedOptionValue = 'all';
 
-    const quickPickOptions: vscode.QuickPickItem[] = [
-        { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' } as any,
-        { label: 'Create Main Branch Only', description: 'Creates only the main ticket branch (skips environments)', value: 'mainOnly' } as any,
-        { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' } as any
+    interface CreationOptionItem extends vscode.QuickPickItem {
+        value: string;
+    }
+
+    const quickPickOptions: CreationOptionItem[] = [
+        { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' },
+        { label: 'Create Main Branch Only', description: 'Creates only the main ticket branch (skips environments)', value: 'mainOnly' },
+        { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' }
     ];
 
     if (environments.length > 0) {
@@ -41,7 +43,7 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
         if (!selectedOption) {
             return;
         }
-        selectedOptionValue = (selectedOption as any).value;
+        selectedOptionValue = selectedOption.value;
     }
 
     let sourceBranchForTicket = ctx.ticketSourceBranch;
@@ -181,7 +183,6 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
                     }
 
                     // Save the actual source branch used for this ticket into git config
-                    // so that the Merge Request command knows exactly where it came from!
                     try {
                         await exec(`git config branch.${mainBranch}.ricwiz-source "${sourceBranchForTicket}"`, { cwd });
                         
@@ -245,7 +246,6 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
                 vscode.window.showErrorMessage(`Ricwiz Branch Creation Failed: ${err.message}`);
                 
                 if (createdLocalBranches.length > 0) {
-                    // Try to checkout the source branch so we can delete the created branches safely
                     try { await exec(`git checkout ${sourceBranchForTicket}`, { cwd }); } catch(e){}
                     
                     for (const b of createdLocalBranches) {
@@ -262,4 +262,3 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
         vscode.window.showErrorMessage(`Ricwiz general error: ${error.message}`);
     }
 }
-

@@ -1,12 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { EnvironmentConfig } from '../types';
-
-export interface WorkflowProfile {
-    name: string;
-    [key: string]: any; // Allow arbitrary property overrides (like defaultReviewers, jiraUrl, etc)
-}
+import { EnvironmentConfig, WorkflowProfile } from '../types';
+import { exec } from '../git';
 
 export class WorkflowContext {
     public readonly style: string;
@@ -17,15 +13,13 @@ export class WorkflowContext {
     public readonly branchPrefix: string;
     public readonly environments: EnvironmentConfig[];
     
-    // Original configuration without overrides
-    private static baseConfig = vscode.workspace.getConfiguration('ricwiz');
     private activeProfile?: WorkflowProfile;
     public readonly profileName?: string;
 
     private constructor(profile?: WorkflowProfile) {
         this.activeProfile = profile;
         this.profileName = profile?.name;
-        const config = WorkflowContext.baseConfig;
+        const config = vscode.workspace.getConfiguration('ricwiz');
         
         this.style = profile?.workflowStyle || config.get<string>('workflowStyle', 'standard');
         
@@ -41,7 +35,7 @@ export class WorkflowContext {
         this.ticketPrefix = profile?.ticketPrefix || config.get<string>('ticketPrefix', 'SFPSCA-');
         this.branchPrefix = profile?.branchPrefix ?? config.get<string>('branchPrefix', '');
         
-        const defaultEnv = [
+        const defaultEnv: EnvironmentConfig[] = [
             { name: 'Qual', sourceBranch: 'quality' },
             { name: 'Val', sourceBranch: 'validation' },
             { name: 'Prod', sourceBranch: 'main' }
@@ -56,11 +50,12 @@ export class WorkflowContext {
         if (this.activeProfile && this.activeProfile[key] !== undefined) {
             return this.activeProfile[key] as T;
         }
-        return WorkflowContext.baseConfig.get<T>(key, defaultValue);
+        return vscode.workspace.getConfiguration('ricwiz').get<T>(key, defaultValue);
     }
 
     public static async initialize(cwd: string, options?: { forcePrompt?: boolean, skipPrompt?: boolean }): Promise<WorkflowContext | undefined> {
-        let profiles: WorkflowProfile[] = WorkflowContext.baseConfig.get<WorkflowProfile[]>('profiles', []);
+        const config = vscode.workspace.getConfiguration('ricwiz');
+        let profiles: WorkflowProfile[] = config.get<WorkflowProfile[]>('profiles', []);
 
         // Also check ricwiz.json as a fallback
         const configPath = path.join(cwd, 'ricwiz.json');
@@ -80,7 +75,6 @@ export class WorkflowContext {
             // Try to auto-detect saved profile for the current branch
             if (!options?.forcePrompt) {
                 try {
-                    const { exec } = require('../git');
                     const { stdout: branchOut } = await exec('git branch --show-current', { cwd });
                     const currentBranch = branchOut.trim();
                     let ticketId = currentBranch;
@@ -140,4 +134,3 @@ export class WorkflowContext {
         return sourceBranch;
     }
 }
-

@@ -1,6 +1,14 @@
 import * as vscode from 'vscode';
-import { exec, getWorkspaceCwd, getCurrentBranch } from '../git';
+import {
+    exec,
+    getWorkspaceCwd,
+    getCurrentBranch,
+    extractTicketSuggestion,
+    resolvePrefix,
+    ricwizLogger
+} from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
+import { resolveExistingBranchName } from '../branchStatus';
 
 export async function listTicketFiles(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -28,9 +36,6 @@ export async function listTicketFiles(): Promise<void> {
         return; // User cancelled
     }
 
-    const { extractTicketSuggestion, resolvePrefix } = require('../git');
-    const { ricwizLogger } = require('../gitlabApi');
-
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Ricwiz: Finding files for ${targetBranch}...`,
@@ -43,7 +48,6 @@ export async function listTicketFiles(): Promise<void> {
             const ticketId = extractTicketSuggestion(targetBranch, prefix, true) || targetBranch.replace(/-to-[a-zA-Z0-9]+$/i, '');
             
             // Resolve the actual branch name if the user just typed "DSSCCRC-1234"
-            const { resolveExistingBranchName } = require('../branchStatus');
             const resolvedTargetBranch = await resolveExistingBranchName(cwd, ticketId);
             
             ricwizLogger.appendLine(`[ListTicketFiles] targetBranch (raw): ${targetBranch}, resolvedTargetBranch: ${resolvedTargetBranch}, ticketId: ${ticketId}, originRemote: ${originRemote}, sourceBranch: ${sourceBranch}`);
@@ -78,7 +82,6 @@ export async function listTicketFiles(): Promise<void> {
             let logLines: string[] = [];
             try {
                 ricwizLogger.appendLine(`[ListTicketFiles] Running git log fallback for ticketId: ${ticketId}`);
-                // We use \b to ensure exact word match and avoid false positives (e.g. 1234 vs 12345)
                 const { stdout } = await exec(`git --no-pager log --grep="\\b${ticketId}\\b" -i -E --name-only -m --first-parent --format=""`, { cwd, maxBuffer: 10 * 1024 * 1024 });
                 logLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                 ricwizLogger.appendLine(`[ListTicketFiles] git log found ${logLines.length} files.`);
@@ -95,7 +98,6 @@ export async function listTicketFiles(): Promise<void> {
 
             const uniqueFiles = Array.from(new Set(lines)).sort();
 
-            // Group-Object { if ($_ -match 'default/([^/]+)') { $matches[1].ToUpper() } else { 'OUTROS' } }
             const groups: Record<string, string[]> = {};
             for (const file of uniqueFiles) {
                 const match = file.match(/default\/([^/]+)/);
@@ -106,18 +108,14 @@ export async function listTicketFiles(): Promise<void> {
                 groups[groupName].push(file);
             }
 
-            // ForEach-Object { "`n=== $($.Name) ===`n" + ($.Group -join "`n") }
             let output = `Files modified in branch ${targetBranch}:\n`;
             
-            // Sort group names
             const sortedGroupNames = Object.keys(groups).sort();
-            
             for (const group of sortedGroupNames) {
                 output += `\n=== ${group} ===\n`;
                 output += groups[group].join('\n') + '\n';
             }
 
-            // Open in an untitled text document so the user can easily read and copy it
             const doc = await vscode.workspace.openTextDocument({
                 content: output,
                 language: 'plaintext'

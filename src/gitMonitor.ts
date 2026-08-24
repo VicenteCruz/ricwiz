@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getCurrentBranch } from './git';
-import { CommitEntry, EnvironmentConfig } from './types';
+import { CommitEntry, EnvironmentConfig, RelatedBranch, JiraIssueData } from './types';
 import { getRelatedBranchesStatus, getCurrentBranchMergeStatus, getRecentCommits, getRecentTickets, findRelatedBranches } from './branchStatus';
 import { RicwizWebviewProvider } from './webview';
 import { fetchJiraIssue } from './jiraApi';
@@ -61,7 +61,7 @@ export function initializeGitMonitor(
                             }
                         }
 
-                        let relatedBranches: { name: string, isMerged: boolean }[] = [];
+                        let relatedBranches: RelatedBranch[] = [];
                         let commits: CommitEntry[] = [];
                         let baseBranches: string[] = [];
                         let recentTickets: string[] = [];
@@ -86,7 +86,7 @@ export function initializeGitMonitor(
                             ticketIdForJira = ticketId;
                             const suffix = config.get<string>('commitMessageSuffix', '- ');
                             
-                            const existingTicketPattern = /^[A-Z]+-\d+(?:-\d+)?\s*(?:-\s*|:\s*|\s+)?/i;
+                            const existingTicketPattern = /^[A-Z]+-\d+(?:-\\d+)?\s*(?:-\s*|:\s*|\s+)?/i;
                             if (existingTicketPattern.test(repo.inputBox.value)) {
                                 if (!repo.inputBox.value.toUpperCase().startsWith(ticketId)) {
                                     // Replace the old ticket prefix with the new one
@@ -120,9 +120,9 @@ export function initializeGitMonitor(
                         const [fetchedCommits, currentBranchIsMerged, jiraIssue] = await Promise.all([
                             getRecentCommits(cwd, 10),
                             getCurrentBranchMergeStatus(cwd, currentBranch, environments, ctx),
-                            ticketIdForJira ? fetchJiraIssue(ticketIdForJira).catch((e: any) => {
+                            ticketIdForJira ? fetchJiraIssue(ticketIdForJira).catch((e: any): JiraIssueData => {
                                 let msg = e.message;
-                                if (msg.includes('ENOTFOUND') || msg.includes('network')) {
+                                if (msg && (msg.includes('ENOTFOUND') || msg.includes('network'))) {
                                     msg = 'No Internet or Invalid URL';
                                 }
                                 return { summary: `⚠️ Jira Error: ${msg}`, description: '', status: '' };
@@ -131,7 +131,7 @@ export function initializeGitMonitor(
                         commits = fetchedCommits;
 
                         const ticketTitle = jiraIssue ? jiraIssue.summary : '';
-                        const ticketStatus = jiraIssue ? (jiraIssue as any).status || '' : '';
+                        const ticketStatus = jiraIssue ? jiraIssue.status || '' : '';
 
                         webviewProvider?.updateBranch(currentBranch, currentBranchIsMerged, relatedBranches, commits, baseBranches, recentTickets, ticketTitle, ticketStatus);
                     }
@@ -158,12 +158,12 @@ export function initializeGitMonitor(
                 };
 
                 update();
-                repo.state.onDidChange(() => scheduleUpdate());
-                vscode.window.onDidChangeWindowState(e => {
+                context.subscriptions.push(repo.state.onDidChange(() => scheduleUpdate()));
+                context.subscriptions.push(vscode.window.onDidChangeWindowState(e => {
                     if (e.focused) {
                         scheduleUpdate();
                     }
-                });
+                }));
             }
         }
     }

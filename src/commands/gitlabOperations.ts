@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
+import * as https from 'https';
 import { storeGitlabToken } from '../secrets';
+import { exec } from '../git';
 
 export async function setGitlabTokenCommand(): Promise<void> {
     const token = await vscode.window.showInputBox({
@@ -24,7 +26,6 @@ export async function setGitlabTokenCommand(): Promise<void> {
                 let webUrl = config.get<string>('gitlabUrlOverride', '').trim();
                 if (!webUrl && vscode.workspace.workspaceFolders) {
                     try {
-                        const { exec } = require('../git');
                         const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath;
                         const { stdout } = await exec('git remote get-url origin', { cwd });
                         let remoteUrl = stdout.trim();
@@ -42,7 +43,6 @@ export async function setGitlabTokenCommand(): Promise<void> {
                 const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
 
                 // Validate token by fetching the authenticated user
-                const https = require('https');
                 const user = await new Promise<any>((resolve, reject) => {
                     const req = https.request(new URL(`${baseUrl}/api/v4/user`), {
                         method: 'GET',

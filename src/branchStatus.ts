@@ -1,16 +1,7 @@
-import { exec } from './git';
-import { CommitEntry, EnvironmentConfig } from './types';
+import { exec, ricwizLogger } from './git';
+import { CommitEntry, EnvironmentConfig, RelatedBranch } from './types';
 import { fetchMergeRequestStatus, hasGitlabToken } from './gitlabApi';
-
-/** A related branch with its merge status */
-export interface RelatedBranch {
-    name: string;
-    isMerged: boolean;
-    pipelineStatus?: 'running' | 'success' | 'failed' | 'canceled' | 'skipped' | 'none';
-    mrUrl?: string;
-    projectPath?: string;
-    pipelineId?: number;
-}
+import { WorkflowContext } from './workflows/WorkflowContext';
 
 /**
  * Finds the matching environment for a `-to-<EnvName>` style branch.
@@ -27,46 +18,42 @@ function findMatchingEnv(branch: string, environments: EnvironmentConfig[]): Env
  *
  * @param cwd - The workspace directory
  * @param branches - Array of related branch names
- * @param ticketId - The ticket ID (unused now, kept for signature compatibility)
+ * @param ticketId - The ticket ID (kept for signature compatibility)
  * @param environments - The configured environments
+ * @param ctx - Optional WorkflowContext
  * @returns Array of RelatedBranch objects with merge status
  */
 export async function getRelatedBranchesStatus(
     cwd: string,
     branches: string[],
-    ticketId: string,
+    _ticketId: string,
     environments: EnvironmentConfig[],
-    ctx?: any
+    ctx?: WorkflowContext
 ): Promise<RelatedBranch[]> {
     const hasGitlab = await hasGitlabToken();
 
-    const results: RelatedBranch[] = [];
-    for (const branch of branches) {
+    const promises = branches.map(async (branch): Promise<RelatedBranch> => {
         const env = findMatchingEnv(branch, environments);
         if (hasGitlab) {
-            // If it's a deploy branch, we know exactly what target branch to look for.
-            // If it's the main branch, we just look for any MR originating from it.
             const targetBranch = env ? env.sourceBranch : undefined;
             const mrStatus = await fetchMergeRequestStatus(cwd, branch, targetBranch, ctx);
             if (mrStatus) {
-                results.push({ 
-                    name: branch, 
-                    isMerged: mrStatus.isMerged, 
+                return {
+                    name: branch,
+                    isMerged: mrStatus.isMerged,
                     pipelineStatus: mrStatus.pipelineStatus,
                     mrUrl: mrStatus.webUrl,
                     projectPath: mrStatus.projectPath,
                     pipelineId: mrStatus.pipelineId
-                });
-                continue;
+                };
             }
         } else {
-            const { ricwizLogger } = require('./gitlabApi');
             ricwizLogger.appendLine(`[GitLab API] Skipping MR check for ${branch} because hasGitlabToken() is false`);
         }
-        results.push({ name: branch, isMerged: false, pipelineStatus: 'none' });
-    }
+        return { name: branch, isMerged: false, pipelineStatus: 'none' };
+    });
 
-    return results;
+    return await Promise.all(promises);
 }
 
 /**
@@ -76,13 +63,14 @@ export async function getRelatedBranchesStatus(
  * @param cwd - The workspace directory
  * @param currentBranch - The currently checked-out branch name
  * @param environments - The configured environments
+ * @param ctx - Optional WorkflowContext
  * @returns true if the current branch is merged into its target environment
  */
 export async function getCurrentBranchMergeStatus(
     cwd: string,
     currentBranch: string,
     environments: EnvironmentConfig[],
-    ctx?: any
+    ctx?: WorkflowContext
 ): Promise<boolean> {
     const env = findMatchingEnv(currentBranch, environments);
     if (!env) {
@@ -95,7 +83,6 @@ export async function getCurrentBranchMergeStatus(
             return mrStatus.isMerged;
         }
     } else {
-        const { ricwizLogger } = require('./gitlabApi');
         ricwizLogger.appendLine(`[GitLab API] Skipping MR check for current branch ${currentBranch} because hasGitlabToken() is false`);
     }
 
@@ -130,9 +117,6 @@ export async function getRecentCommits(cwd: string, count: number = 10): Promise
 /**
  * Fetches recent ticket branch names (branches matching a ticket pattern
  * like `SFPSC-1234`) sorted by most recent commit date.
- *
- * Used when the current branch is not a ticket branch, to show quick-access
- * links in the sidebar.
  *
  * @param cwd - The workspace directory
  * @param limit - Maximum number of tickets to return (default 3)
@@ -196,10 +180,6 @@ export async function findRelatedBranches(cwd: string, ticketId: string, current
  */
 export async function resolveExistingBranchName(cwd: string, ticketId: string, envName?: string): Promise<string> {
     try {
-        const cp = require('child_process');
-        const util = require('util');
-        const exec = util.promisify(cp.exec);
-        
         const { stdout } = await exec(`git branch --all --list "*${ticketId}*"`, { cwd });
         const exactTicketRegex = new RegExp(`${ticketId}(?!\\d)`, 'i');
         

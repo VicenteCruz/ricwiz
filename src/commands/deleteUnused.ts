@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, getWorkspaceCwd, getCurrentBranch, promptForTicketId } from '../git';
+import { exec, getWorkspaceCwd, getCurrentBranch } from '../git';
 
 export async function deleteUnusedBranches(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -31,12 +31,12 @@ export async function deleteUnusedBranches(): Promise<void> {
             return;
         }
 
-        // Find all remote branches
+        // Find all remote branches (strip only the remote name prefix, e.g. "origin/feature/foo" -> "feature/foo")
         let remoteBranchNames: string[] = [];
         try {
             const { stdout } = await exec(`git branch -r --format="%(refname:short)"`, { cwd });
             remoteBranchNames = stdout.split('\n')
-                .map((b: string) => b.trim().replace(/^origin\//, '').replace(/^[^\/]+\//, '')) // handle origin/ and other remotes
+                .map((b: string) => b.trim().replace(/^[^/]+\//, ''))
                 .filter((b: string) => b.length > 0 && !b.includes('HEAD'));
         } catch(e) {}
 

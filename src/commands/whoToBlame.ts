@@ -1,15 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { exec, getWorkspaceCwd } from '../git';
-
-export interface BlameData {
-    fileName: string;
-    gitHistory: { author: string, time: string, message: string, hash: string }[];
-    sfAuthor: string;
-    sfTime: string;
-    sfCreatedBy: string;
-    auditHistory: { action: string, display: string, author: string, time: string }[];
-}
+import { exec, getWorkspaceCwd, ricwizLogger } from '../git';
+import { BlameData, BlameGitHistoryItem, BlameAuditHistoryItem } from '../types';
+import { parseMetadataFromPath } from '../salesforce/metadata';
 
 export async function getBlameData(): Promise<BlameData | null> {
     const editor = vscode.window.activeTextEditor;
@@ -28,7 +21,7 @@ export async function getBlameData(): Promise<BlameData | null> {
     }
 
     // 1. Get Git Blame (last 5 commits for this file)
-    let gitHistory: { author: string, time: string, message: string, hash: string }[] = [];
+    let gitHistory: BlameGitHistoryItem[] = [];
     
     try {
         const { stdout } = await exec(`git log -5 --pretty=format:"%an|%ar|%s|%h" -- "${filePath}"`, { cwd });
@@ -44,18 +37,18 @@ export async function getBlameData(): Promise<BlameData | null> {
                 });
             }
         }
-    } catch (e) {
-        console.error('Git blame error:', e);
+    } catch (e: any) {
+        ricwizLogger.appendLine(`[WhoToBlame] Git blame error: ${e.message}`);
     }
 
     // 2. Get Salesforce Blame
     let sfAuthor = 'Unknown';
     let sfTime = 'Unknown';
     let sfCreatedBy = 'Unknown';
-    let auditHistory: { action: string, display: string, author: string, time: string }[] = [];
+    let auditHistory: BlameAuditHistoryItem[] = [];
 
     // Parse Metadata Type and Name from filepath
-    const metaInfo = parseMetadataInfo(filePath);
+    const metaInfo = parseMetadataFromPath(filePath);
     
     if (metaInfo) {
         try {
@@ -90,39 +83,39 @@ export async function getBlameData(): Promise<BlameData | null> {
                             sfTime = 'N/A';
                             sfCreatedBy = 'N/A';
                         }
-                    } catch(e) {
+                    } catch(e: any) {
                         sfAuthor = 'Query Error';
                         sfTime = 'N/A';
                         sfCreatedBy = 'N/A';
+                        ricwizLogger.appendLine(`[WhoToBlame] Query error: ${e.message}`);
                     }
                 }
 
                 // 3. Query Audit Trail for this specific component
-                // Fetch last 1500 audit trail events and filter in memory to avoid SOQL LIKE restrictions
                 try {
                     const auditQuery = `SELECT Action, Display, CreatedBy.Name, CreatedDate FROM SetupAuditTrail ORDER BY CreatedDate DESC LIMIT 1500`;
                     const { stdout: auditOut } = await exec(`sf data query -q "${auditQuery}" --json`, { cwd, maxBuffer: 50 * 1024 * 1024 });
                     const auditRes = JSON.parse(auditOut);
                     
                     if (auditRes && auditRes.result && auditRes.result.records) {
-                        const searchName = metaInfo.name.replace('__c', ''); // broaden search
+                        const searchName = metaInfo.name.replace('__c', '');
                         const matches = auditRes.result.records.filter((r: any) => 
                             r.Display && r.Display.includes(searchName)
                         );
                         
-                        auditHistory = matches.map((r: any) => ({
+                        auditHistory = matches.map((r: any): BlameAuditHistoryItem => ({
                             action: r.Action,
                             display: r.Display,
                             author: r.CreatedBy ? r.CreatedBy.Name : 'Unknown',
                             time: new Date(r.CreatedDate).toLocaleString()
-                        })).slice(0, 10); // keep up to 10
+                        })).slice(0, 10);
                     }
-                } catch(e) {
-                    console.error('Audit trail query error:', e);
+                } catch(e: any) {
+                    ricwizLogger.appendLine(`[WhoToBlame] Audit trail query error: ${e.message}`);
                 }
             });
-        } catch (e) {
-            console.error('Salesforce query error:', e);
+        } catch (e: any) {
+            ricwizLogger.appendLine(`[WhoToBlame] Salesforce query error: ${e.message}`);
         }
     } else {
         sfAuthor = 'Unsupported Metadata Type';
@@ -137,34 +130,4 @@ export async function getBlameData(): Promise<BlameData | null> {
         sfCreatedBy,
         auditHistory
     };
-}
-
-function parseMetadataInfo(filePath: string): { type: string, name: string } | null {
-    const normalized = filePath.replace(/\\/g, '/');
-    
-    if (normalized.includes('/classes/')) {
-        const match = normalized.match(/\/classes\/([^/.]+)\.cls/);
-        if (match) return { type: 'ApexClass', name: match[1] };
-    }
-    if (normalized.includes('/triggers/')) {
-        const match = normalized.match(/\/triggers\/([^/.]+)\.trigger/);
-        if (match) return { type: 'ApexTrigger', name: match[1] };
-    }
-    if (normalized.includes('/lwc/')) {
-        const match = normalized.match(/\/lwc\/([^/]+)\//);
-        if (match) return { type: 'LightningComponentBundle', name: match[1] };
-    }
-    if (normalized.includes('/aura/')) {
-        const match = normalized.match(/\/aura\/([^/]+)\//);
-        if (match) return { type: 'AuraDefinitionBundle', name: match[1] };
-    }
-    if (normalized.includes('/objects/') && normalized.includes('/fields/')) {
-        const objMatch = normalized.match(/\/objects\/([^/]+)\//);
-        const fieldMatch = normalized.match(/\/fields\/([^/.]+)\.field/);
-        if (objMatch && fieldMatch) {
-            return { type: 'CustomField', name: `${objMatch[1]}.${fieldMatch[1]}` };
-        }
-    }
-    
-    return null;
 }

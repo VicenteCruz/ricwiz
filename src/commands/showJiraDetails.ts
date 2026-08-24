@@ -3,6 +3,8 @@ import { getWorkspaceCwd, getCurrentBranch, resolvePrefix, extractTicketSuggesti
 import { WorkflowContext } from '../workflows/WorkflowContext';
 import { fetchJiraIssue } from '../jiraApi';
 import { RicwizWebviewProvider } from '../webview';
+import { findRelatedBranches, getRelatedBranchesStatus } from '../branchStatus';
+import { RelatedBranch } from '../types';
 
 export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -30,13 +32,12 @@ export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): P
             location: vscode.ProgressLocation.Notification,
             title: `Fetching details for ${ticketId}...`,
             cancellable: false
-        }, async (progress) => {
+        }, async () => {
             const data = await fetchJiraIssue(ticketId);
             if (data) {
-                let relatedBranches: any[] = [];
+                let relatedBranches: RelatedBranch[] = [];
                 try {
-                    const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
-                    const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                    const environments = ctx.environments || vscode.workspace.getConfiguration('ricwiz').get('environments', [
                         { name: 'Qual', sourceBranch: 'quality' },
                         { name: 'Val', sourceBranch: 'validation' },
                         { name: 'Prod', sourceBranch: 'main' }
@@ -53,7 +54,7 @@ export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): P
             }
         });
     } catch (e: any) {
-        if (e.message.includes('securely configured')) {
+        if (e.message && e.message.includes('securely configured')) {
             const action = await vscode.window.showErrorMessage(e.message, 'Set Token Now');
             if (action === 'Set Token Now') {
                 vscode.commands.executeCommand('ricwiz.setJiraToken');

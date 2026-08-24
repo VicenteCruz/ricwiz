@@ -1,5 +1,12 @@
 import * as vscode from 'vscode';
-import { getWorkspaceCwd, promptForTicketId } from '../git';
+import {
+    getWorkspaceCwd,
+    promptForTicketId,
+    getCurrentBranch,
+    resolvePrefix,
+    extractTicketSuggestion,
+    normalizeTicketId
+} from '../git';
 
 async function doOpenJiraTicket(openInVSCode: boolean = false): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -13,7 +20,6 @@ async function doOpenJiraTicket(openInVSCode: boolean = false): Promise<void> {
         return;
     }
 
-    const { getCurrentBranch, resolvePrefix, extractTicketSuggestion } = require('../git');
     const currentBranch = await getCurrentBranch(cwd);
     const configPrefix = config.get<string>('ticketPrefix', 'SFPSCA-');
     const prefix = resolvePrefix(currentBranch, configPrefix);
@@ -31,7 +37,6 @@ async function doOpenJiraTicket(openInVSCode: boolean = false): Promise<void> {
         finalTicketId = result.ticketId;
     } else {
         // Ensure it's normalized just in case
-        const { normalizeTicketId } = require('../git');
         finalTicketId = normalizeTicketId(finalTicketId, prefix);
     }
 

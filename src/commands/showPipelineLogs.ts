@@ -1,10 +1,8 @@
 import * as vscode from 'vscode';
 import { getGitlabToken } from '../secrets';
-import { getWorkspaceCwd } from '../git';
-import { ricwizLogger } from '../gitlabApi';
+import { getWorkspaceCwd, exec } from '../git';
 import * as https from 'https';
 import { WorkflowContext } from '../workflows/WorkflowContext';
-import { exec } from '../git';
 
 export async function showPipelineLogs(projectPath: string, pipelineId: number): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -19,7 +17,6 @@ export async function showPipelineLogs(projectPath: string, pipelineId: number):
     try {
         const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
         if (!ctx) return;
-        const config = vscode.workspace.getConfiguration('ricwiz');
         let webUrlOverride = ctx.getConfig('gitlabUrlOverride', '');
         
         let baseUrl = webUrlOverride;
@@ -63,7 +60,7 @@ export async function showPipelineLogs(projectPath: string, pipelineId: number):
         }, async () => {
             const agent = new https.Agent({ keepAlive: true });
             const jobsUrl = new URL(`${baseUrl}/api/v4/projects/${projectPath}/pipelines/${pipelineId}/jobs?scope[]=failed`);
-            const jobs = await new Promise<any[]>((resolve, reject) => {
+            const jobs = await new Promise<any[]>((resolve) => {
                 https.get(jobsUrl, { headers: { 'PRIVATE-TOKEN': token }, agent }, (res) => {
                     let data = '';
                     res.on('data', chunk => data += chunk);
@@ -82,11 +79,11 @@ export async function showPipelineLogs(projectPath: string, pipelineId: number):
                 return;
             }
 
-            // For now, let's just fetch the log for the first failed job
+            // Fetch the log for the first failed job
             const failedJob = jobs[0];
             const traceUrl = new URL(`${baseUrl}/api/v4/projects/${projectPath}/jobs/${failedJob.id}/trace`);
             
-            const logData = await new Promise<string>((resolve, reject) => {
+            const logData = await new Promise<string>((resolve) => {
                 https.get(traceUrl, { headers: { 'PRIVATE-TOKEN': token }, agent }, (res) => {
                     let data = '';
                     res.on('data', chunk => data += chunk);

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { exec, getWorkspaceCwd } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
+import { parseMetadataFromPath } from '../salesforce/metadata';
 
 export async function generateDestructiveChanges(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -38,44 +39,9 @@ export async function generateDestructiveChanges(): Promise<void> {
             };
 
             for (const file of files) {
-                const normalized = file.replace(/\\/g, '/');
-                if (normalized.includes('/classes/')) {
-                    const match = normalized.match(/\/classes\/([^/.]+)\.cls/);
-                    if (match) addMeta('ApexClass', match[1]);
-                } else if (normalized.includes('/triggers/')) {
-                    const match = normalized.match(/\/triggers\/([^/.]+)\.trigger/);
-                    if (match) addMeta('ApexTrigger', match[1]);
-                } else if (normalized.includes('/lwc/')) {
-                    const match = normalized.match(/\/lwc\/([^/]+)\//);
-                    if (match) addMeta('LightningComponentBundle', match[1]);
-                } else if (normalized.includes('/aura/')) {
-                    const match = normalized.match(/\/aura\/([^/]+)\//);
-                    if (match) addMeta('AuraDefinitionBundle', match[1]);
-                } else if (normalized.includes('/objects/') && normalized.includes('/fields/')) {
-                    const objMatch = normalized.match(/\/objects\/([^/]+)\//);
-                    const fieldMatch = normalized.match(/\/fields\/([^/.]+)\.field/);
-                    if (objMatch && fieldMatch) addMeta('CustomField', `${objMatch[1]}.${fieldMatch[1]}`);
-                } else if (normalized.includes('/objects/')) {
-                    const match = normalized.match(/\/objects\/([^/.]+)\.object/);
-                    if (match) addMeta('CustomObject', match[1]);
-                } else if (normalized.includes('/layouts/')) {
-                    const match = normalized.match(/\/layouts\/([^/.]+)\.layout/);
-                    if (match) addMeta('Layout', match[1]);
-                } else if (normalized.includes('/flows/')) {
-                    const match = normalized.match(/\/flows\/([^/.]+)\.flow/);
-                    if (match) addMeta('Flow', match[1]);
-                } else if (normalized.includes('/permissionsets/')) {
-                    const match = normalized.match(/\/permissionsets\/([^/.]+)\.permissionset/);
-                    if (match) addMeta('PermissionSet', match[1]);
-                } else if (normalized.includes('/profiles/')) {
-                    const match = normalized.match(/\/profiles\/([^/.]+)\.profile/);
-                    if (match) addMeta('Profile', match[1]);
-                } else if (normalized.includes('/customMetadata/')) {
-                    const match = normalized.match(/\/customMetadata\/([^/.]+)\.md/);
-                    if (match) addMeta('CustomMetadata', match[1]);
-                } else if (normalized.includes('/flexipages/')) {
-                    const match = normalized.match(/\/flexipages\/([^/.]+)\.flexipage/);
-                    if (match) addMeta('FlexiPage', match[1]);
+                const meta = parseMetadataFromPath(file);
+                if (meta) {
+                    addMeta(meta.type, meta.name);
                 }
             }
 

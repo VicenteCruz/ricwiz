@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists, getCurrentBranch } from '../git';
-import { EnvironmentConfig } from '../types';
 import { handleMergeConflict } from '../conflictResolver';
 import { WorkflowContext } from '../workflows/WorkflowContext';
+import { resolveExistingBranchName } from '../branchStatus';
 
 export async function updateBases(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -51,7 +51,6 @@ export async function updateBases(): Promise<void> {
         for (const env of environments) {
             if (abortRequested) break;
 
-            const { resolveExistingBranchName } = require('../branchStatus');
             const targetBranch = await resolveExistingBranchName(cwd, ticketId, env.name);
             const sourceBranch = env.sourceBranch;
 
@@ -82,7 +81,7 @@ export async function updateBases(): Promise<void> {
                     const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                     if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
                         const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
-                        const resolved = await handleMergeConflict(cwd, fullUpstreamPath, targetBranch, progress);
+                        const resolved = await handleMergeConflict(cwd, fullUpstreamPath, targetBranch, progress, token);
                         if (!resolved) {
                             abortRequested = true;
                             throw new Error('Update aborted by user.');
@@ -117,5 +116,3 @@ export async function updateBases(): Promise<void> {
         }
     });
 }
-
-

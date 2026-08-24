@@ -1,26 +1,16 @@
 import * as https from 'https';
 import * as vscode from 'vscode';
 import { getGitlabToken } from './secrets';
-import { exec } from './git';
-
-export interface GitLabMRStatus {
-    isMerged: boolean;
-    isOpen: boolean;
-    pipelineStatus: 'running' | 'success' | 'failed' | 'canceled' | 'skipped' | 'none';
-    webUrl: string;
-    projectPath?: string;
-    pipelineId?: number;
-}
-
-let projectPathCache: { [cwd: string]: string } = {};
-let cachedWebUrl: string | null = null;
+import { exec, ricwizLogger } from './git';
+import { GitLabMRStatus } from './types';
+import { WorkflowContext } from './workflows/WorkflowContext';
 
 export async function hasGitlabToken(): Promise<boolean> {
     const token = await getGitlabToken();
     return !!(token && token.trim());
 }
 
-async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: string, token: string, projectPath: string}[]> {
+async function getGitlabTargets(cwd: string, ctx?: WorkflowContext): Promise<{baseUrl: string, token: string, projectPath: string}[]> {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const token = (await getGitlabToken())?.trim();
 
@@ -98,11 +88,9 @@ async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: strin
     return targets;
 }
 
-export const ricwizLogger = vscode.window.createOutputChannel("Ricwiz Debug");
-
 const gitlabAgent = new https.Agent({ keepAlive: true, maxSockets: 10 });
 
-async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, method: string, path: string): Promise<T> {
+async function gitlabRequest<T>(baseUrl: string, token: string, method: string, path: string): Promise<T> {
     const url = new URL(`${baseUrl}${path}`);
     ricwizLogger.appendLine(`[GitLab API] ${method} ${url.toString()}`);
 
@@ -157,7 +145,7 @@ async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, met
 const mrCache = new Map<string, { data: GitLabMRStatus, timestamp: number }>();
 const CACHE_TTL = 30 * 1000; // 30 seconds
 
-export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string, ctx?: any): Promise<GitLabMRStatus | null> {
+export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string, ctx?: WorkflowContext): Promise<GitLabMRStatus | null> {
     ricwizLogger.appendLine(`[GitLab API] fetchMergeRequestStatus called for source: ${sourceBranch}, target: ${targetBranch || 'any'}`);
     const cacheKey = `${cwd}:${sourceBranch}:${targetBranch || 'any'}`;
     const cached = mrCache.get(cacheKey);
@@ -177,12 +165,12 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
                     path += `&target_branch=${encodeURIComponent(targetBranch)}`;
                 }
                 
-                const mrs = await gitlabRequest<any[]>(cwd, target.baseUrl, target.token, 'GET', path);
+                const mrs = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', path);
                 if (mrs && mrs.length > 0) {
                     let mr = mrs[0]; // most recently updated for this target
                     
                     try {
-                        const detailedMr = await gitlabRequest<any>(cwd, target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}`);
+                        const detailedMr = await gitlabRequest<any>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}`);
                         if (detailedMr) {
                             mr = detailedMr;
                         }
@@ -232,7 +220,7 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
         for (const target of targets) {
             try {
                 const path = `/api/v4/projects/${target.projectPath}/pipelines?ref=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
-                const pipelines = await gitlabRequest<any[]>(cwd, target.baseUrl, target.token, 'GET', path);
+                const pipelines = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', path);
                 if (pipelines && pipelines.length > 0) {
                     const p = pipelines[0];
                     let pipelineStatus: GitLabMRStatus['pipelineStatus'] = 'none';

@@ -2,12 +2,15 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from './git';
+import { webviewProvider } from './extension';
+import { ConflictedFileData } from './types';
 
 export async function handleMergeConflict(
     cwd: string,
     sourceStr: string,
     targetStr: string,
-    progress?: vscode.Progress<{ message?: string; increment?: number }>
+    progress?: vscode.Progress<{ message?: string; increment?: number }>,
+    token?: vscode.CancellationToken
 ): Promise<boolean> {
     if (progress) {
         progress.report({ message: `CONFLICT! Resolve & click 'Commit & Continue' in Ricwiz panel.` });
@@ -16,7 +19,13 @@ export async function handleMergeConflict(
     let isResolved = false;
     let abortRequested = false;
 
-    const getDeletionConflicts = async () => {
+    if (token) {
+        token.onCancellationRequested(() => {
+            abortRequested = true;
+        });
+    }
+
+    const getDeletionConflicts = async (): Promise<string[]> => {
         try {
             const { stdout } = await exec('git status --porcelain', { cwd });
             return stdout.split('\n')
@@ -30,9 +39,8 @@ export async function handleMergeConflict(
         }
     };
 
-    const getUnmergedFilesData = async () => {
+    const getUnmergedFilesData = async (): Promise<ConflictedFileData[]> => {
         try {
-            const { stdout } = await exec('git status --porcelain', { cwd });
             const mapState = (state: string) => {
                 if (state === 'UU') return 'Both Modified';
                 if (state === 'UD') return 'Deleted by them';
@@ -44,8 +52,9 @@ export async function handleMergeConflict(
                 return 'Conflicted';
             };
 
+            const { stdout } = await exec('git status --porcelain', { cwd });
             return stdout.split('\n')
-                .map(line => line.trimRight())
+                .map(line => line.trimEnd())
                 .filter(line => line.length > 2)
                 .filter(line => {
                     const state = line.substring(0, 2);
@@ -66,7 +75,6 @@ export async function handleMergeConflict(
         const deletions = await getDeletionConflicts();
         const allConflicts = await getUnmergedFilesData();
         
-        const { webviewProvider } = require('./extension');
         if (webviewProvider) {
             webviewProvider.setConflictState({
                 isConflict: true,
@@ -147,7 +155,7 @@ export async function handleMergeConflict(
         if (abortRequested) {
             isResolved = true;
             conflictActionDisposable.dispose();
-            require('./extension').webviewProvider?.setConflictState(null);
+            webviewProvider?.setConflictState(null);
             try { await exec('git merge --abort', { cwd }); } catch(err) {}
             return false;
         }
@@ -157,7 +165,7 @@ export async function handleMergeConflict(
             if (stdout.trim().length === 0) {
                 isResolved = true;
                 conflictActionDisposable.dispose();
-                require('./extension').webviewProvider?.setConflictState(null);
+                webviewProvider?.setConflictState(null);
                 vscode.window.showInformationMessage(`Ricwiz: Changes committed!`);
                 return true;
             }

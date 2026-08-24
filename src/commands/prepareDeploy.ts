@@ -1,10 +1,8 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists, getCurrentBranch } from '../git';
-import { EnvironmentConfig } from '../types';
 import { handleMergeConflict } from '../conflictResolver';
 import { WorkflowContext } from '../workflows/WorkflowContext';
+import { resolveExistingBranchName } from '../branchStatus';
 
 export async function prepareDeploy(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -30,7 +28,6 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
     const { ticketId, currentBranch } = result;
-    const { resolveExistingBranchName } = require('../branchStatus');
     const mainBranch = await resolveExistingBranchName(cwd, ticketId);
 
     // Verify the main branch exists
@@ -132,7 +129,7 @@ export async function prepareDeploy(): Promise<void> {
                         
                         const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
                         if (isConflict || errStr.includes('conflict') || errStr.includes('conflit')) {
-                            const resolved = await handleMergeConflict(cwd, branchToMerge, targetBranch, progress);
+                            const resolved = await handleMergeConflict(cwd, branchToMerge, targetBranch, progress, token);
                             if (!resolved) {
                                 abortRequested = true;
                                 throw new Error('Deploy aborted by user.');
@@ -197,4 +194,3 @@ export async function prepareDeploy(): Promise<void> {
         }
     });
 }
-

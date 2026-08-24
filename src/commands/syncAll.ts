@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, getWorkspaceCwd, getCurrentBranch, promptForTicketId } from '../git';
+import { exec, getWorkspaceCwd, promptForTicketId } from '../git';
 import { handleMergeConflict } from '../conflictResolver';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 
@@ -13,7 +13,8 @@ export async function syncAll(): Promise<void> {
     const ctx = await WorkflowContext.initialize(cwd);
     if (!ctx) return;
 
-    const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix,
+    const result = await promptForTicketId(cwd, {
+        prefix: ctx.ticketPrefix,
         prompt: 'Enter the full ticket ID to sync all branches for (e.g., SCPSCA-1234) or just the number'
     });
     if (!result) return;
@@ -55,8 +56,8 @@ export async function syncAll(): Promise<void> {
                     } catch(e: any) {
                         let isConflict = false;
                         try {
-                            const { stdout } = await exec('git ls-files -u', { cwd });
-                            if (stdout.trim().length > 0) isConflict = true;
+                            const { stdout: lsOut } = await exec('git ls-files -u', { cwd });
+                            if (lsOut.trim().length > 0) isConflict = true;
                         } catch(err) {}
                         
                         const errStr = ((e.stdout || '') + (e.stderr || '') + (e.message || '')).toLowerCase();
@@ -86,8 +87,8 @@ export async function syncAll(): Promise<void> {
                             } catch(errPull: any) {
                                 let isConflict = false;
                                 try {
-                                    const { stdout } = await exec('git ls-files -u', { cwd });
-                                    if (stdout.trim().length > 0) isConflict = true;
+                                    const { stdout: lsOut } = await exec('git ls-files -u', { cwd });
+                                    if (lsOut.trim().length > 0) isConflict = true;
                                 } catch(err) {}
                                 
                                 const errStr = ((errPull.stdout || '') + (errPull.stderr || '') + (errPull.message || '')).toLowerCase();
@@ -124,4 +125,3 @@ export async function syncAll(): Promise<void> {
         }
     });
 }
-

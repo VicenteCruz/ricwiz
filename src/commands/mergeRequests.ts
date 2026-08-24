@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
+import { resolveExistingBranchName } from '../branchStatus';
 
 async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -23,7 +24,7 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     } else {
         let remoteUrl = '';
         try {
-            const targetRemote = ctx.upstreamRemote || 'origin';
+            const targetRemote = ctx.originRemote || 'origin';
             const { stdout } = await exec(`git remote get-url ${targetRemote}`, { cwd });
             remoteUrl = stdout.trim();
         } catch (e) {
@@ -37,7 +38,6 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
             webUrl = webUrl.slice(0, -4);
         }
         if (webUrl.startsWith('git@')) {
-            // git@gitlab.com:empresa/projeto -> gitlab.com/empresa/projeto
             webUrl = webUrl.replace('git@', '').replace(':', '/');
             webUrl = `https://${webUrl}`;
         }
@@ -52,8 +52,6 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
             mainSourceBranch = stdout.trim();
         }
     } catch (e) {}
-
-    const { resolveExistingBranchName } = require('../branchStatus');
 
     if (ctx.environments.length === 0) {
         // If there are no environments, just open the MR for the main ticket branch
@@ -76,7 +74,7 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     // Open a tab for each branch
     for (const link of mrLinks) {
         // GitLab MR URL Format
-        const url = `${webUrl}/-/merge_requests/new?merge_request[source_branch]=${link.source}&merge_request[target_branch]=${link.target}`;
+        const url = `${webUrl}/-/merge_requests/new?merge_request[source_branch]=${encodeURIComponent(link.source)}&merge_request[target_branch]=${encodeURIComponent(link.target)}`;
         
         if (openInVSCode) {
             vscode.commands.executeCommand('simpleBrowser.show', url);

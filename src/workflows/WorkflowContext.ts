@@ -14,6 +14,7 @@ export class WorkflowContext {
     public readonly originRemote: string;
     public readonly ticketSourceBranch: string;
     public readonly ticketPrefix: string;
+    public readonly branchPrefix: string;
     public readonly environments: EnvironmentConfig[];
     
     // Original configuration without overrides
@@ -38,6 +39,7 @@ export class WorkflowContext {
 
         this.ticketSourceBranch = profile?.ticketSourceBranch || config.get<string>('ticketSourceBranch', 'main');
         this.ticketPrefix = profile?.ticketPrefix || config.get<string>('ticketPrefix', 'SFPSCA-');
+        this.branchPrefix = profile?.branchPrefix ?? config.get<string>('branchPrefix', '');
         
         const defaultEnv = [
             { name: 'Qual', sourceBranch: 'quality' },

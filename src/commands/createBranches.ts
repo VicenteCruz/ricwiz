@@ -95,7 +95,7 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
         sourceBranchForTicket = userInput.trim();
     }
 
-    const mainBranch = ticketId;
+    const mainBranch = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}` : ticketId;
 
     // Validate inputs to prevent command injection
     if (!Security.isValidShellArg(mainBranch)) {
@@ -180,7 +180,7 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
                 if (selectedOptionValue === 'all' || selectedOptionValue === 'envs') {
                     const envProgressStep = 50 / (environments.length || 1);
                     for (const env of environments) {
-                        const envBranchName = `${ticketId}-to-${env.name}`;
+                        const envBranchName = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
                         const sourceBranch = env.sourceBranch;
 
                         progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });

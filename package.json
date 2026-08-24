@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.9.28",
+  "version": "4.9.29",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -279,6 +279,10 @@
               "ticketPrefix": {
                 "type": "string"
               },
+              "branchPrefix": {
+                "type": "string",
+                "description": "Optional prefix prepended to git branches (e.g., used by the CRC team format: 'CRC-R19-')"
+              },
               "environments": {
                 "type": "array",
                 "items": {
@@ -304,6 +308,12 @@
           "type": "string",
           "default": "SFPSCA-",
           "description": "Prefix used for branch creation."
+        },
+        "ricwiz.branchPrefix": {
+          "order": 11,
+          "type": "string",
+          "default": "",
+          "description": "Optional prefix prepended to git branches (e.g., used by the CRC team format: 'CRC-R19-')."
         },
         "ricwiz.commitMessageSuffix": {
           "order": 11,

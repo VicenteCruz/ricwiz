@@ -56,14 +56,14 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     if (ctx.environments.length === 0) {
         // If there are no environments, just open the MR for the main ticket branch
         mrLinks.push({
-            source: ticketId,
+            source: ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}` : ticketId,
             target: mainSourceBranch
         });
     } else {
         // If environments exist, open MRs for them
         for (const env of ctx.environments) {
             mrLinks.push({
-                source: `${ticketId}-to-${env.name}`,
+                source: ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`,
                 target: env.sourceBranch
             });
         }

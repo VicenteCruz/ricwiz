@@ -30,7 +30,7 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
     const { ticketId, currentBranch } = result;
-    const mainBranch = ticketId;
+    const mainBranch = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}` : ticketId;
 
     // Verify the main branch exists
     if (!(await checkBranchExists(cwd, mainBranch))) {
@@ -105,7 +105,7 @@ export async function prepareDeploy(): Promise<void> {
         for (const env of environments) {
             if (abortRequested) break;
 
-            const targetBranch = `${ticketId}-to-${env.name}`;
+            const targetBranch = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
             const sourceBranch = env.sourceBranch;
 
             try {

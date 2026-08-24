@@ -51,7 +51,7 @@ export async function updateBases(): Promise<void> {
         for (const env of environments) {
             if (abortRequested) break;
 
-            const targetBranch = `${ticketId}-to-${env.name}`;
+            const targetBranch = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
             const sourceBranch = env.sourceBranch;
 
             if (!(await checkBranchExists(cwd, targetBranch))) {

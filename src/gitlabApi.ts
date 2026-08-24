@@ -18,7 +18,7 @@ export async function hasGitlabToken(): Promise<boolean> {
     return !!(token && token.trim());
 }
 
-async function getGitlabAuthAndBaseUrl(cwd: string, ctx?: any) {
+async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: string, token: string, projectPath: string}[]> {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const token = (await getGitlabToken())?.trim();
 
@@ -26,53 +26,67 @@ async function getGitlabAuthAndBaseUrl(cwd: string, ctx?: any) {
         throw new Error('No GitLab token');
     }
 
-    let webUrl = ctx ? ctx.getConfig('gitlabUrlOverride', '') : config.get<string>('gitlabUrlOverride', '');
-    if (!webUrl || webUrl.trim() === '') {
-        if (cachedWebUrl) {
-            webUrl = cachedWebUrl;
-        } else {
-            try {
-                // If a WorkflowContext is provided, prefer its upstreamRemote to get the main project URL
-                const targetRemote = ctx && ctx.upstreamRemote ? ctx.upstreamRemote : 'origin';
-                const { stdout } = await exec(`git remote get-url ${targetRemote}`, { cwd });
-                let remoteUrl = stdout.trim();
-                
-                if (remoteUrl.endsWith('.git')) {
-                    remoteUrl = remoteUrl.slice(0, -4);
-                }
-                if (remoteUrl.startsWith('git@')) {
-                    remoteUrl = remoteUrl.replace('git@', '').replace(':', '/');
-                    remoteUrl = `https://${remoteUrl}`;
-                }
-                
-                webUrl = remoteUrl;
-                cachedWebUrl = webUrl;
-            } catch (e) {
-                throw new Error('Could not get remote origin URL.');
+    let webUrlOverride = ctx ? ctx.getConfig('gitlabUrlOverride', '') : config.get<string>('gitlabUrlOverride', '');
+    
+    let candidateUrls: string[] = [];
+    if (webUrlOverride && webUrlOverride.trim() !== '') {
+        candidateUrls.push(webUrlOverride.trim());
+    } else {
+        // Find all remotes
+        try {
+            const { stdout: remotesOut } = await exec(`git remote`, { cwd });
+            const allRemotes = remotesOut.split('\n').map(r => r.trim()).filter(r => r);
+            
+            // Prioritize remotes
+            const remotesToTry: string[] = [];
+            if (ctx && ctx.upstreamRemote && allRemotes.includes(ctx.upstreamRemote)) {
+                remotesToTry.push(ctx.upstreamRemote);
             }
-        }
+            if (ctx && ctx.originRemote && ctx.originRemote !== ctx.upstreamRemote && allRemotes.includes(ctx.originRemote)) {
+                remotesToTry.push(ctx.originRemote);
+            }
+            if (allRemotes.includes('upstream') && !remotesToTry.includes('upstream')) {
+                remotesToTry.push('upstream');
+            }
+            if (allRemotes.includes('origin') && !remotesToTry.includes('origin')) {
+                remotesToTry.push('origin');
+            }
+
+            for (const remote of remotesToTry) {
+                try {
+                    const { stdout } = await exec(`git remote get-url ${remote}`, { cwd });
+                    let remoteUrl = stdout.trim();
+                    if (remoteUrl.endsWith('.git')) remoteUrl = remoteUrl.slice(0, -4);
+                    if (remoteUrl.startsWith('git@')) {
+                         remoteUrl = remoteUrl.replace('git@', '').replace(':', '/');
+                         remoteUrl = `https://${remoteUrl}`;
+                    }
+                    candidateUrls.push(remoteUrl);
+                } catch(e) {}
+            }
+        } catch(e) {}
     }
-    
-    // Extract domain and project path
-    // https://gitlab.com/empresa/projeto
-    const urlObj = new URL(webUrl);
-    const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
-    
-    let projectPath = projectPathCache[cwd];
-    if (!projectPath) {
+
+    if (candidateUrls.length === 0) {
+        throw new Error('Could not get any remote origin URL.');
+    }
+
+    // Map candidate URLs to Project Targets
+    const targets = candidateUrls.map(webUrl => {
+        const urlObj = new URL(webUrl);
+        const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
         let path = urlObj.pathname;
         if (path.startsWith('/')) path = path.substring(1);
         if (path.endsWith('/')) path = path.slice(0, -1);
         if (path.endsWith('.git')) path = path.slice(0, -4);
-        projectPath = encodeURIComponent(path);
-        projectPathCache[cwd] = projectPath;
-    }
+        const projectPath = encodeURIComponent(path);
+        return { baseUrl, token, projectPath };
+    });
 
-    return { baseUrl, token, projectPath };
+    return targets;
 }
 
-async function gitlabRequest<T>(cwd: string, method: string, path: string, ctx?: any): Promise<T> {
-    const { baseUrl, token } = await getGitlabAuthAndBaseUrl(cwd, ctx);
+async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, method: string, path: string): Promise<T> {
     const url = new URL(`${baseUrl}${path}`);
 
     return new Promise((resolve, reject) => {
@@ -122,45 +136,48 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
     }
 
     try {
-        const { projectPath } = await getGitlabAuthAndBaseUrl(cwd, ctx);
-        // We query MRs where source_branch = sourceBranch and optionally target_branch = targetBranch
-        let path = `/api/v4/projects/${projectPath}/merge_requests?source_branch=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
-        if (targetBranch) {
-            path += `&target_branch=${encodeURIComponent(targetBranch)}`;
-        }
-        
-        const mrs = await gitlabRequest<any[]>(cwd, 'GET', path, ctx);
-        if (mrs && mrs.length > 0) {
-            let mr = mrs[0]; // most recently updated
-            
+        const targets = await getGitlabTargets(cwd, ctx);
+        for (const target of targets) {
             try {
-                // The list endpoint often omits head_pipeline for performance, so we fetch the single MR details
-                const detailedMr = await gitlabRequest<any>(cwd, 'GET', `/api/v4/projects/${projectPath}/merge_requests/${mr.iid}`, ctx);
-                if (detailedMr) {
-                    mr = detailedMr;
+                let path = `/api/v4/projects/${target.projectPath}/merge_requests?source_branch=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
+                if (targetBranch) {
+                    path += `&target_branch=${encodeURIComponent(targetBranch)}`;
                 }
-            } catch (e) {}
+                
+                const mrs = await gitlabRequest<any[]>(cwd, target.baseUrl, target.token, 'GET', path);
+                if (mrs && mrs.length > 0) {
+                    let mr = mrs[0]; // most recently updated
+                    
+                    try {
+                        const detailedMr = await gitlabRequest<any>(cwd, target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}`);
+                        if (detailedMr) {
+                            mr = detailedMr;
+                        }
+                    } catch (e) {}
 
-            let pipelineStatus: GitLabMRStatus['pipelineStatus'] = 'none';
-            if (mr.head_pipeline && mr.head_pipeline.status) {
-                // GitLab statuses: running, pending, success, failed, canceled, skipped
-                const s = mr.head_pipeline.status;
-                if (s === 'success' || s === 'failed' || s === 'canceled' || s === 'skipped') {
-                    pipelineStatus = s;
-                } else {
-                    pipelineStatus = 'running';
+                    let pipelineStatus: GitLabMRStatus['pipelineStatus'] = 'none';
+                    if (mr.head_pipeline && mr.head_pipeline.status) {
+                        const s = mr.head_pipeline.status;
+                        if (s === 'success' || s === 'failed' || s === 'canceled' || s === 'skipped') {
+                            pipelineStatus = s;
+                        } else {
+                            pipelineStatus = 'running';
+                        }
+                    }
+
+                    const status: GitLabMRStatus = {
+                        isMerged: mr.state === 'merged',
+                        isOpen: mr.state === 'opened',
+                        pipelineStatus,
+                        webUrl: mr.web_url
+                    };
+                    
+                    mrCache.set(cacheKey, { data: status, timestamp: Date.now() });
+                    return status;
                 }
+            } catch (e) {
+                // If it fails for this target, continue to the next
             }
-
-            const status: GitLabMRStatus = {
-                isMerged: mr.state === 'merged',
-                isOpen: mr.state === 'opened',
-                pipelineStatus,
-                webUrl: mr.web_url
-            };
-            
-            mrCache.set(cacheKey, { data: status, timestamp: Date.now() });
-            return status;
         }
         return null;
     } catch (e) {

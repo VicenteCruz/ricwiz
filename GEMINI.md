@@ -19,3 +19,7 @@
 - Preserve all existing comments and docstrings when modifying code.
 - Write clear JSDoc comments on exported functions and interfaces.
 - Use meaningful, descriptive names for files, functions, and variables.
+
+## Git Multi-Remote Topology
+- Em contexto multi-remote, o **`originRemote`** é o repositório da equipa (onde mora a release branch, ex: `CRC-R19`). Diffs de validação locais de um ticket (para deployment, listagem de ficheiros ou testes) devem sempre ser calculados comparando a HEAD com o `originRemote` (ex: `originRemote/ticketSourceBranch`).
+- O **`upstreamRemote`** é o repositório global/principal da empresa (usado para descer o topo da cadeia, mas não para diffs locais de tickets).

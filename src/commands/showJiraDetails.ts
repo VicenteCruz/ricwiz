@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getWorkspaceCwd, getCurrentBranch } from '../git';
+import { getWorkspaceCwd, getCurrentBranch, resolvePrefix, extractTicketSuggestion } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 import { fetchJiraIssue } from '../jiraApi';
 import { RicwizWebviewProvider } from '../webview';
@@ -13,7 +13,13 @@ export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): P
         if (!ctx) return;
 
         const currentBranch = await getCurrentBranch(cwd);
-        const ticketId = currentBranch.split('-to-')[0];
+        
+        const prefix = resolvePrefix(currentBranch, ctx.ticketPrefix);
+        let ticketId = extractTicketSuggestion(currentBranch, prefix, true);
+        
+        if (!ticketId) {
+            ticketId = currentBranch.split('-to-')[0];
+        }
 
         if (!ticketId) {
             vscode.window.showErrorMessage('Ricwiz: You are not currently on a valid ticket branch.');

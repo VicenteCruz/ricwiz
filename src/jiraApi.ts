@@ -6,6 +6,7 @@ export interface JiraIssueData {
     summary: string;
     description: string;
     status: string;
+    url?: string;
 }
 
 export interface JiraTransition {
@@ -93,12 +94,14 @@ async function jiraRequest<T>(method: string, path: string, body?: any): Promise
 }
 
 export async function fetchJiraIssue(ticketId: string): Promise<JiraIssueData | null> {
+    const { baseUrl } = await getJiraAuthAndBaseUrl();
     const json = await jiraRequest<any>('GET', `/rest/api/2/issue/${ticketId}`);
     if (json && json.fields) {
         return {
             summary: json.fields.summary || '',
             description: json.fields.description || 'No description provided.',
-            status: json.fields.status?.name || 'Unknown'
+            status: json.fields.status?.name || 'Unknown',
+            url: `${baseUrl}/browse/${ticketId}`
         };
     }
     return null;

@@ -578,6 +578,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('addJiraLabel')">
                         <span class="icon">🏷️</span> Add Label
                     </button>
+                    ${data?.url ? `
+                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('openExternal', '${data.url}')">
+                        <span class="icon">🌐</span> Open Browser
+                    </button>
+                    ` : ''}
                 </div>
                 </div>
 

@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "4.9.40",
+  "version": "4.9.41",
   "engines": {
     "vscode": "^1.80.0"
   },

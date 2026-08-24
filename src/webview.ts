@@ -681,11 +681,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${relatedBranches.map((b: any) => {
                                     let pipelineIcon = '';
-                                    if (b.pipelineStatus === 'running') pipelineIcon = '⧖';
-                                    else if (b.pipelineStatus === 'success') pipelineIcon = '✓';
-                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '✕';
-                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '⊘';
-                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⇥';
+                                    if (b.pipelineStatus === 'running') pipelineIcon = '🟡';
+                                    else if (b.pipelineStatus === 'success') pipelineIcon = '🟢';
+                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '🔴';
+                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '⚪';
+                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⚪';
                                     let pipelineAction = '';
                                     if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
                                         pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;
@@ -698,7 +698,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                         </div>
                                         <div style="display: flex; gap: 6px; align-items: center;">
                                             ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 11px;" ${pipelineAction}>${pipelineIcon}</span>` : ''}
-                                            ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">⍈</span>` : ''}
+                                            ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">🔗</span>` : ''}
                                             ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 2px 6px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                                         </div>
                                     </div>
@@ -792,10 +792,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                     <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--vscode-editorIndentGuide-activeBackground1);">
                                         ${r.detailedBranches.map((b: any) => {
                                             let pipelineIcon = '';
-                                            if (b.pipelineStatus === 'running') pipelineIcon = '⧖';
-                                            else if (b.pipelineStatus === 'success') pipelineIcon = '✓';
-                                            else if (b.pipelineStatus === 'failed') pipelineIcon = '✕';
-                                            else if (b.pipelineStatus === 'canceled') pipelineIcon = '⊘';
+                                            if (b.pipelineStatus === 'running') pipelineIcon = '🟡';
+                                            else if (b.pipelineStatus === 'success') pipelineIcon = '🟢';
+                                            else if (b.pipelineStatus === 'failed') pipelineIcon = '🔴';
+                                            else if (b.pipelineStatus === 'canceled') pipelineIcon = '⚪';
                                             let pipelineAction = '';
                                             if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
                                                 pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;
@@ -807,7 +807,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                                     ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" ${pipelineAction}>${pipelineIcon}</span>` : ''}
                                                 </div>
                                                 <div style="display: flex; gap: 6px; align-items: center;">
-                                                    ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">⍈</span>` : ''}
+                                                    ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">🔗</span>` : ''}
                                                     ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 8px; font-weight: bold;">MERGED</span>' : ''}
                                                 </div>
                                             </div>
@@ -974,11 +974,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         let currentBranchObj = relatedBranches.find(b => b.name === currentBranch);
         let currentPipelineIcon = '';
         if (currentBranchObj) {
-            if (currentBranchObj.pipelineStatus === 'running') currentPipelineIcon = '⧖';
-            else if (currentBranchObj.pipelineStatus === 'success') currentPipelineIcon = '✓';
-            else if (currentBranchObj.pipelineStatus === 'failed') currentPipelineIcon = '✕';
-            else if (currentBranchObj.pipelineStatus === 'canceled') currentPipelineIcon = '⊘';
-            else if (currentBranchObj.pipelineStatus === 'skipped') currentPipelineIcon = '⇥';
+            if (currentBranchObj.pipelineStatus === 'running') currentPipelineIcon = '🟡';
+            else if (currentBranchObj.pipelineStatus === 'success') currentPipelineIcon = '🟢';
+            else if (currentBranchObj.pipelineStatus === 'failed') currentPipelineIcon = '🔴';
+            else if (currentBranchObj.pipelineStatus === 'canceled') currentPipelineIcon = '⚪';
+            else if (currentBranchObj.pipelineStatus === 'skipped') currentPipelineIcon = '⚪';
         }
         let currentMrUrl = currentBranchObj ? currentBranchObj.mrUrl : undefined;
 
@@ -998,7 +998,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 <div style="font-weight: bold; font-size: 14px; word-break: break-all; text-align: center; color: var(--vscode-textLink-foreground); display: flex; justify-content: center; align-items: center; gap: 6px;">
                     <span>${escapeHtml(currentBranch)}</span>
                     ${currentPipelineIcon ? `<span title="Pipeline: ${currentBranchObj!.pipelineStatus}" style="font-size: 12px;">${currentPipelineIcon}</span>` : ''}
-                    ${currentMrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${currentMrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">⍈</span>` : ''}
+                    ${currentMrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${currentMrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">🔗</span>` : ''}
                     ${this.currentBranchIsMergedCache ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                 </div>
                 ${this.ticketTitleCache ? `<div style="font-size: 12px; margin-top: 6px; text-align: center; opacity: 0.9; font-style: italic;">${escapeHtml(this.ticketTitleCache)}</div>` : ''}
@@ -1008,11 +1008,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             ${sisterBranches.map(b => {
                                 let pipelineIcon = '';
-                                if (b.pipelineStatus === 'running') pipelineIcon = '⧖';
-                                else if (b.pipelineStatus === 'success') pipelineIcon = '✓';
-                                else if (b.pipelineStatus === 'failed') pipelineIcon = '✕';
-                                else if (b.pipelineStatus === 'canceled') pipelineIcon = '⊘';
-                                else if (b.pipelineStatus === 'skipped') pipelineIcon = '⇥';
+                                if (b.pipelineStatus === 'running') pipelineIcon = '🟡';
+                                else if (b.pipelineStatus === 'success') pipelineIcon = '🟢';
+                                else if (b.pipelineStatus === 'failed') pipelineIcon = '🔴';
+                                else if (b.pipelineStatus === 'canceled') pipelineIcon = '⚪';
+                                else if (b.pipelineStatus === 'skipped') pipelineIcon = '⚪';
                                 let pipelineAction = '';
                                 if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
                                     pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;
@@ -1025,7 +1025,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                     </div>
                                     <div style="display: flex; gap: 4px; align-items: center;">
                                         ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 10px;" ${pipelineAction}>${pipelineIcon}</span>` : ''}
-                                        ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">⍈</span>` : ''}
+                                        ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">🔗</span>` : ''}
                                         ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                                     </div>
                                 </div>`;

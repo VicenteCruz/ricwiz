@@ -393,14 +393,14 @@
                         <div style="margin-top: 16px; border-top: 1px solid var(--vscode-panel-border); padding-top: 12px;">
                             <div style="font-size: 11px; opacity: 0.7; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;"><span class="icon" style="color: #32D74B;">\u2387</span> Related Branches & MRs</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${x.map(R=>{let I="";R.pipelineStatus==="running"?I="\u29D6":R.pipelineStatus==="success"?I="\u2713":R.pipelineStatus==="failed"?I="\u2715":R.pipelineStatus==="canceled"?I="\u2298":R.pipelineStatus==="skipped"&&(I="\u21E5");let T="";return R.pipelineStatus==="failed"&&R.projectPath&&R.pipelineId&&(T=`onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${R.projectPath}', pipelineId: ${R.pipelineId} });" style="cursor: pointer;"`),`
+                                ${x.map(R=>{let I="";R.pipelineStatus==="running"?I="\u{1F7E1}":R.pipelineStatus==="success"?I="\u{1F7E2}":R.pipelineStatus==="failed"?I="\u{1F534}":(R.pipelineStatus==="canceled"||R.pipelineStatus==="skipped")&&(I="\u26AA");let T="";return R.pipelineStatus==="failed"&&R.projectPath&&R.pipelineId&&(T=`onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${R.projectPath}', pipelineId: ${R.pipelineId} });" style="cursor: pointer;"`),`
                                     <div class="btn" style="padding: 6px 10px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${z(R.name)}', this)" title="Checkout ${z(R.name)}">
                                         <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
                                             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${z(R.name)}</span>
                                         </div>
                                         <div style="display: flex; gap: 6px; align-items: center;">
                                             ${I?`<span title="Pipeline: ${R.pipelineStatus}" style="font-size: 11px;" ${T}>${I}</span>`:""}
-                                            ${R.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${R.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">\u2348</span>`:""}
+                                            ${R.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${R.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">\u{1F517}</span>`:""}
                                             ${R.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 2px 6px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>':""}
                                         </div>
                                     </div>
@@ -483,14 +483,14 @@
                             <tr style="border-bottom: 1px solid var(--vscode-panel-border);">
                                 <td colspan="4" style="padding: 0 6px 8px 6px;">
                                     <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--vscode-editorIndentGuide-activeBackground1);">
-                                        ${y.detailedBranches.map(x=>{let R="";x.pipelineStatus==="running"?R="\u29D6":x.pipelineStatus==="success"?R="\u2713":x.pipelineStatus==="failed"?R="\u2715":x.pipelineStatus==="canceled"&&(R="\u2298");let I="";return x.pipelineStatus==="failed"&&x.projectPath&&x.pipelineId&&(I=`onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${x.projectPath}', pipelineId: ${x.pipelineId} });" style="cursor: pointer;"`),`
+                                        ${y.detailedBranches.map(x=>{let R="";x.pipelineStatus==="running"?R="\u{1F7E1}":x.pipelineStatus==="success"?R="\u{1F7E2}":x.pipelineStatus==="failed"?R="\u{1F534}":x.pipelineStatus==="canceled"&&(R="\u26AA");let I="";return x.pipelineStatus==="failed"&&x.projectPath&&x.pipelineId&&(I=`onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${x.projectPath}', pipelineId: ${x.pipelineId} });" style="cursor: pointer;"`),`
                                             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; background: var(--vscode-editor-background); padding: 2px 6px; border-radius: 3px;">
                                                 <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; cursor: pointer; flex: 1;" onclick="sendCheckoutCommand('${z(x.name)}', this)" title="Checkout ${z(x.name)}">
                                                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${z(x.name)}</span>
                                                     ${R?`<span title="Pipeline: ${x.pipelineStatus}" ${I}>${R}</span>`:""}
                                                 </div>
                                                 <div style="display: flex; gap: 6px; align-items: center;">
-                                                    ${x.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${x.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">\u2348</span>`:""}
+                                                    ${x.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${x.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">\u{1F517}</span>`:""}
                                                     ${x.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 8px; font-weight: bold;">MERGED</span>':""}
                                                 </div>
                                             </div>
@@ -644,7 +644,7 @@
                     }
                 </script>
             </body>
-            </html>`;let n=o.find(c=>c.name===i),r="";n&&(n.pipelineStatus==="running"?r="\u29D6":n.pipelineStatus==="success"?r="\u2713":n.pipelineStatus==="failed"?r="\u2715":n.pipelineStatus==="canceled"?r="\u2298":n.pipelineStatus==="skipped"&&(r="\u21E5"));let d=n?n.mrUrl:void 0,u=o.filter(c=>c.name!==i),f=i?`<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
+            </html>`;let n=o.find(c=>c.name===i),r="";n&&(n.pipelineStatus==="running"?r="\u{1F7E1}":n.pipelineStatus==="success"?r="\u{1F7E2}":n.pipelineStatus==="failed"?r="\u{1F534}":(n.pipelineStatus==="canceled"||n.pipelineStatus==="skipped")&&(r="\u26AA"));let d=n?n.mrUrl:void 0,u=o.filter(c=>c.name!==i),f=i?`<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
                 ${this.ticketTitleCache&&this.ticketStatusCache?`
                 <div style="position: absolute; top: 6px; right: 6px; z-index: 10; cursor: pointer; font-size: 9px; padding: 2px 6px; border-radius: 4px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); opacity: 0.9; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 4px;" onclick="sendCommand('changeJiraStatus', null, this)" title="Update Jira Status">
                     <span>\u270E</span><span>${z(this.ticketStatusCache)}</span>
@@ -657,7 +657,7 @@
                 <div style="font-weight: bold; font-size: 14px; word-break: break-all; text-align: center; color: var(--vscode-textLink-foreground); display: flex; justify-content: center; align-items: center; gap: 6px;">
                     <span>${z(i)}</span>
                     ${r?`<span title="Pipeline: ${n.pipelineStatus}" style="font-size: 12px;">${r}</span>`:""}
-                    ${d?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${d}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">\u2348</span>`:""}
+                    ${d?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${d}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">\u{1F517}</span>`:""}
                     ${this.currentBranchIsMergedCache?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>':""}
                 </div>
                 ${this.ticketTitleCache?`<div style="font-size: 12px; margin-top: 6px; text-align: center; opacity: 0.9; font-style: italic;">${z(this.ticketTitleCache)}</div>`:""}
@@ -665,14 +665,14 @@
                     <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
                         <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
                         <div style="display: flex; flex-direction: column; gap: 4px;">
-                            ${u.map(c=>{let w="";c.pipelineStatus==="running"?w="\u29D6":c.pipelineStatus==="success"?w="\u2713":c.pipelineStatus==="failed"?w="\u2715":c.pipelineStatus==="canceled"?w="\u2298":c.pipelineStatus==="skipped"&&(w="\u21E5");let b="";return c.pipelineStatus==="failed"&&c.projectPath&&c.pipelineId&&(b=`onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${c.projectPath}', pipelineId: ${c.pipelineId} });" style="cursor: pointer;"`),`
+                            ${u.map(c=>{let w="";c.pipelineStatus==="running"?w="\u{1F7E1}":c.pipelineStatus==="success"?w="\u{1F7E2}":c.pipelineStatus==="failed"?w="\u{1F534}":(c.pipelineStatus==="canceled"||c.pipelineStatus==="skipped")&&(w="\u26AA");let b="";return c.pipelineStatus==="failed"&&c.projectPath&&c.pipelineId&&(b=`onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${c.projectPath}', pipelineId: ${c.pipelineId} });" style="cursor: pointer;"`),`
                                 <div class="btn" style="padding: 6px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px; box-sizing: border-box; width: 100%;" onclick="sendCheckoutCommand('${z(c.name)}', this)" title="Checkout ${z(c.name)}">
                                     <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
                                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${z(c.name)}</span>
                                     </div>
                                     <div style="display: flex; gap: 4px; align-items: center;">
                                         ${w?`<span title="Pipeline: ${c.pipelineStatus}" style="font-size: 10px;" ${b}>${w}</span>`:""}
-                                        ${c.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${c.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">\u2348</span>`:""}
+                                        ${c.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${c.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">\u{1F517}</span>`:""}
                                         ${c.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>':""}
                                     </div>
                                 </div>`}).join("")}

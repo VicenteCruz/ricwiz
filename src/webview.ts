@@ -25,8 +25,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             enableScripts: true,
             localResourceRoots: [this._extensionUri]
         };
-
-        this.updateBranch('', false);
+        this.updateView();
 
         webviewView.webview.onDidReceiveMessage(data => {
             switch (data.command) {
@@ -188,7 +187,6 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     public updateBranch(branchName: string, isMerged: boolean, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string }[] = [], commits: CommitEntry[] = [], baseBranches: string[] = [], recentTickets: string[] = [], ticketTitle: string = '', ticketStatus: string = '') {
-        if (!this.webviewView) return;
         this.currentBranchCache = branchName;
         this.currentBranchIsMergedCache = isMerged;
         this.relatedBranchesCache = relatedBranches;
@@ -197,6 +195,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         this.recentTicketsCache = recentTickets;
         this.ticketTitleCache = ticketTitle;
         this.ticketStatusCache = ticketStatus;
+        if (!this.webviewView) return;
         this.updateView();
     }
 

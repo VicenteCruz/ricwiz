@@ -62,12 +62,17 @@ async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: strin
                          remoteUrl = `https://${remoteUrl}`;
                     }
                     candidateUrls.push(remoteUrl);
-                } catch(e) {}
+                } catch(e: any) {
+                    ricwizLogger.appendLine(`[GitLab API] Error getting remote URL for ${remote}: ${e.message}`);
+                }
             }
-        } catch(e) {}
+        } catch(e: any) {
+            ricwizLogger.appendLine(`[GitLab API] Error getting remotes: ${e.message}`);
+        }
     }
 
     if (candidateUrls.length === 0) {
+        ricwizLogger.appendLine(`[GitLab API] No candidate URLs found in getGitlabTargets!`);
         throw new Error('Could not get any remote origin URL.');
     }
 
@@ -190,12 +195,14 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
                     mrCache.set(cacheKey, { data: status, timestamp: Date.now() });
                     return status;
                 }
-            } catch (e) {
+            } catch (e: any) {
+                ricwizLogger.appendLine(`[GitLab API] Error inside target loop: ${e.message}`);
                 // If it fails for this target, continue to the next
             }
         }
         return null;
-    } catch (e) {
+    } catch (e: any) {
+        ricwizLogger.appendLine(`[GitLab API] Failed to fetch MR status: ${e.message}`);
         return null;
     }
 }

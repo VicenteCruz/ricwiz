@@ -553,9 +553,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                     <div class="btn" style="padding: 6px 10px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}')" title="Checkout ${escapeHtml(b.name)}">
                                         <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
                                             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name)}</span>
-                                            ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 11px;">${pipelineIcon}</span>` : ''}
                                         </div>
                                         <div style="display: flex; gap: 6px; align-items: center;">
+                                            ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 11px;">${pipelineIcon}</span>` : ''}
                                             ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">🔗</span>` : ''}
                                             ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 2px 6px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                                         </div>
@@ -812,6 +812,8 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         }
         let currentMrUrl = currentBranchObj ? currentBranchObj.mrUrl : undefined;
 
+        const sisterBranches = relatedBranches.filter(b => b.name !== currentBranch);
+
         const currentBranchHtml = currentBranch ? 
                 `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; text-transform: uppercase;">
@@ -825,11 +827,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         ${this.currentBranchIsMergedCache ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
                     </div>
                     ${this.ticketTitleCache ? `<div style="font-size: 12px; margin-top: 6px; text-align: center; opacity: 0.9; font-style: italic;">${escapeHtml(this.ticketTitleCache)}</div>` : ''}
-                    ${relatedBranches.length > 0 ? `
+                    ${sisterBranches.length > 0 ? `
                         <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
                             <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${relatedBranches.map(b => {
+                                ${sisterBranches.map(b => {
                                     let pipelineIcon = '';
                                     if (b.pipelineStatus === 'running') pipelineIcon = '⏳';
                                     else if (b.pipelineStatus === 'success') pipelineIcon = '✅';

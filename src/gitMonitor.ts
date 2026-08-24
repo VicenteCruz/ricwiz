@@ -102,7 +102,7 @@ export function initializeGitMonitor(
 
                             // Fetch related branches and their merge status in parallel
                             try {
-                                const relatedBranchNames = await findRelatedBranches(cwd, ticketId, currentBranch);
+                                const relatedBranchNames = await findRelatedBranches(cwd, ticketId, '');
                                 relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments);
                             } catch (e) {}
                         } else {

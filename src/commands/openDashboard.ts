@@ -54,14 +54,15 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
             try {
                 const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
                 const { WorkflowContext } = require('../workflows/WorkflowContext');
-                const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-                const environments = ctx?.environments || vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
-                    { name: 'Qual', sourceBranch: 'quality' },
-                    { name: 'Val', sourceBranch: 'validation' },
-                    { name: 'Prod', sourceBranch: 'main' }
-                ]);
                 
                 enrichedResults = await Promise.all(results.map(async (r: any) => {
+                    const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true, ticketId: r.key });
+                    const environments = ctx?.environments || vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                        { name: 'Qual', sourceBranch: 'quality' },
+                        { name: 'Val', sourceBranch: 'validation' },
+                        { name: 'Prod', sourceBranch: 'main' }
+                    ]);
+
                     const relatedBranchNames = await findRelatedBranches(cwd, r.key, '');
                     const detailedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, r.key, environments, ctx);
                     return {

@@ -30,13 +30,15 @@ export async function showJiraDetails(webviewProvider: RicwizWebviewProvider): P
                 let relatedBranches: any[] = [];
                 try {
                     const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
-                    const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                    const { WorkflowContext } = require('../workflows/WorkflowContext');
+                    const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true, ticketId });
+                    const environments = ctx?.environments || vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
                         { name: 'Qual', sourceBranch: 'quality' },
                         { name: 'Val', sourceBranch: 'validation' },
                         { name: 'Prod', sourceBranch: 'main' }
                     ]);
                     const relatedBranchNames = await findRelatedBranches(cwd, ticketId, '');
-                    relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments);
+                    relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments, ctx);
                 } catch(e) {}
 
                 // Pass the data to the webview and switch the page

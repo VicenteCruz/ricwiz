@@ -162,6 +162,9 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
 
     try {
         const targets = await getGitlabTargets(cwd, ctx);
+        let bestStatus: GitLabMRStatus | null = null;
+        let bestMrWeight = -1; // Higher is better (2 = open, 1 = merged, 0 = closed)
+
         for (const target of targets) {
             try {
                 let path = `/api/v4/projects/${target.projectPath}/merge_requests?source_branch=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
@@ -171,7 +174,7 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
                 
                 const mrs = await gitlabRequest<any[]>(cwd, target.baseUrl, target.token, 'GET', path);
                 if (mrs && mrs.length > 0) {
-                    let mr = mrs[0]; // most recently updated
+                    let mr = mrs[0]; // most recently updated for this target
                     
                     try {
                         const detailedMr = await gitlabRequest<any>(cwd, target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}`);
@@ -197,14 +200,55 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
                         webUrl: mr.web_url
                     };
                     
-                    mrCache.set(cacheKey, { data: status, timestamp: Date.now() });
-                    return status;
+                    let weight = 0;
+                    if (status.isOpen) weight = 2;
+                    else if (status.isMerged) weight = 1;
+
+                    // If it's a better MR (e.g. open vs merged), or if it's the first one we found
+                    if (weight > bestMrWeight) {
+                        bestStatus = status;
+                        bestMrWeight = weight;
+                    }
                 }
             } catch (e: any) {
                 ricwizLogger.appendLine(`[GitLab API] Error inside target loop: ${e.message}`);
                 // If it fails for this target, continue to the next
             }
         }
+        
+        if (bestStatus) {
+            mrCache.set(cacheKey, { data: bestStatus, timestamp: Date.now() });
+            return bestStatus;
+        }
+
+        // If no MR was found in ANY target, try to find a branch pipeline!
+        for (const target of targets) {
+            try {
+                const path = `/api/v4/projects/${target.projectPath}/pipelines?ref=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
+                const pipelines = await gitlabRequest<any[]>(cwd, target.baseUrl, target.token, 'GET', path);
+                if (pipelines && pipelines.length > 0) {
+                    const p = pipelines[0];
+                    let pipelineStatus: GitLabMRStatus['pipelineStatus'] = 'none';
+                    if (p.status) {
+                        const s = p.status;
+                        if (s === 'success' || s === 'failed' || s === 'canceled' || s === 'skipped') {
+                            pipelineStatus = s;
+                        } else {
+                            pipelineStatus = 'running';
+                        }
+                    }
+                    const status: GitLabMRStatus = {
+                        isMerged: false,
+                        isOpen: false,
+                        pipelineStatus,
+                        webUrl: p.web_url
+                    };
+                    mrCache.set(cacheKey, { data: status, timestamp: Date.now() });
+                    return status;
+                }
+            } catch (e) {}
+        }
+
         return null;
     } catch (e: any) {
         ricwizLogger.appendLine(`[GitLab API] Failed to fetch MR status: ${e.message}`);

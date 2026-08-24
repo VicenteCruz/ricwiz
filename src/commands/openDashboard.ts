@@ -107,6 +107,8 @@ export async function openJiraDetailsForId(webviewProvider: RicwizWebviewProvide
                 const cwd = getWorkspaceCwd();
                 if (cwd) {
                     try {
+                        const { WorkflowContext } = require('../workflows/WorkflowContext');
+                        const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
                         const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
                         const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
                             { name: 'Qual', sourceBranch: 'quality' },
@@ -114,7 +116,7 @@ export async function openJiraDetailsForId(webviewProvider: RicwizWebviewProvide
                             { name: 'Prod', sourceBranch: 'main' }
                         ]);
                         const relatedBranchNames = await findRelatedBranches(cwd, ticketId, '');
-                        relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments);
+                        relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments, ctx);
                     } catch(e) {}
                 }
                 

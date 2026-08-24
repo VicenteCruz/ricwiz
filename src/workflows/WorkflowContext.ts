@@ -57,7 +57,7 @@ export class WorkflowContext {
         return WorkflowContext.baseConfig.get<T>(key, defaultValue);
     }
 
-    public static async initialize(cwd: string, options?: { forcePrompt?: boolean, skipPrompt?: boolean, ticketId?: string }): Promise<WorkflowContext | undefined> {
+    public static async initialize(cwd: string, options?: { forcePrompt?: boolean, skipPrompt?: boolean }): Promise<WorkflowContext | undefined> {
         let profiles: WorkflowProfile[] = WorkflowContext.baseConfig.get<WorkflowProfile[]>('profiles', []);
 
         // Also check ricwiz.json as a fallback
@@ -75,14 +75,6 @@ export class WorkflowContext {
         }
 
         if (profiles.length > 0) {
-            if (options?.ticketId) {
-                // If a ticketId is explicitly provided (e.g. Dashboard), try to match by prefix
-                const profile = profiles.find(p => p.ticketPrefix && options.ticketId!.toUpperCase().startsWith(p.ticketPrefix.toUpperCase()));
-                if (profile) {
-                    return new WorkflowContext(profile);
-                }
-            }
-
             // Try to auto-detect saved profile for the current branch
             if (!options?.forcePrompt) {
                 try {

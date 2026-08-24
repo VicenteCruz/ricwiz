@@ -263,13 +263,23 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
     private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string, projectPath?: string, pipelineId?: number }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard') {
 
-        const getJiraStatusColor = (status) => {
+        const getJiraStatusColor = (status: string): string => {
             const s = (status || '').toLowerCase().trim();
             if (s === 'open') return '#888888'; // gray
             if (s === 'in progress') return '#007acc'; // blue
             if (s === 'waiting for deploy') return '#d7a500'; // yellow
             if (s === 'close' || s === 'done' || s === 'closed') return '#238636'; // green
             return 'var(--vscode-badge-background)';
+        };
+
+        /** Returns the colored circle emoji for a given pipeline status */
+        const getPipelineIcon = (status?: string): string => {
+            if (!status) return '';
+            if (status === 'running') return '🟡';
+            if (status === 'success') return '🟢';
+            if (status === 'failed') return '🔴';
+            if (status === 'canceled' || status === 'skipped') return '⚪';
+            return '';
         };
 
         const commitsHtml = commits.length > 0 ? `
@@ -690,12 +700,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                             <div style="font-size: 11px; opacity: 0.7; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;"><span class="icon" style="color: #32D74B;">⎇</span> Related Branches & MRs</div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 ${relatedBranches.map((b: any) => {
-                                    let pipelineIcon = '';
-                                    if (b.pipelineStatus === 'running') pipelineIcon = '🟡';
-                                    else if (b.pipelineStatus === 'success') pipelineIcon = '🟢';
-                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '🔴';
-                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '⚪';
-                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⚪';
+                                    let pipelineIcon = getPipelineIcon(b.pipelineStatus);
                                     let pipelineAction = '';
                                     if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
                                         pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;
@@ -801,11 +806,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                 <td colspan="4" style="padding: 0 6px 8px 6px;">
                                     <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--vscode-editorIndentGuide-activeBackground1);">
                                         ${r.detailedBranches.map((b: any) => {
-                                            let pipelineIcon = '';
-                                            if (b.pipelineStatus === 'running') pipelineIcon = '🟡';
-                                            else if (b.pipelineStatus === 'success') pipelineIcon = '🟢';
-                                            else if (b.pipelineStatus === 'failed') pipelineIcon = '🔴';
-                                            else if (b.pipelineStatus === 'canceled') pipelineIcon = '⚪';
+                                            let pipelineIcon = getPipelineIcon(b.pipelineStatus);
                                             let pipelineAction = '';
                                             if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
                                                 pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;
@@ -984,11 +985,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         let currentBranchObj = relatedBranches.find(b => b.name === currentBranch);
         let currentPipelineIcon = '';
         if (currentBranchObj) {
-            if (currentBranchObj.pipelineStatus === 'running') currentPipelineIcon = '🟡';
-            else if (currentBranchObj.pipelineStatus === 'success') currentPipelineIcon = '🟢';
-            else if (currentBranchObj.pipelineStatus === 'failed') currentPipelineIcon = '🔴';
-            else if (currentBranchObj.pipelineStatus === 'canceled') currentPipelineIcon = '⚪';
-            else if (currentBranchObj.pipelineStatus === 'skipped') currentPipelineIcon = '⚪';
+            currentPipelineIcon = getPipelineIcon(currentBranchObj.pipelineStatus);
         }
         let currentMrUrl = currentBranchObj ? currentBranchObj.mrUrl : undefined;
 
@@ -1017,12 +1014,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             ${sisterBranches.map(b => {
-                                let pipelineIcon = '';
-                                if (b.pipelineStatus === 'running') pipelineIcon = '🟡';
-                                else if (b.pipelineStatus === 'success') pipelineIcon = '🟢';
-                                else if (b.pipelineStatus === 'failed') pipelineIcon = '🔴';
-                                else if (b.pipelineStatus === 'canceled') pipelineIcon = '⚪';
-                                else if (b.pipelineStatus === 'skipped') pipelineIcon = '⚪';
+                                let pipelineIcon = getPipelineIcon(b.pipelineStatus);
                                 let pipelineAction = '';
                                 if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
                                     pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;

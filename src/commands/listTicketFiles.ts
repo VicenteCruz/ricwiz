@@ -86,7 +86,18 @@ export async function listTicketFiles(): Promise<void> {
                     const diffTarget = isCurrent ? '' : ` ${resolvedTargetBranch}`;
                     const { stdout } = await exec(`git diff --name-only ${mergeBase}${diffTarget}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
                     diffLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    ricwizLogger.appendLine(`[ListTicketFiles] diff found ${diffLines.length} files.`);
+                    
+                    if (isCurrent) {
+                        try {
+                            const { stdout: untracked } = await exec(`git ls-files --others --exclude-standard`, { cwd, maxBuffer: 10 * 1024 * 1024 });
+                            const untrackedLines = untracked.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                            diffLines = [...diffLines, ...untrackedLines];
+                            ricwizLogger.appendLine(`[ListTicketFiles] Found ${untrackedLines.length} untracked files.`);
+                        } catch (e: any) {
+                            ricwizLogger.appendLine(`[ListTicketFiles] Failed to get untracked files: ${e.message}`);
+                        }
+                    }
+                    ricwizLogger.appendLine(`[ListTicketFiles] diff found ${diffLines.length} files total.`);
                 }
             } catch (e: any) {
                 ricwizLogger.appendLine(`[ListTicketFiles] Diff strategy failed: ${e.message}`);

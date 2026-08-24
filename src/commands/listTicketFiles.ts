@@ -51,7 +51,7 @@ export async function listTicketFiles(): Promise<void> {
             const ticketId = extractTicketSuggestion(sanitizedTarget, prefix, true) || sanitizedTarget.replace(/-to-[a-zA-Z0-9]+$/i, '');
             
             // Resolve the actual branch name if the user just typed "DSSCCRC-1234"
-            const resolvedTargetBranch = await resolveExistingBranchName(cwd, ticketId);
+            let resolvedTargetBranch = await resolveExistingBranchName(cwd, ticketId);
             
             ricwizLogger.appendLine(`[ListTicketFiles] targetBranch (raw): ${sanitizedTarget}, resolvedTargetBranch: ${resolvedTargetBranch}, ticketId: ${ticketId}, originRemote: ${originRemote}, sourceBranch: ${sourceBranch}`);
             
@@ -66,14 +66,25 @@ export async function listTicketFiles(): Promise<void> {
                     mergeBase = stdout.trim();
                 } catch(e: any) {
                     ricwizLogger.appendLine(`[ListTicketFiles] First merge-base failed: ${e.message}`);
-                    ricwizLogger.appendLine(`[ListTicketFiles] Running: git merge-base ${sourceBranch} ${resolvedTargetBranch}`);
-                    const { stdout } = await exec(`git merge-base ${sourceBranch} ${resolvedTargetBranch}`, { cwd });
-                    mergeBase = stdout.trim();
+                    try {
+                        ricwizLogger.appendLine(`[ListTicketFiles] Running: git merge-base ${sourceBranch} ${resolvedTargetBranch}`);
+                        const { stdout } = await exec(`git merge-base ${sourceBranch} ${resolvedTargetBranch}`, { cwd });
+                        mergeBase = stdout.trim();
+                    } catch (e2: any) {
+                        ricwizLogger.appendLine(`[ListTicketFiles] Second merge-base failed: ${e2.message}`);
+                        ricwizLogger.appendLine(`[ListTicketFiles] Running: git merge-base ${originRemote}/${sourceBranch} ${originRemote}/${resolvedTargetBranch}`);
+                        const { stdout } = await exec(`git merge-base ${originRemote}/${sourceBranch} ${originRemote}/${resolvedTargetBranch}`, { cwd });
+                        mergeBase = stdout.trim();
+                        // Update resolvedTargetBranch so git diff uses the remote branch
+                        resolvedTargetBranch = `${originRemote}/${resolvedTargetBranch}`;
+                    }
                 }
 
                 if (mergeBase) {
                     ricwizLogger.appendLine(`[ListTicketFiles] Merge base found: ${mergeBase}. Running git diff...`);
-                    const { stdout } = await exec(`git diff --name-only ${mergeBase} ${resolvedTargetBranch}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
+                    const isCurrent = resolvedTargetBranch === currentBranch || sanitizedTarget === currentBranch;
+                    const diffTarget = isCurrent ? '' : ` ${resolvedTargetBranch}`;
+                    const { stdout } = await exec(`git diff --name-only ${mergeBase}${diffTarget}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
                     diffLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     ricwizLogger.appendLine(`[ListTicketFiles] diff found ${diffLines.length} files.`);
                 }

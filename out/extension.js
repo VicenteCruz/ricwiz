@@ -367,6 +367,11 @@
                 <title>Ricwiz Ticket Dashboard</title>
                 ${d}
                 <style>
+                    body {
+                        height: 100vh;
+                        box-sizing: border-box;
+                        overflow: hidden;
+                    }
                     .tr-hover:hover {
                         background-color: var(--vscode-list-hoverBackground);
                     }
@@ -402,7 +407,7 @@
                 <div style="padding: 12px; opacity: 0.7; text-align: center;">No queries defined in settings.</div>
                 `}
 
-                <div style="background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                <div style="background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); border-radius: 4px; overflow-x: auto; overflow-y: auto; flex: 1; display: flex; flex-direction: column;">
                     ${z}
                 </div>
 

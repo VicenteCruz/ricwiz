@@ -95,7 +95,22 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
         sourceBranchForTicket = userInput.trim();
     }
 
-    const mainBranch = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}` : ticketId;
+    let actualBranchPrefix = '';
+    if (ctx.branchPrefix) {
+        const prefixInput = await vscode.window.showInputBox({
+            prompt: 'Ricwiz: Branch Prefix (leave empty to not use a prefix)',
+            placeHolder: 'e.g. CRC-R19-',
+            value: ctx.branchPrefix,
+            ignoreFocusOut: true
+        });
+        if (prefixInput === undefined) {
+            vscode.window.showInformationMessage('Branch creation cancelled.');
+            return;
+        }
+        actualBranchPrefix = prefixInput.trim();
+    }
+
+    const mainBranch = actualBranchPrefix ? `${actualBranchPrefix}${ticketId}` : ticketId;
 
     // Validate inputs to prevent command injection
     if (!Security.isValidShellArg(mainBranch)) {
@@ -180,7 +195,7 @@ export async function createBranches(prefilledTicket?: any): Promise<void> {
                 if (selectedOptionValue === 'all' || selectedOptionValue === 'envs') {
                     const envProgressStep = 50 / (environments.length || 1);
                     for (const env of environments) {
-                        const envBranchName = ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
+                        const envBranchName = actualBranchPrefix ? `${actualBranchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
                         const sourceBranch = env.sourceBranch;
 
                         progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });

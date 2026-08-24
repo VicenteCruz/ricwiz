@@ -178,3 +178,36 @@ export async function findRelatedBranches(cwd: string, ticketId: string, current
 
     return Array.from(branches);
 }
+
+/**
+ * Dynamically resolves the actual name of a ticket branch (main or env) 
+ * by checking what actually exists in the local git repository.
+ * This handles cases where branches have custom prefixes (e.g. CRC-R19-).
+ */
+export async function resolveExistingBranchName(cwd: string, ticketId: string, envName?: string): Promise<string> {
+    try {
+        const cp = require('child_process');
+        const util = require('util');
+        const exec = util.promisify(cp.exec);
+        
+        const { stdout } = await exec(`git branch --all --list "*${ticketId}*"`, { cwd });
+        const branches = stdout.split('\n')
+            .map((b: string) => b.replace('*', '').trim().replace(/^remotes\/[^\/]+\//, ''))
+            .filter((b: string) => b && !b.includes('HEAD'));
+            
+        const uniqueBranches = Array.from<string>(new Set<string>(branches));
+
+        if (envName) {
+            const suffix = `-to-${envName}`;
+            const match = uniqueBranches.find((b: string) => b.endsWith(suffix));
+            if (match) return match;
+            return `${ticketId}${suffix}`;
+        } else {
+            const match = uniqueBranches.find((b: string) => !b.includes('-to-'));
+            if (match) return match;
+            return ticketId;
+        }
+    } catch (e) {
+        return envName ? `${ticketId}-to-${envName}` : ticketId;
+    }
+}

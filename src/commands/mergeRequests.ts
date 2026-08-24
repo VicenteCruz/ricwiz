@@ -53,17 +53,21 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
         }
     } catch (e) {}
 
+    const { resolveExistingBranchName } = require('../branchStatus');
+
     if (ctx.environments.length === 0) {
         // If there are no environments, just open the MR for the main ticket branch
+        const actualMainBranch = await resolveExistingBranchName(cwd, ticketId);
         mrLinks.push({
-            source: ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}` : ticketId,
+            source: actualMainBranch,
             target: mainSourceBranch
         });
     } else {
         // If environments exist, open MRs for them
         for (const env of ctx.environments) {
+            const actualEnvBranch = await resolveExistingBranchName(cwd, ticketId, env.name);
             mrLinks.push({
-                source: ctx.branchPrefix ? `${ctx.branchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`,
+                source: actualEnvBranch,
                 target: env.sourceBranch
             });
         }

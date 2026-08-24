@@ -25,6 +25,7 @@ import { captureAdminChanges } from './captureAdminChanges';
 import { openHistory } from './openHistory';
 import { searchTicket } from './searchTicket';
 import { getBlameData } from './whoToBlame';
+import { showPipelineLogs } from './showPipelineLogs';
 import { RicwizWebviewProvider } from '../webview';
 
 export function registerAllCommands(
@@ -78,6 +79,7 @@ export function registerAllCommands(
                 webviewProvider.setPage('blame');
             }
         }),
+        vscode.commands.registerCommand('ricwiz.showPipelineLogs', (projectPath: string, pipelineId: number) => showPipelineLogs(projectPath, pipelineId)),
         vscode.commands.registerCommand('ricwiz.manualRefresh', () => {
             if (forceUpdate) {
                 forceUpdate();

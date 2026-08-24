@@ -8,6 +8,8 @@ export interface GitLabMRStatus {
     isOpen: boolean;
     pipelineStatus: 'running' | 'success' | 'failed' | 'canceled' | 'skipped' | 'none';
     webUrl: string;
+    projectPath?: string;
+    pipelineId?: number;
 }
 
 let projectPathCache: { [cwd: string]: string } = {};
@@ -197,7 +199,9 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
                         isMerged: mr.state === 'merged',
                         isOpen: mr.state === 'opened',
                         pipelineStatus,
-                        webUrl: mr.web_url
+                        webUrl: mr.web_url,
+                        projectPath: target.projectPath,
+                        pipelineId: mr.head_pipeline ? mr.head_pipeline.id : undefined
                     };
                     
                     let weight = 0;
@@ -241,7 +245,9 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
                         isMerged: false,
                         isOpen: false,
                         pipelineStatus,
-                        webUrl: p.web_url
+                        webUrl: p.web_url,
+                        projectPath: target.projectPath,
+                        pipelineId: p.id
                     };
                     mrCache.set(cacheKey, { data: status, timestamp: Date.now() });
                     return status;

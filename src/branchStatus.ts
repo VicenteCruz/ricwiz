@@ -8,6 +8,8 @@ export interface RelatedBranch {
     isMerged: boolean;
     pipelineStatus?: 'running' | 'success' | 'failed' | 'canceled' | 'skipped' | 'none';
     mrUrl?: string;
+    projectPath?: string;
+    pipelineId?: number;
 }
 
 /**
@@ -52,7 +54,9 @@ export async function getRelatedBranchesStatus(
                         name: branch, 
                         isMerged: mrStatus.isMerged, 
                         pipelineStatus: mrStatus.pipelineStatus,
-                        mrUrl: mrStatus.webUrl
+                        mrUrl: mrStatus.webUrl,
+                        projectPath: mrStatus.projectPath,
+                        pipelineId: mrStatus.pipelineId
                     };
                 }
             } else {

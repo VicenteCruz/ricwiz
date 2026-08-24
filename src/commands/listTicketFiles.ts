@@ -38,7 +38,8 @@ export async function listTicketFiles(): Promise<void> {
     }, async () => {
         try {
             // Extract the actual ticket ID (e.g. DSSCCRC-1234) even if branch is CRC-R19-DSSCCRC-1234
-            const prefix = resolvePrefix(ctx, cwd);
+            const configPrefix = ctx ? ctx.ticketPrefix : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketPrefix', 'SFPSC-');
+            const prefix = resolvePrefix(targetBranch, configPrefix);
             const ticketId = extractTicketSuggestion(targetBranch, prefix, true) || targetBranch.replace(/-to-[a-zA-Z0-9]+$/i, '');
             
             // Resolve the actual branch name if the user just typed "DSSCCRC-1234"

@@ -28,39 +28,62 @@ export async function listTicketFiles(): Promise<void> {
         return; // User cancelled
     }
 
+    const { extractTicketSuggestion, resolvePrefix } = require('../git');
+    const { ricwizLogger } = require('../gitlabApi');
+
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Ricwiz: Finding files for ${targetBranch}...`,
         cancellable: false
     }, async () => {
         try {
-            const ticketId = targetBranch.replace(/-to-[a-zA-Z0-9]+$/i, '');
+            // Extract the actual ticket ID (e.g. DSSCCRC-1234) even if branch is CRC-R19-DSSCCRC-1234
+            const prefix = resolvePrefix(ctx, cwd);
+            const ticketId = extractTicketSuggestion(targetBranch, prefix, true) || targetBranch.replace(/-to-[a-zA-Z0-9]+$/i, '');
+            
+            // Resolve the actual branch name if the user just typed "DSSCCRC-1234"
+            const { resolveExistingBranchName } = require('../branchStatus');
+            const resolvedTargetBranch = await resolveExistingBranchName(cwd, ticketId);
+            
+            ricwizLogger.appendLine(`[ListTicketFiles] targetBranch (raw): ${targetBranch}, resolvedTargetBranch: ${resolvedTargetBranch}, ticketId: ${ticketId}, originRemote: ${originRemote}, sourceBranch: ${sourceBranch}`);
+            
             let diffLines: string[] = [];
             
             // 1. Try to get diff against base branch (works for unmerged active branches)
             try {
                 let mergeBase = '';
                 try {
-                    const { stdout } = await exec(`git merge-base ${originRemote}/${sourceBranch} ${targetBranch}`, { cwd });
+                    ricwizLogger.appendLine(`[ListTicketFiles] Running: git merge-base ${originRemote}/${sourceBranch} ${resolvedTargetBranch}`);
+                    const { stdout } = await exec(`git merge-base ${originRemote}/${sourceBranch} ${resolvedTargetBranch}`, { cwd });
                     mergeBase = stdout.trim();
-                } catch(e) {
-                    const { stdout } = await exec(`git merge-base ${sourceBranch} ${targetBranch}`, { cwd });
+                } catch(e: any) {
+                    ricwizLogger.appendLine(`[ListTicketFiles] First merge-base failed: ${e.message}`);
+                    ricwizLogger.appendLine(`[ListTicketFiles] Running: git merge-base ${sourceBranch} ${resolvedTargetBranch}`);
+                    const { stdout } = await exec(`git merge-base ${sourceBranch} ${resolvedTargetBranch}`, { cwd });
                     mergeBase = stdout.trim();
                 }
 
                 if (mergeBase) {
-                    const { stdout } = await exec(`git diff --name-only ${mergeBase} ${targetBranch}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
+                    ricwizLogger.appendLine(`[ListTicketFiles] Merge base found: ${mergeBase}. Running git diff...`);
+                    const { stdout } = await exec(`git diff --name-only ${mergeBase} ${resolvedTargetBranch}`, { cwd, maxBuffer: 10 * 1024 * 1024 });
                     diffLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    ricwizLogger.appendLine(`[ListTicketFiles] diff found ${diffLines.length} files.`);
                 }
-            } catch (e) {}
+            } catch (e: any) {
+                ricwizLogger.appendLine(`[ListTicketFiles] Diff strategy failed: ${e.message}`);
+            }
 
             // 2. Fallback / Combine with git log (works for already merged tickets)
             let logLines: string[] = [];
             try {
+                ricwizLogger.appendLine(`[ListTicketFiles] Running git log fallback for ticketId: ${ticketId}`);
                 // We use \b to ensure exact word match and avoid false positives (e.g. 1234 vs 12345)
                 const { stdout } = await exec(`git --no-pager log --grep="\\b${ticketId}\\b" -i -E --name-only -m --first-parent --format=""`, { cwd, maxBuffer: 10 * 1024 * 1024 });
                 logLines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            } catch(e) {}
+                ricwizLogger.appendLine(`[ListTicketFiles] git log found ${logLines.length} files.`);
+            } catch(e: any) {
+                ricwizLogger.appendLine(`[ListTicketFiles] Git log fallback failed: ${e.message}`);
+            }
 
             const lines = [...diffLines, ...logLines];
                 

@@ -929,11 +929,13 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
 
             ${baseBranches.length > 0 ? `
                 <div style="display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center;">
-                    ${baseBranches.map(b => `
+                    ${baseBranches.map(b => {
+                        const displayName = b.split('/').pop()?.toUpperCase() || b.toUpperCase();
+                        return `
                         <button class="btn" style="flex: 1; min-width: 25%; justify-content: center; padding: 6px 4px; font-size: 10px; font-weight: bold; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
-                            ${escapeHtml(b.toUpperCase())}
+                            ${escapeHtml(displayName)}
                         </button>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             ` : ''}
 

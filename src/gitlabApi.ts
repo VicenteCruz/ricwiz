@@ -100,6 +100,8 @@ async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: strin
 
 export const ricwizLogger = vscode.window.createOutputChannel("Ricwiz Debug");
 
+const gitlabAgent = new https.Agent({ keepAlive: true, maxSockets: 10 });
+
 async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, method: string, path: string): Promise<T> {
     const url = new URL(`${baseUrl}${path}`);
     ricwizLogger.appendLine(`[GitLab API] ${method} ${url.toString()}`);
@@ -108,6 +110,7 @@ async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, met
         const req = https.request(url, {
             method,
             timeout: 5000,
+            agent: gitlabAgent,
             headers: {
                 'PRIVATE-TOKEN': token,
                 'Accept': 'application/json'

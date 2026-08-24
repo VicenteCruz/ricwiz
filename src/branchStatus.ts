@@ -40,33 +40,31 @@ export async function getRelatedBranchesStatus(
 ): Promise<RelatedBranch[]> {
     const hasGitlab = await hasGitlabToken();
 
-    const results = await Promise.all(
-        branches.map(async (branch): Promise<RelatedBranch> => {
-            const env = findMatchingEnv(branch, environments);
-
-            if (hasGitlab) {
-                // If it's a deploy branch, we know exactly what target branch to look for.
-                // If it's the main branch, we just look for any MR originating from it.
-                const targetBranch = env ? env.sourceBranch : undefined;
-                const mrStatus = await fetchMergeRequestStatus(cwd, branch, targetBranch, ctx);
-                if (mrStatus) {
-                    return { 
-                        name: branch, 
-                        isMerged: mrStatus.isMerged, 
-                        pipelineStatus: mrStatus.pipelineStatus,
-                        mrUrl: mrStatus.webUrl,
-                        projectPath: mrStatus.projectPath,
-                        pipelineId: mrStatus.pipelineId
-                    };
-                }
-            } else {
-                const { ricwizLogger } = require('./gitlabApi');
-                ricwizLogger.appendLine(`[GitLab API] Skipping MR check for ${branch} because hasGitlabToken() is false`);
+    const results: RelatedBranch[] = [];
+    for (const branch of branches) {
+        const env = findMatchingEnv(branch, environments);
+        if (hasGitlab) {
+            // If it's a deploy branch, we know exactly what target branch to look for.
+            // If it's the main branch, we just look for any MR originating from it.
+            const targetBranch = env ? env.sourceBranch : undefined;
+            const mrStatus = await fetchMergeRequestStatus(cwd, branch, targetBranch, ctx);
+            if (mrStatus) {
+                results.push({ 
+                    name: branch, 
+                    isMerged: mrStatus.isMerged, 
+                    pipelineStatus: mrStatus.pipelineStatus,
+                    mrUrl: mrStatus.webUrl,
+                    projectPath: mrStatus.projectPath,
+                    pipelineId: mrStatus.pipelineId
+                });
+                continue;
             }
-
-            return { name: branch, isMerged: false };
-        })
-    );
+        } else {
+            const { ricwizLogger } = require('./gitlabApi');
+            ricwizLogger.appendLine(`[GitLab API] Skipping MR check for ${branch} because hasGitlabToken() is false`);
+        }
+        results.push({ name: branch, isMerged: false, pipelineStatus: 'none' });
+    }
 
     return results;
 }

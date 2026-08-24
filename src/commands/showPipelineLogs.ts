@@ -61,9 +61,10 @@ export async function showPipelineLogs(projectPath: string, pipelineId: number):
             title: `Fetching failed jobs for Pipeline #${pipelineId}...`,
             cancellable: false
         }, async () => {
+            const agent = new https.Agent({ keepAlive: true });
             const jobsUrl = new URL(`${baseUrl}/api/v4/projects/${projectPath}/pipelines/${pipelineId}/jobs?scope[]=failed`);
             const jobs = await new Promise<any[]>((resolve, reject) => {
-                https.get(jobsUrl, { headers: { 'PRIVATE-TOKEN': token } }, (res) => {
+                https.get(jobsUrl, { headers: { 'PRIVATE-TOKEN': token }, agent }, (res) => {
                     let data = '';
                     res.on('data', chunk => data += chunk);
                     res.on('end', () => {
@@ -86,7 +87,7 @@ export async function showPipelineLogs(projectPath: string, pipelineId: number):
             const traceUrl = new URL(`${baseUrl}/api/v4/projects/${projectPath}/jobs/${failedJob.id}/trace`);
             
             const logData = await new Promise<string>((resolve, reject) => {
-                https.get(traceUrl, { headers: { 'PRIVATE-TOKEN': token } }, (res) => {
+                https.get(traceUrl, { headers: { 'PRIVATE-TOKEN': token }, agent }, (res) => {
                     let data = '';
                     res.on('data', chunk => data += chunk);
                     res.on('end', () => resolve(data));

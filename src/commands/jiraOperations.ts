@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getWorkspaceCwd, getCurrentBranch } from '../git';
+import { getWorkspaceCwd, getCurrentBranch, resolvePrefix, extractTicketSuggestion } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 import { fetchJiraTransitions, transitionJiraIssue, addJiraComment, addJiraLabel } from '../jiraApi';
 
@@ -9,6 +9,16 @@ async function getTicketId(): Promise<string | undefined> {
     const ctx = await WorkflowContext.initialize(cwd, { forcePrompt: false });
     if (!ctx) return;
     const currentBranch = await getCurrentBranch(cwd);
+    if (!currentBranch) return;
+    
+    const prefix = resolvePrefix(currentBranch, ctx.ticketPrefix);
+    const match = extractTicketSuggestion(currentBranch, prefix, true);
+    
+    if (match) {
+        return match;
+    }
+    
+    // Fallback just in case
     return currentBranch.split('-to-')[0];
 }
 

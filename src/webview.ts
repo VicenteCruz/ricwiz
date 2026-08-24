@@ -262,6 +262,16 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private _getHtmlForWebview(logoUri: vscode.Uri, currentBranch: string, relatedBranches: { name: string, isMerged: boolean, pipelineStatus?: string, mrUrl?: string, projectPath?: string, pipelineId?: number }[], commits: CommitEntry[], baseBranches: string[], recentTickets: string[], currentPage: 'main' | 'devtools' | 'blame' | 'jira' | 'dashboard') {
+
+        const getJiraStatusColor = (status) => {
+            const s = (status || '').toLowerCase().trim();
+            if (s === 'open') return '#888888'; // gray
+            if (s === 'in progress') return '#007acc'; // blue
+            if (s === 'waiting for deploy') return '#d7a500'; // yellow
+            if (s === 'close' || s === 'done' || s === 'closed') return '#238636'; // green
+            return 'var(--vscode-badge-background)';
+        };
+
         const commitsHtml = commits.length > 0 ? `
             <div class="separator"></div>
             <div style="padding: 0 4px;">
@@ -772,7 +782,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                 <td style="padding: 6px; font-weight: bold; color: var(--vscode-textLink-foreground); white-space: nowrap;">${escapeHtml(r.key)}</td>
                                 <td style="padding: 6px; overflow: hidden; text-overflow: ellipsis; max-width: 150px; white-space: nowrap;" title="${escapeHtml(r.summary)}">${escapeHtml(r.summary)}</td>
                                 <td style="padding: 6px; white-space: nowrap;">
-                                    <span style="background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 4px; border-radius: 3px; font-size: 9px;">${escapeHtml(r.status)}</span>
+                                    <span style="background: ${getJiraStatusColor(r.status)}; color: white; padding: 2px 4px; border-radius: 3px; font-size: 9px; font-weight: bold; text-transform: uppercase;">${escapeHtml(r.status)}</span>
                                 </td>
                                 <td style="padding: 6px; white-space: nowrap; text-align: center;">
                                     ${r.detailedBranches ? '' : r.branch ? `
@@ -987,7 +997,7 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
         const currentBranchHtml = currentBranch ? 
             `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
                 ${this.ticketTitleCache && this.ticketStatusCache ? `
-                <div style="position: absolute; top: 6px; right: 6px; z-index: 10; cursor: pointer; font-size: 9px; padding: 2px 6px; border-radius: 4px; background-color: var(--vscode-button-secondaryBackground); border: 1px solid var(--vscode-panel-border); opacity: 0.9; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 4px;" onclick="sendCommand('changeJiraStatus', null, this)" title="Update Jira Status">
+                <div style="position: absolute; top: 6px; right: 6px; z-index: 10; cursor: pointer; font-size: 9px; padding: 2px 6px; border-radius: 4px; background-color: ${getJiraStatusColor(this.ticketStatusCache)}; color: white; border: 1px solid var(--vscode-panel-border); opacity: 0.9; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 4px;" onclick="sendCommand('changeJiraStatus', null, this)" title="Update Jira Status">
                     <span>✎</span><span>${escapeHtml(this.ticketStatusCache)}</span>
                 </div>
                 ` : ''}

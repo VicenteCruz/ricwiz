@@ -86,8 +86,11 @@ async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: strin
     return targets;
 }
 
+export const ricwizLogger = vscode.window.createOutputChannel("Ricwiz Debug");
+
 async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, method: string, path: string): Promise<T> {
     const url = new URL(`${baseUrl}${path}`);
+    ricwizLogger.appendLine(`[GitLab API] ${method} ${url.toString()}`);
 
     return new Promise((resolve, reject) => {
         const req = https.request(url, {
@@ -101,15 +104,23 @@ async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, met
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
+                ricwizLogger.appendLine(`[GitLab API] Response Code: ${res.statusCode}`);
                 if (res.statusCode && res.statusCode >= 400) {
+                    ricwizLogger.appendLine(`[GitLab API] Error Data: ${data}`);
                     return reject(new Error(`GitLab API error: ${res.statusCode}`));
                 }
                 if (!data) return resolve({} as T);
                 try {
                     const json = JSON.parse(data);
+                    if (Array.isArray(json)) {
+                        ricwizLogger.appendLine(`[GitLab API] Returned array with ${json.length} items`);
+                    } else if (json && typeof json === 'object') {
+                        ricwizLogger.appendLine(`[GitLab API] Returned object with id ${json.id || json.iid || 'unknown'}`);
+                    }
                     resolve(json as T);
-                } catch(e) {
-                    reject(new Error('Failed to parse GitLab response.'));
+                } catch (err: any) {
+                    ricwizLogger.appendLine(`[GitLab API] Parse Error: ${err.message}`);
+                    reject(err);
                 }
             });
         });
@@ -118,8 +129,11 @@ async function gitlabRequest<T>(cwd: string, baseUrl: string, token: string, met
             req.destroy();
             reject(new Error('GitLab request timed out'));
         });
-        
-        req.on('error', (e) => reject(new Error(`Network error: ${e.message}`)));
+
+        req.on('error', (err) => {
+            ricwizLogger.appendLine(`[GitLab API] Request Failed: ${err.message}`);
+            reject(err);
+        });
         req.end();
     });
 }

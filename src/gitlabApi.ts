@@ -143,6 +143,7 @@ const mrCache = new Map<string, { data: GitLabMRStatus, timestamp: number }>();
 const CACHE_TTL = 30 * 1000; // 30 seconds
 
 export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string, ctx?: any): Promise<GitLabMRStatus | null> {
+    ricwizLogger.appendLine(`[GitLab API] fetchMergeRequestStatus called for source: ${sourceBranch}, target: ${targetBranch || 'any'}`);
     const cacheKey = `${cwd}:${sourceBranch}:${targetBranch || 'any'}`;
     const cached = mrCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {

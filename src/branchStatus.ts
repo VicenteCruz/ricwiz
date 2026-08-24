@@ -55,6 +55,9 @@ export async function getRelatedBranchesStatus(
                         mrUrl: mrStatus.webUrl
                     };
                 }
+            } else {
+                const { ricwizLogger } = require('./gitlabApi');
+                ricwizLogger.appendLine(`[GitLab API] Skipping MR check for ${branch} because hasGitlabToken() is false`);
             }
 
             return { name: branch, isMerged: false };
@@ -89,6 +92,9 @@ export async function getCurrentBranchMergeStatus(
         if (mrStatus) {
             return mrStatus.isMerged;
         }
+    } else {
+        const { ricwizLogger } = require('./gitlabApi');
+        ricwizLogger.appendLine(`[GitLab API] Skipping MR check for current branch ${currentBranch} because hasGitlabToken() is false`);
     }
 
     return false;

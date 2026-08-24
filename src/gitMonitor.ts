@@ -167,5 +167,9 @@ export function initializeGitMonitor(
     
     initGit();
     
-    return forceUpdate;
+    return () => {
+        if (forceUpdate) {
+            forceUpdate();
+        }
+    };
 }

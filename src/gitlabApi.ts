@@ -11,6 +11,7 @@ export interface GitLabMRStatus {
 }
 
 let projectPathCache: { [cwd: string]: string } = {};
+let cachedWebUrl: string | null = null;
 
 export async function hasGitlabToken(): Promise<boolean> {
     const token = await getGitlabToken();
@@ -27,22 +28,26 @@ async function getGitlabAuthAndBaseUrl(cwd: string) {
 
     let webUrl = config.get<string>('gitlabUrlOverride', '');
     if (!webUrl || webUrl.trim() === '') {
-        try {
-            const { stdout } = await exec('git remote get-url origin', { cwd });
-            let remoteUrl = stdout.trim();
-            
-            if (remoteUrl.endsWith('.git')) {
-                remoteUrl = remoteUrl.slice(0, -4);
+        if (cachedWebUrl) {
+            webUrl = cachedWebUrl;
+        } else {
+            try {
+                const { stdout } = await exec('git remote get-url origin', { cwd });
+                let remoteUrl = stdout.trim();
+                
+                if (remoteUrl.endsWith('.git')) {
+                    remoteUrl = remoteUrl.slice(0, -4);
+                }
+                if (remoteUrl.startsWith('git@')) {
+                    remoteUrl = remoteUrl.replace('git@', '').replace(':', '/');
+                    remoteUrl = `https://${remoteUrl}`;
+                }
+                
+                webUrl = remoteUrl;
+                cachedWebUrl = webUrl;
+            } catch (e) {
+                throw new Error('Could not get remote origin URL.');
             }
-            if (remoteUrl.startsWith('git@')) {
-                remoteUrl = remoteUrl.replace('git@', '').replace(':', '/');
-                remoteUrl = `https://${remoteUrl}`;
-            }
-            
-            // remoteUrl is now something like https://gitlab.com/empresa/projeto
-            webUrl = remoteUrl;
-        } catch (e) {
-            throw new Error('Could not get remote origin URL.');
         }
     }
     

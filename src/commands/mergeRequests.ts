@@ -23,7 +23,8 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     } else {
         let remoteUrl = '';
         try {
-            const { stdout } = await exec('git remote get-url origin', { cwd });
+            const targetRemote = ctx.upstreamRemote || 'origin';
+            const { stdout } = await exec(`git remote get-url ${targetRemote}`, { cwd });
             remoteUrl = stdout.trim();
         } catch (e) {
             vscode.window.showErrorMessage('Ricwiz: Could not get the remote origin URL. Please configure the URL manually in the extension settings.');

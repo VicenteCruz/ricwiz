@@ -32,7 +32,9 @@ async function getGitlabAuthAndBaseUrl(cwd: string, ctx?: any) {
             webUrl = cachedWebUrl;
         } else {
             try {
-                const { stdout } = await exec('git remote get-url origin', { cwd });
+                // If a WorkflowContext is provided, prefer its upstreamRemote to get the main project URL
+                const targetRemote = ctx && ctx.upstreamRemote ? ctx.upstreamRemote : 'origin';
+                const { stdout } = await exec(`git remote get-url ${targetRemote}`, { cwd });
                 let remoteUrl = stdout.trim();
                 
                 if (remoteUrl.endsWith('.git')) {

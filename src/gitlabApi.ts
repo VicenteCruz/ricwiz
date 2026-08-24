@@ -51,6 +51,11 @@ async function getGitlabTargets(cwd: string, ctx?: any): Promise<{baseUrl: strin
             if (allRemotes.includes('origin') && !remotesToTry.includes('origin')) {
                 remotesToTry.push('origin');
             }
+            
+            // Fallback: If no recognized remotes were found, just try all available remotes!
+            if (remotesToTry.length === 0 && allRemotes.length > 0) {
+                remotesToTry.push(...allRemotes);
+            }
 
             for (const remote of remotesToTry) {
                 try {

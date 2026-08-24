@@ -159,6 +159,8 @@ export async function findRelatedBranches(cwd: string, ticketId: string, current
     const { stdout } = await exec(`git branch --all --list "*${ticketId}*"`, { cwd });
     
     const branches = new Set<string>();
+    // Ensure the ticket ID is not immediately followed by another digit (e.g. searching CRC-123 doesn't match CRC-1234)
+    const exactTicketRegex = new RegExp(`${ticketId}(?!\\d)`, 'i');
     
     stdout.split('\n').forEach((b: string) => {
         let cleanName = b.replace('*', '').trim();
@@ -171,7 +173,7 @@ export async function findRelatedBranches(cwd: string, ticketId: string, current
             }
         }
         
-        if (cleanName && cleanName !== currentBranch && !cleanName.includes('HEAD')) {
+        if (cleanName && cleanName !== currentBranch && !cleanName.includes('HEAD') && exactTicketRegex.test(cleanName)) {
             branches.add(cleanName);
         }
     });
@@ -191,9 +193,11 @@ export async function resolveExistingBranchName(cwd: string, ticketId: string, e
         const exec = util.promisify(cp.exec);
         
         const { stdout } = await exec(`git branch --all --list "*${ticketId}*"`, { cwd });
+        const exactTicketRegex = new RegExp(`${ticketId}(?!\\d)`, 'i');
+        
         const branches = stdout.split('\n')
             .map((b: string) => b.replace('*', '').trim().replace(/^remotes\/[^\/]+\//, ''))
-            .filter((b: string) => b && !b.includes('HEAD'));
+            .filter((b: string) => b && !b.includes('HEAD') && exactTicketRegex.test(b));
             
         const uniqueBranches = Array.from<string>(new Set<string>(branches));
 

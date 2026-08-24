@@ -31,9 +31,10 @@ export async function syncAll(): Promise<void> {
 
             // 2. Find all local branches matching the ticket
             const { stdout } = await exec(`git branch --list "*${ticketId}*"`, { cwd });
+            const exactTicketRegex = new RegExp(`${ticketId}(?!\\d)`, 'i');
             const branches = stdout.split('\n')
                 .map((b: string) => b.replace('*', '').trim())
-                .filter((b: string) => b.length > 0);
+                .filter((b: string) => b.length > 0 && exactTicketRegex.test(b));
 
             if (branches.length === 0) {
                 vscode.window.showWarningMessage(`Ricwiz: No local branches found for ${ticketId}.`);

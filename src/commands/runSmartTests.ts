@@ -8,7 +8,7 @@ export async function runSmartTests(): Promise<void> {
 
     const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
     const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketSourceBranch', 'main');
-    const upstreamRemote = ctx ? ctx.upstreamRemote : 'origin';
+    const originRemote = ctx ? ctx.originRemote : 'origin';
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -16,7 +16,7 @@ export async function runSmartTests(): Promise<void> {
         cancellable: false
     }, async () => {
         try {
-            const { stdout } = await exec(`git diff --name-status ${upstreamRemote}/${sourceBranch}...HEAD`, { cwd });
+            const { stdout } = await exec(`git diff --name-status ${originRemote}/${sourceBranch}...HEAD`, { cwd });
             
             const lines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
             

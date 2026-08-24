@@ -13,20 +13,20 @@ export async function generateDestructiveChanges(): Promise<void> {
 
     const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
     const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketSourceBranch', 'main');
-    const upstreamRemote = ctx ? ctx.upstreamRemote : 'origin';
+    const originRemote = ctx ? ctx.originRemote : 'origin';
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `Ricwiz: Finding deleted files compared to ${upstreamRemote}/${sourceBranch}...`,
+        title: `Ricwiz: Finding deleted files compared to ${originRemote}/${sourceBranch}...`,
         cancellable: false
     }, async () => {
         try {
-            const { stdout } = await exec(`git diff --name-only --diff-filter=D ${upstreamRemote}/${sourceBranch}...HEAD`, { cwd });
+            const { stdout } = await exec(`git diff --name-only --diff-filter=D ${originRemote}/${sourceBranch}...HEAD`, { cwd });
             
             const files = stdout.split('\n').map(f => f.trim()).filter(f => f.length > 0);
 
             if (files.length === 0) {
-                vscode.window.showInformationMessage(`Ricwiz: No deleted files found compared to ${upstreamRemote}/${sourceBranch}.`);
+                vscode.window.showInformationMessage(`Ricwiz: No deleted files found compared to ${originRemote}/${sourceBranch}.`);
                 return;
             }
 

@@ -11,7 +11,7 @@ export async function listTicketFiles(): Promise<void> {
 
     const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
     const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketSourceBranch', 'main');
-    const upstreamRemote = ctx ? ctx.upstreamRemote : 'origin';
+    const originRemote = ctx ? ctx.originRemote : 'origin';
 
     let currentBranch = '';
     try {
@@ -41,7 +41,7 @@ export async function listTicketFiles(): Promise<void> {
             try {
                 let mergeBase = '';
                 try {
-                    const { stdout } = await exec(`git merge-base ${upstreamRemote}/${sourceBranch} ${targetBranch}`, { cwd });
+                    const { stdout } = await exec(`git merge-base ${originRemote}/${sourceBranch} ${targetBranch}`, { cwd });
                     mergeBase = stdout.trim();
                 } catch(e) {
                     const { stdout } = await exec(`git merge-base ${sourceBranch} ${targetBranch}`, { cwd });

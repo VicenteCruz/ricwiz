@@ -73,7 +73,7 @@ export function extractTicketSuggestion(currentBranch: string, prefix: string, h
  * If the input is purely numeric, prepends the prefix.
  */
 export function normalizeTicketId(input: string, prefix: string): string {
-    const trimmed = input.trim();
+    const trimmed = sanitizeShellInput(input);
     if (/^\d/.test(trimmed)) {
         return `${prefix}${trimmed}`.toUpperCase();
     }
@@ -137,4 +137,11 @@ export async function checkRemoteBranchExists(cwd: string, branchName: string): 
     } catch (e) {
         return false;
     }
+}
+
+/**
+ * Sanitizes user input before placing it into shell commands to prevent command injection.
+ */
+export function sanitizeShellInput(input: string): string {
+    return input.replace(/[&|;$><`\\!"'\r\n]/g, '').trim();
 }

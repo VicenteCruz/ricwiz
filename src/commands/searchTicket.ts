@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exec, getWorkspaceCwd } from '../git';
+import { exec, getWorkspaceCwd, sanitizeShellInput } from '../git';
 import { checkoutBranch } from './checkoutBranch';
 
 export async function searchTicket() {
@@ -12,9 +12,11 @@ export async function searchTicket() {
     });
 
     if (!ticketId) return;
+    
+    const sanitizedSearch = sanitizeShellInput(ticketId);
 
     try {
-        const { stdout } = await exec(`git branch --list "*${ticketId}*"`, { cwd });
+        const { stdout } = await exec(`git branch --list "*${sanitizedSearch}*"`, { cwd });
         const branches = stdout.split('\n')
             .map(b => b.replace('*', '').trim())
             .filter(b => b);

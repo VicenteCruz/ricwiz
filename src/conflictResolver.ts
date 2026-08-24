@@ -5,6 +5,18 @@ import { exec } from './git';
 import { webviewProvider } from './extension';
 import { ConflictedFileData } from './types';
 
+let activeConflictActionHandler: ((action: string) => Promise<void>) | undefined;
+
+export function setActiveConflictHandler(handler: ((action: string) => Promise<void>) | undefined) {
+    activeConflictActionHandler = handler;
+}
+
+export async function executeConflictAction(action: string) {
+    if (activeConflictActionHandler) {
+        await activeConflictActionHandler(action);
+    }
+}
+
 export async function handleMergeConflict(
     cwd: string,
     sourceStr: string,
@@ -86,7 +98,7 @@ export async function handleMergeConflict(
         }
     };
 
-    const conflictActionDisposable = vscode.commands.registerCommand('ricwiz.conflictAction', async (action: string) => {
+    setActiveConflictHandler(async (action: string) => {
         if (action === 'abortDeploy') {
             abortRequested = true;
         } else if (action === 'resolveDeletions') {
@@ -154,7 +166,7 @@ export async function handleMergeConflict(
     while (true) {
         if (abortRequested) {
             isResolved = true;
-            conflictActionDisposable.dispose();
+            setActiveConflictHandler(undefined);
             webviewProvider?.setConflictState(null);
             try { await exec('git merge --abort', { cwd }); } catch(err) {}
             return false;
@@ -162,9 +174,18 @@ export async function handleMergeConflict(
         
         try {
             const { stdout } = await exec('git status --porcelain', { cwd });
-            if (stdout.trim().length === 0) {
+            const hasUnmerged = stdout.split('\n').some(line => {
+                const state = line.substring(0, 2);
+                return ['UU', 'AA', 'UD', 'DU', 'AU', 'UA', 'DD'].includes(state);
+            });
+            const mergeHeadPath = path.join(cwd, '.git', 'MERGE_HEAD');
+            const rebaseHeadPath = path.join(cwd, '.git', 'REBASE_HEAD');
+            const cherryPickHeadPath = path.join(cwd, '.git', 'CHERRY_PICK_HEAD');
+            const isMergeOngoing = hasUnmerged || fs.existsSync(mergeHeadPath) || fs.existsSync(rebaseHeadPath) || fs.existsSync(cherryPickHeadPath);
+
+            if (!isMergeOngoing) {
                 isResolved = true;
-                conflictActionDisposable.dispose();
+                setActiveConflictHandler(undefined);
                 webviewProvider?.setConflictState(null);
                 vscode.window.showInformationMessage(`Ricwiz: Changes committed!`);
                 return true;

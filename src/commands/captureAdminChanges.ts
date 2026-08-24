@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec, getWorkspaceCwd } from '../git';
+import { exec, getWorkspaceCwd, sanitizeShellInput } from '../git';
 
 export async function captureAdminChanges(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -15,12 +15,13 @@ export async function captureAdminChanges(): Promise<void> {
     const defaultHours = config.get<number>('auditHours', 8);
 
     // Prompt for Username
-    const username = await vscode.window.showInputBox({
+    let username = await vscode.window.showInputBox({
         prompt: 'Enter your Salesforce Username to query in SetupAuditTrail',
         value: defaultUsername,
         placeHolder: 'admin@tuaorg.com'
     });
     if (!username) return;
+    username = sanitizeShellInput(username);
 
     // Prompt for Hours
     const hoursStr = await vscode.window.showInputBox({
@@ -149,7 +150,7 @@ export async function captureAdminChanges(): Promise<void> {
                 .join(', ');
 
             // Let the user edit the final metadata string before executing
-            const finalMetadata = await vscode.window.showInputBox({
+            let finalMetadata = await vscode.window.showInputBox({
                 prompt: 'Review and adjust the metadata components to retrieve',
                 value: initialMetadata,
                 ignoreFocusOut: true

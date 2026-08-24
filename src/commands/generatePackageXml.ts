@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec, getWorkspaceCwd } from '../git';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 export async function generatePackageXml(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -10,10 +11,20 @@ export async function generatePackageXml(): Promise<void> {
         return;
     }
 
+    const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
     const config = vscode.workspace.getConfiguration('ricwiz');
-    const sourceBranch = config.get<string>('ticketSourceBranch', 'main');
-    const rawCommand = config.get<string>('packageXmlCommand', 'sf sgd source delta --to "HEAD" --from "origin/{baseBranch}" --output-dir "."');
-    const command = rawCommand.replace('{baseBranch}', sourceBranch);
+    const sourceBranch = ctx?.ticketSourceBranch || config.get<string>('ticketSourceBranch', 'main');
+    const originRemote = ctx?.originRemote || 'origin';
+
+    const rawCommand = config.get<string>(
+        'packageXmlCommand', 
+        'sf sgd source delta --to "HEAD" --from "{originRemote}/{baseBranch}" --output-dir "."'
+    );
+
+    const command = rawCommand
+        .replace('origin/{baseBranch}', '{originRemote}/{baseBranch}') // Backwards compatibility for old config
+        .replace(/{originRemote}/g, originRemote)
+        .replace(/{baseBranch}/g, sourceBranch);
 
     const confirm = await vscode.window.showWarningMessage(
         'Are you sure you want to generate the package.xml? This may overwrite existing local manifest files.',

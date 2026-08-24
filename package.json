@@ -3,7 +3,7 @@
   "displayName": "Ricwiz Branch Helper",
   "description": "Helps create branches for ticket development",
   "icon": "resources/logo.png",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -143,6 +143,30 @@
       {
         "command": "ricwiz.deleteUnusedBranches",
         "title": "Ricwiz: Delete Unused Branches"
+      },
+      {
+        "command": "ricwiz.openJiraDashboard",
+        "title": "Ricwiz: Open Jira Dashboard"
+      },
+      {
+        "command": "ricwiz.updateBases",
+        "title": "Ricwiz: Update Base Branches"
+      },
+      {
+        "command": "ricwiz.whoToBlame",
+        "title": "Ricwiz: Who to Blame"
+      },
+      {
+        "command": "ricwiz.refreshWebview",
+        "title": "Ricwiz: Refresh Webview"
+      },
+      {
+        "command": "ricwiz.manualRefresh",
+        "title": "Ricwiz: Manual Refresh (Sync state)"
+      },
+      {
+        "command": "ricwiz.toggleAutoRefresh",
+        "title": "Ricwiz: Toggle Auto Refresh"
       }
     ],
     "configuration": {
@@ -256,7 +280,7 @@
           "description": "JQL Queries to fetch and display in the Ticket Dashboard."
         },
         "ricwiz.profiles": {
-          "order": 6,
+          "order": 9,
           "type": "array",
           "items": {
             "type": "object",
@@ -316,25 +340,25 @@
           "description": "Optional prefix prepended to git branches (e.g., used by the CRC team format: 'CRC-R19-')."
         },
         "ricwiz.commitMessageSuffix": {
-          "order": 11,
+          "order": 12,
           "type": "string",
           "default": "- ",
           "description": "Suffix to append to the ticket ID in the auto-generated commit message (e.g., '- ' or ': ')."
         },
         "ricwiz.jiraUrl": {
-          "order": 12,
+          "order": 13,
           "type": "string",
           "default": "",
           "description": "Base URL for Jira tickets (e.g., https://jira.company.com/browse/). Leave empty to disable."
         },
         "ricwiz.jiraEmail": {
-          "order": 13,
+          "order": 14,
           "type": "string",
           "default": "",
           "description": "Your Jira Email address (required for fetching Jira ticket details via API)."
         },
         "ricwiz.gitlabUrlOverride": {
-          "order": 14,
+          "order": 15,
           "type": "string",
           "default": "",
           "description": "Base URL of the company's GitLab repository (e.g., https://gitlab.company.com/group/project). Leave empty for the extension to discover it automatically via git remote."
@@ -342,8 +366,8 @@
         "ricwiz.packageXmlCommand": {
           "order": 20,
           "type": "string",
-          "default": "sf sgd source delta --to \"HEAD\" --from \"origin/{baseBranch}\" --output-dir \".\"",
-          "description": "The command used to generate the package.xml file. Use {baseBranch} as a placeholder for the ticket source branch."
+          "default": "sf sgd source delta --to \"HEAD\" --from \"{originRemote}/{baseBranch}\" --output-dir \".\"",
+          "description": "The command used to generate the package.xml file. Use {originRemote} and {baseBranch} as placeholders for the multi-remote origin and ticket source branch."
         },
         "ricwiz.deployCommand": {
           "order": 21,
@@ -397,7 +421,6 @@
     "@types/node": "^18.19.130",
     "@types/vscode": "^1.80.0",
     "esbuild": "^0.28.2",
-    "typescript": "^5.1.3",
-    "xmlbuilder2": "^4.0.3"
+    "typescript": "^5.1.3"
   }
 }

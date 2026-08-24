@@ -45,17 +45,20 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
 
     const mrLinks: { source: string, target: string }[] = [];
 
+    const actualMainBranch = await resolveExistingBranchName(cwd, ticketId);
+
     let mainSourceBranch = ctx.ticketSourceBranch;
     try {
-        const { stdout } = await exec(`git config branch.${ticketId}.ricwiz-source`, { cwd });
-        if (stdout.trim()) {
-            mainSourceBranch = stdout.trim();
+        if (actualMainBranch) {
+            const { stdout } = await exec(`git config branch.${actualMainBranch}.ricwiz-source`, { cwd });
+            if (stdout.trim()) {
+                mainSourceBranch = stdout.trim();
+            }
         }
     } catch (e) {}
 
     if (ctx.environments.length === 0) {
         // If there are no environments, just open the MR for the main ticket branch
-        const actualMainBranch = await resolveExistingBranchName(cwd, ticketId);
         mrLinks.push({
             source: actualMainBranch,
             target: mainSourceBranch

@@ -27,6 +27,7 @@ import { searchTicket } from './searchTicket';
 import { getBlameData } from './whoToBlame';
 import { showPipelineLogs } from './showPipelineLogs';
 import { RicwizWebviewProvider } from '../webview';
+import { executeConflictAction } from '../conflictResolver';
 
 export function registerAllCommands(
     context: vscode.ExtensionContext,
@@ -34,6 +35,7 @@ export function registerAllCommands(
     forceUpdate: (() => void) | undefined
 ) {
     context.subscriptions.push(
+        vscode.commands.registerCommand('ricwiz.conflictAction', executeConflictAction),
         vscode.commands.registerCommand('ricwiz.generateDestructiveChanges', async () => {
             try { await generateDestructiveChanges(); } finally { vscode.commands.executeCommand('ricwiz.manualRefresh'); }
         }),

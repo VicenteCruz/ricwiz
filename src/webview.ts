@@ -112,8 +112,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     vscode.commands.executeCommand('ricwiz.openSettings');
                     break;
                 case 'checkout':
-                    if (data.branch) {
-                        vscode.commands.executeCommand('ricwiz.checkoutBranch', data.branch);
+                    const branchName = data.branch || data.args;
+                    if (branchName) {
+                        vscode.commands.executeCommand('ricwiz.checkoutBranch', branchName);
                     }
                     break;
                 case 'copyBranch':

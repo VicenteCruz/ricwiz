@@ -5,7 +5,8 @@ import {
     getCurrentBranch,
     extractTicketSuggestion,
     resolvePrefix,
-    ricwizLogger
+    ricwizLogger,
+    sanitizeShellInput
 } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 import { resolveExistingBranchName } from '../branchStatus';
@@ -35,22 +36,24 @@ export async function listTicketFiles(): Promise<void> {
     if (!targetBranch) {
         return; // User cancelled
     }
+    
+    const sanitizedTarget = sanitizeShellInput(targetBranch);
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `Ricwiz: Finding files for ${targetBranch}...`,
+        title: `Ricwiz: Finding files for ${sanitizedTarget}...`,
         cancellable: false
     }, async () => {
         try {
             // Extract the actual ticket ID (e.g. DSSCCRC-1234) even if branch is CRC-R19-DSSCCRC-1234
             const configPrefix = ctx ? ctx.ticketPrefix : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketPrefix', 'SFPSC-');
-            const prefix = resolvePrefix(targetBranch, configPrefix);
-            const ticketId = extractTicketSuggestion(targetBranch, prefix, true) || targetBranch.replace(/-to-[a-zA-Z0-9]+$/i, '');
+            const prefix = resolvePrefix(sanitizedTarget, configPrefix);
+            const ticketId = extractTicketSuggestion(sanitizedTarget, prefix, true) || sanitizedTarget.replace(/-to-[a-zA-Z0-9]+$/i, '');
             
             // Resolve the actual branch name if the user just typed "DSSCCRC-1234"
             const resolvedTargetBranch = await resolveExistingBranchName(cwd, ticketId);
             
-            ricwizLogger.appendLine(`[ListTicketFiles] targetBranch (raw): ${targetBranch}, resolvedTargetBranch: ${resolvedTargetBranch}, ticketId: ${ticketId}, originRemote: ${originRemote}, sourceBranch: ${sourceBranch}`);
+            ricwizLogger.appendLine(`[ListTicketFiles] targetBranch (raw): ${sanitizedTarget}, resolvedTargetBranch: ${resolvedTargetBranch}, ticketId: ${ticketId}, originRemote: ${originRemote}, sourceBranch: ${sourceBranch}`);
             
             let diffLines: string[] = [];
             
@@ -92,7 +95,7 @@ export async function listTicketFiles(): Promise<void> {
             const lines = [...diffLines, ...logLines];
                 
             if (lines.length === 0) {
-                vscode.window.showInformationMessage(`Ricwiz: No modified files found for ${targetBranch}.`);
+                vscode.window.showInformationMessage(`Ricwiz: No modified files found for ${sanitizedTarget}.`);
                 return;
             }
 
@@ -108,7 +111,7 @@ export async function listTicketFiles(): Promise<void> {
                 groups[groupName].push(file);
             }
 
-            let output = `Files modified in branch ${targetBranch}:\n`;
+            let output = `Files modified in branch ${sanitizedTarget}:\n`;
             
             const sortedGroupNames = Object.keys(groups).sort();
             for (const group of sortedGroupNames) {

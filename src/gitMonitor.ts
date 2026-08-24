@@ -86,7 +86,7 @@ export function initializeGitMonitor(
                             ticketIdForJira = ticketId;
                             const suffix = config.get<string>('commitMessageSuffix', '- ');
                             
-                            const existingTicketPattern = /^[A-Z]+-\d+(?:-\\d+)?\s*(?:-\s*|:\s*|\s+)?/i;
+                            const existingTicketPattern = /^[A-Z]+-\d+(?:-\d+)?\s*(?:-\s*|:\s*|\s+)?/i;
                             if (existingTicketPattern.test(repo.inputBox.value)) {
                                 if (!repo.inputBox.value.toUpperCase().startsWith(ticketId)) {
                                     // Replace the old ticket prefix with the new one

@@ -801,6 +801,79 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
             </html>`;
         }
 
+        let currentBranchObj = relatedBranches.find(b => b.name === currentBranch);
+        let currentPipelineIcon = '';
+        if (currentBranchObj) {
+            if (currentBranchObj.pipelineStatus === 'running') currentPipelineIcon = '⏳';
+            else if (currentBranchObj.pipelineStatus === 'success') currentPipelineIcon = '✅';
+            else if (currentBranchObj.pipelineStatus === 'failed') currentPipelineIcon = '❌';
+            else if (currentBranchObj.pipelineStatus === 'canceled') currentPipelineIcon = '🛑';
+            else if (currentBranchObj.pipelineStatus === 'skipped') currentPipelineIcon = '⏭️';
+        }
+        let currentMrUrl = currentBranchObj ? currentBranchObj.mrUrl : undefined;
+
+        const currentBranchHtml = currentBranch ? 
+                `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; text-transform: uppercase;">
+                        Current Ticket / Branch
+                        <button class="copy-btn" onclick="sendCommand('copyBranch')" title="Copy branch name to clipboard">📋</button>
+                    </div>
+                    <div style="font-weight: bold; font-size: 14px; word-break: break-all; text-align: center; color: var(--vscode-textLink-foreground); display: flex; justify-content: center; align-items: center; gap: 6px;">
+                        ${escapeHtml(currentBranch)} 
+                        ${currentPipelineIcon ? `<span title="Pipeline: ${currentBranchObj!.pipelineStatus}" style="font-size: 12px;">${currentPipelineIcon}</span>` : ''}
+                        ${currentMrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${currentMrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 12px;">🔗</span>` : ''}
+                        ${this.currentBranchIsMergedCache ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
+                    </div>
+                    ${this.ticketTitleCache ? `<div style="font-size: 12px; margin-top: 6px; text-align: center; opacity: 0.9; font-style: italic;">${escapeHtml(this.ticketTitleCache)}</div>` : ''}
+                    ${relatedBranches.length > 0 ? `
+                        <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
+                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${relatedBranches.map(b => {
+                                    let pipelineIcon = '';
+                                    if (b.pipelineStatus === 'running') pipelineIcon = '⏳';
+                                    else if (b.pipelineStatus === 'success') pipelineIcon = '✅';
+                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '❌';
+                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '🛑';
+                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⏭️';
+                                    
+                                    return `
+                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}', this)" title="Checkout ${escapeHtml(b.name)}">
+                                        <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name)}</span>
+                                        </div>
+                                        <div style="display: flex; gap: 4px; align-items: center;">
+                                            ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 10px;">${pipelineIcon}</span>` : ''}
+                                            ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">🔗</span>` : ''}
+                                            ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
+                                        </div>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    ` : (recentTickets.length > 0 ? `
+                        <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
+                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Recent Tickets</div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${recentTickets.map(b => `
+                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
+                                        <span style="font-weight: bold;">${escapeHtml(b)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : '')}
+                    <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: center;">
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
+                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🔍</span> Search
+                        </button>
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('openHistory')" title="View recent branches history">
+                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🕰️</span> History
+                        </button>
+                    </div>
+                </div>` : '';
+
         // NORMAL HTML RENDER (No conflict)
         return `<!DOCTYPE html>
         <html lang="en">
@@ -837,65 +910,8 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 </div>
             </div>
 
-            ${currentBranch ? 
-                `<div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 10px; opacity: 0.7; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 4px; text-transform: uppercase;">
-                        Current Ticket / Branch
-                        <button class="copy-btn" onclick="sendCommand('copyBranch')" title="Copy branch name to clipboard">📋</button>
-                    </div>
-                    <div style="font-weight: bold; font-size: 14px; word-break: break-all; text-align: center; color: var(--vscode-textLink-foreground);">
-                        ${escapeHtml(currentBranch)} ${this.currentBranchIsMergedCache ? '<span style="margin-left: 4px; background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 10px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
-                    </div>
-                    ${this.ticketTitleCache ? `<div style="font-size: 12px; margin-top: 6px; text-align: center; opacity: 0.9; font-style: italic;">${escapeHtml(this.ticketTitleCache)}</div>` : ''}
-                    ${relatedBranches.length > 0 ? `
-                        <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
-                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Sister Branches</div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${relatedBranches.map(b => {
-                                    let pipelineIcon = '';
-                                    if (b.pipelineStatus === 'running') pipelineIcon = '⏳';
-                                    else if (b.pipelineStatus === 'success') pipelineIcon = '✅';
-                                    else if (b.pipelineStatus === 'failed') pipelineIcon = '❌';
-                                    else if (b.pipelineStatus === 'canceled') pipelineIcon = '🛑';
-                                    else if (b.pipelineStatus === 'skipped') pipelineIcon = '⏭️';
-                                    
-                                    return `
-                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}', this)" title="Checkout ${escapeHtml(b.name)}">
-                                        <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
-                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${escapeHtml(b.name)}</span>
-                                            ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 10px;">${pipelineIcon}</span>` : ''}
-                                        </div>
-                                        <div style="display: flex; gap: 4px; align-items: center;">
-                                            ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">🔗</span>` : ''}
-                                            ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>' : ''}
-                                        </div>
-                                    </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    ` : (recentTickets.length > 0 ? `
-                        <div style="margin-top: 10px; border-top: 1px solid var(--vscode-panel-border); padding-top: 10px;">
-                            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 6px; text-transform: uppercase; text-align: center;">Recent Tickets</div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${recentTickets.map(b => `
-                                    <div class="btn" style="padding: 4px 8px; font-size: 11px; display: flex; align-items: center; background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border-radius: 4px;" onclick="sendCheckoutCommand('${escapeHtml(b)}', this)" title="Checkout ${escapeHtml(b)}">
-                                        <span style="font-weight: bold;">${escapeHtml(b)}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : '')}
-                    <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: center;">
-                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
-                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🔍</span> Search
-                        </button>
-                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('openHistory')" title="View recent branches history">
-                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🕰️</span> History
-                        </button>
-                    </div>
-                </div>` : ''
-            }
+            ${currentBranchHtml}
+
 
             ${baseBranches.length > 0 ? `
                 <div style="display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; justify-content: center;">

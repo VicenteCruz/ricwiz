@@ -45,6 +45,12 @@ export function registerAllCommands(
         vscode.commands.registerCommand('ricwiz.showJiraDetails', () => { if (webviewProvider) showJiraDetails(webviewProvider); }),
         vscode.commands.registerCommand('ricwiz.openJiraDashboard', (indexOverride?: number) => { if (webviewProvider) openJiraDashboard(webviewProvider, indexOverride); }),
         vscode.commands.registerCommand('ricwiz.openJiraDetailsForId', (ticketId: string) => { if (webviewProvider) openJiraDetailsForId(webviewProvider, ticketId); }),
+        vscode.commands.registerCommand('ricwiz.toggleDashboardBranches', (show: boolean) => {
+            if (webviewProvider) {
+                webviewProvider.setDashboardShowBranches(show);
+                vscode.commands.executeCommand('ricwiz.openJiraDashboard');
+            }
+        }),
         vscode.commands.registerCommand('ricwiz.changeJiraStatus', changeJiraStatus),
         vscode.commands.registerCommand('ricwiz.addJiraComment', addJiraCommentCommand),
         vscode.commands.registerCommand('ricwiz.addJiraLabel', addJiraLabelCommand),

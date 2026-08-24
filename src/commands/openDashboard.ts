@@ -35,6 +35,8 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
         // Find existing branches for these tickets
         const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         let localBranches: string[] = [];
+        const showAllBranches = webviewProvider.getDashboardShowBranches();
+        
         if (cwd) {
             try {
                 // Inline exec to get branches quickly
@@ -46,13 +48,37 @@ export async function openJiraDashboard(webviewProvider: RicwizWebviewProvider, 
             } catch(e) {}
         }
         
-        const enrichedResults = results.map((r: any) => {
-            const matchingBranch = localBranches.find(b => b.includes(r.key));
-            return {
-                ...r,
-                branch: matchingBranch || null
-            };
-        });
+        let enrichedResults: any[] = [];
+        
+        if (showAllBranches && cwd) {
+            try {
+                const { findRelatedBranches, getRelatedBranchesStatus } = require('../branchStatus');
+                const environments = vscode.workspace.getConfiguration('ricwiz').get<any[]>('environments', [
+                    { name: 'Qual', sourceBranch: 'quality' },
+                    { name: 'Val', sourceBranch: 'validation' },
+                    { name: 'Prod', sourceBranch: 'main' }
+                ]);
+                
+                enrichedResults = await Promise.all(results.map(async (r: any) => {
+                    const relatedBranchNames = await findRelatedBranches(cwd, r.key, '');
+                    const detailedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, r.key, environments);
+                    return {
+                        ...r,
+                        detailedBranches
+                    };
+                }));
+            } catch (e) {
+                enrichedResults = results;
+            }
+        } else {
+            enrichedResults = results.map((r: any) => {
+                const matchingBranch = localBranches.find(b => b.includes(r.key));
+                return {
+                    ...r,
+                    branch: matchingBranch || null
+                };
+            });
+        }
 
         webviewProvider.setDashboardData({ queries, selectedIndex: currentSelectedIndex, results: enrichedResults, error: null });
         webviewProvider.setPage('dashboard');

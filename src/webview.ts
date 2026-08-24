@@ -80,6 +80,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'switchDashboardQuery':
                     vscode.commands.executeCommand('ricwiz.openJiraDashboard', parseInt(data.args));
                     break;
+                case 'toggleDashboardBranches':
+                    vscode.commands.executeCommand('ricwiz.toggleDashboardBranches', data.args);
+                    break;
                 case 'openJiraVSCode':
                     vscode.commands.executeCommand('ricwiz.openJiraTicketVSCode');
                     break;
@@ -207,7 +210,16 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
     private blameDataCache: any = null;
     private jiraDataCache: any = null;
     private dashboardDataCache: any = null;
+    private dashboardShowBranches: boolean = false;
     private autoRefreshEnabled: boolean = true;
+
+    public setDashboardShowBranches(show: boolean) {
+        this.dashboardShowBranches = show;
+    }
+
+    public getDashboardShowBranches(): boolean {
+        return this.dashboardShowBranches;
+    }
 
     public setBlameData(data: any) {
         this.blameDataCache = data;
@@ -605,14 +617,14 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     </thead>
                     <tbody>
                         ${data.results.map((r: any) => `
-                            <tr style="border-bottom: 1px solid var(--vscode-panel-border); cursor: pointer;" class="tr-hover" onclick="sendCommand('openJiraDetailsForId', '${escapeHtml(r.key)}')">
+                            <tr style="border-bottom: ${r.detailedBranches && r.detailedBranches.length > 0 ? 'none' : '1px solid var(--vscode-panel-border)'}; cursor: pointer;" class="tr-hover" onclick="sendCommand('openJiraDetailsForId', '${escapeHtml(r.key)}')">
                                 <td style="padding: 6px; font-weight: bold; color: var(--vscode-textLink-foreground); white-space: nowrap;">${escapeHtml(r.key)}</td>
                                 <td style="padding: 6px; overflow: hidden; text-overflow: ellipsis; max-width: 150px; white-space: nowrap;" title="${escapeHtml(r.summary)}">${escapeHtml(r.summary)}</td>
                                 <td style="padding: 6px; white-space: nowrap;">
                                     <span style="background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 4px; border-radius: 3px; font-size: 9px;">${escapeHtml(r.status)}</span>
                                 </td>
                                 <td style="padding: 6px; white-space: nowrap; text-align: center;">
-                                    ${r.branch ? `
+                                    ${r.detailedBranches ? '' : r.branch ? `
                                         <button class="icon-button" style="background-color: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-size: 10px; padding: 2px 6px;" title="Checkout ${escapeHtml(r.branch)}" onclick="event.stopPropagation(); sendCommand('checkout', { branch: '${escapeHtml(r.branch)}' })">
                                             🌿 Checkout
                                         </button>
@@ -623,6 +635,34 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                                     `}
                                 </td>
                             </tr>
+                            ${r.detailedBranches && r.detailedBranches.length > 0 ? `
+                            <tr style="border-bottom: 1px solid var(--vscode-panel-border);">
+                                <td colspan="4" style="padding: 0 6px 8px 6px;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--vscode-editorIndentGuide-activeBackground1);">
+                                        ${r.detailedBranches.map((b: any) => {
+                                            let pipelineIcon = '';
+                                            if (b.pipelineStatus === 'running') pipelineIcon = '⏳';
+                                            else if (b.pipelineStatus === 'success') pipelineIcon = '✅';
+                                            else if (b.pipelineStatus === 'failed') pipelineIcon = '❌';
+                                            else if (b.pipelineStatus === 'canceled') pipelineIcon = '🛑';
+                                            else if (b.pipelineStatus === 'skipped') pipelineIcon = '⏭️';
+                                            return `
+                                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; background: var(--vscode-editor-background); padding: 2px 6px; border-radius: 3px;">
+                                                <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; cursor: pointer; flex: 1;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}')" title="Checkout ${escapeHtml(b.name)}">
+                                                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(b.name)}</span>
+                                                    ${pipelineIcon ? `<span title="Pipeline: ${b.pipelineStatus}">${pipelineIcon}</span>` : ''}
+                                                </div>
+                                                <div style="display: flex; gap: 6px; align-items: center;">
+                                                    ${b.mrUrl ? `<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">🔗</span>` : ''}
+                                                    ${b.isMerged ? '<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 8px; font-weight: bold;">MERGED</span>' : ''}
+                                                </div>
+                                            </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </td>
+                            </tr>
+                            ` : ''}
                         `).join('')}
                     </tbody>
                 </table>
@@ -663,6 +703,10 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         ${queriesHtml}
                     </select>
                 </div>
+                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" id="showBranchesCheck" ${this.dashboardShowBranches ? 'checked' : ''} onchange="sendCommand('toggleDashboardBranches', this.checked)" style="margin: 0; cursor: pointer;">
+                    <label for="showBranchesCheck" style="font-size: 11px; cursor: pointer;">Show all Branches (MRs & Pipelines)</label>
+                </div>
                 ` : `
                 <div style="padding: 12px; opacity: 0.7; text-align: center;">No queries defined in settings.</div>
                 `}
@@ -675,6 +719,9 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     const vscode = acquireVsCodeApi();
                     function sendCommand(command, args) {
                         vscode.postMessage({ command, args });
+                    }
+                    function sendCheckoutCommand(branchName) {
+                        vscode.postMessage({ command: 'checkout', branch: branchName });
                     }
                 </script>
             </body>

@@ -879,11 +879,11 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                         </div>
                     ` : '')}
                     <div style="display: flex; gap: 6px; margin-top: 10px; justify-content: center;">
-                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('searchTicket')" title="Search branches by ticket number">
-                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🔍</span> Search
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('showJiraDetails')" title="View Jira Details">
+                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🎫</span> Jira Details
                         </button>
-                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('openHistory')" title="View recent branches history">
-                            <span class="icon" style="font-size: 12px; margin-right: 4px;">🕰️</span> History
+                        <button class="btn" style="width: auto; padding: 4px 8px; font-size: 11px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="sendCommand('openDashboard')" title="View Ticket Dashboard">
+                            <span class="icon" style="font-size: 12px; margin-right: 4px;">📊</span> Dashboard
                         </button>
                     </div>
                 </div>` : '';
@@ -958,17 +958,8 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                     </button>
                 </div>
 
-                <div style="display: flex; gap: 4px;">
-                    <button class="btn" style="flex: 1; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
-                        <span class="icon">🎫</span> Open Jira
-                    </button>
-                    <button class="btn" style="width: auto; padding: 6px 12px; font-weight: bold; justify-content: center; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="View Jira Details in Ricwiz" onclick="sendCommand('showJiraDetails')">
-                        Details
-                    </button>
-                </div>
-
-                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); margin-top: 6px; border-radius: 4px;" title="View Jira Tickets Dashboard" onclick="sendCommand('openDashboard')">
-                    <span class="icon">📊</span> Ticket Dashboard
+                <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Open Jira Ticket in Browser" onclick="sendCommand('openJira')">
+                    <span class="icon">🎫</span> Open Jira
                 </button>
             </div>
 

@@ -123,9 +123,18 @@ export async function checkBranchExists(cwd: string, branchName: string): Promis
         await exec(`git show-ref --verify --quiet refs/heads/${branchName}`, { cwd });
         return true;
     } catch (e) {}
+    return await checkRemoteBranchExists(cwd, branchName);
+}
+
+/**
+ * Checks whether a branch exists on any remote.
+ */
+export async function checkRemoteBranchExists(cwd: string, branchName: string): Promise<boolean> {
     try {
-        await exec(`git show-ref --verify --quiet refs/remotes/origin/${branchName}`, { cwd });
-        return true;
-    } catch (e) {}
-    return false;
+        // Find if the branch exists on ANY remote
+        const { stdout } = await exec(`git branch -r --list "*/${branchName}"`, { cwd });
+        return stdout.trim().length > 0;
+    } catch (e) {
+        return false;
+    }
 }

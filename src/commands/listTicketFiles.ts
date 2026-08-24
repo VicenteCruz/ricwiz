@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, getCurrentBranch } from '../git';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 export async function listTicketFiles(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -8,13 +9,14 @@ export async function listTicketFiles(): Promise<void> {
         return;
     }
 
+    const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
+    const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketSourceBranch', 'main');
+    const upstreamRemote = ctx ? ctx.upstreamRemote : 'origin';
+
     let currentBranch = '';
     try {
         currentBranch = await getCurrentBranch(cwd);
     } catch (e) {}
-
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const sourceBranch = config.get<string>('ticketSourceBranch', 'main');
 
     const targetBranch = await vscode.window.showInputBox({
         prompt: `Enter the branch name to list modified files (compared to ${sourceBranch})`,
@@ -39,9 +41,9 @@ export async function listTicketFiles(): Promise<void> {
             try {
                 let mergeBase = '';
                 try {
-                    const { stdout } = await exec(`git merge-base origin/${sourceBranch} ${targetBranch}`, { cwd });
+                    const { stdout } = await exec(`git merge-base ${upstreamRemote}/${sourceBranch} ${targetBranch}`, { cwd });
                     mergeBase = stdout.trim();
-                } catch {
+                } catch(e) {
                     const { stdout } = await exec(`git merge-base ${sourceBranch} ${targetBranch}`, { cwd });
                     mergeBase = stdout.trim();
                 }

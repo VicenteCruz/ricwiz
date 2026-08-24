@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec, getWorkspaceCwd } from '../git';
+import { WorkflowContext } from '../workflows/WorkflowContext';
 
 export async function generateDestructiveChanges(): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -10,21 +11,22 @@ export async function generateDestructiveChanges(): Promise<void> {
         return;
     }
 
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const sourceBranch = config.get<string>('ticketSourceBranch', 'main');
+    const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
+    const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode.workspace.getConfiguration('ricwiz').get<string>('ticketSourceBranch', 'main');
+    const upstreamRemote = ctx ? ctx.upstreamRemote : 'origin';
 
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `Ricwiz: Finding deleted files compared to origin/${sourceBranch}...`,
+        title: `Ricwiz: Finding deleted files compared to ${upstreamRemote}/${sourceBranch}...`,
         cancellable: false
     }, async () => {
         try {
-            const { stdout } = await exec(`git diff --name-only --diff-filter=D origin/${sourceBranch}...HEAD`, { cwd });
+            const { stdout } = await exec(`git diff --name-only --diff-filter=D ${upstreamRemote}/${sourceBranch}...HEAD`, { cwd });
             
             const files = stdout.split('\n').map(f => f.trim()).filter(f => f.length > 0);
 
             if (files.length === 0) {
-                vscode.window.showInformationMessage(`Ricwiz: No deleted files found compared to origin/${sourceBranch}.`);
+                vscode.window.showInformationMessage(`Ricwiz: No deleted files found compared to ${upstreamRemote}/${sourceBranch}.`);
                 return;
             }
 

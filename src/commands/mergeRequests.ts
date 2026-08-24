@@ -15,8 +15,7 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     if (!result) return;
     const { ticketId } = result;
 
-    const config = vscode.workspace.getConfiguration('ricwiz');
-    const gitlabUrlOverride = config.get<string>('gitlabUrlOverride', '');
+    const gitlabUrlOverride = ctx.getConfig<string>('gitlabUrlOverride', '');
 
     let webUrl = '';
     if (gitlabUrlOverride && gitlabUrlOverride.trim() !== '') {

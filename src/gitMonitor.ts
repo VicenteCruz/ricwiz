@@ -4,6 +4,7 @@ import { CommitEntry, EnvironmentConfig } from './types';
 import { getRelatedBranchesStatus, getCurrentBranchMergeStatus, getRecentCommits, getRecentTickets, findRelatedBranches } from './branchStatus';
 import { RicwizWebviewProvider } from './webview';
 import { fetchJiraIssue } from './jiraApi';
+import { WorkflowContext } from './workflows/WorkflowContext';
 
 export function initializeGitMonitor(
     context: vscode.ExtensionContext,
@@ -65,7 +66,8 @@ export function initializeGitMonitor(
                         let baseBranches: string[] = [];
                         let recentTickets: string[] = [];
 
-                        const environments = config.get<EnvironmentConfig[]>('environments', [
+                        const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
+                        const environments = ctx?.environments || config.get<EnvironmentConfig[]>('environments', [
                             { name: 'Qual', sourceBranch: 'quality' },
                             { name: 'Val', sourceBranch: 'validation' },
                             { name: 'Prod', sourceBranch: 'main' }
@@ -103,7 +105,7 @@ export function initializeGitMonitor(
                             // Fetch related branches and their merge status in parallel
                             try {
                                 const relatedBranchNames = await findRelatedBranches(cwd, ticketId, '');
-                                relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments);
+                                relatedBranches = await getRelatedBranchesStatus(cwd, relatedBranchNames, ticketId, environments, ctx);
                             } catch (e) {}
                         } else {
                             // Not on a ticket branch — hide status bar
@@ -117,7 +119,7 @@ export function initializeGitMonitor(
                         // Fetch recent commits, current branch merge status, and jira issue in parallel
                         const [fetchedCommits, currentBranchIsMerged, jiraIssue] = await Promise.all([
                             getRecentCommits(cwd, 10),
-                            getCurrentBranchMergeStatus(cwd, currentBranch, environments),
+                            getCurrentBranchMergeStatus(cwd, currentBranch, environments, ctx),
                             ticketIdForJira ? fetchJiraIssue(ticketIdForJira).catch((e: any) => {
                                 let msg = e.message;
                                 if (msg.includes('ENOTFOUND') || msg.includes('network')) {

@@ -57,7 +57,7 @@ export class WorkflowContext {
         return WorkflowContext.baseConfig.get<T>(key, defaultValue);
     }
 
-    public static async initialize(cwd: string, options?: { forcePrompt?: boolean }): Promise<WorkflowContext | undefined> {
+    public static async initialize(cwd: string, options?: { forcePrompt?: boolean, skipPrompt?: boolean }): Promise<WorkflowContext | undefined> {
         let profiles: WorkflowProfile[] = WorkflowContext.baseConfig.get<WorkflowProfile[]>('profiles', []);
 
         // Also check ricwiz.json as a fallback
@@ -96,6 +96,10 @@ export class WorkflowContext {
                 } catch (e) {
                     // Fallback to prompting if no saved profile found or an error occurred
                 }
+            }
+
+            if (options?.skipPrompt) {
+                return new WorkflowContext();
             }
 
             const items = profiles.map(p => p.name);

@@ -18,7 +18,7 @@ export async function hasGitlabToken(): Promise<boolean> {
     return !!(token && token.trim());
 }
 
-async function getGitlabAuthAndBaseUrl(cwd: string) {
+async function getGitlabAuthAndBaseUrl(cwd: string, ctx?: any) {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const token = (await getGitlabToken())?.trim();
 
@@ -26,7 +26,7 @@ async function getGitlabAuthAndBaseUrl(cwd: string) {
         throw new Error('No GitLab token');
     }
 
-    let webUrl = config.get<string>('gitlabUrlOverride', '');
+    let webUrl = ctx ? ctx.getConfig('gitlabUrlOverride', '') : config.get<string>('gitlabUrlOverride', '');
     if (!webUrl || webUrl.trim() === '') {
         if (cachedWebUrl) {
             webUrl = cachedWebUrl;
@@ -69,8 +69,8 @@ async function getGitlabAuthAndBaseUrl(cwd: string) {
     return { baseUrl, token, projectPath };
 }
 
-async function gitlabRequest<T>(cwd: string, method: string, path: string): Promise<T> {
-    const { baseUrl, token } = await getGitlabAuthAndBaseUrl(cwd);
+async function gitlabRequest<T>(cwd: string, method: string, path: string, ctx?: any): Promise<T> {
+    const { baseUrl, token } = await getGitlabAuthAndBaseUrl(cwd, ctx);
     const url = new URL(`${baseUrl}${path}`);
 
     return new Promise((resolve, reject) => {
@@ -112,7 +112,7 @@ async function gitlabRequest<T>(cwd: string, method: string, path: string): Prom
 const mrCache = new Map<string, { data: GitLabMRStatus, timestamp: number }>();
 const CACHE_TTL = 30 * 1000; // 30 seconds
 
-export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string): Promise<GitLabMRStatus | null> {
+export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string, ctx?: any): Promise<GitLabMRStatus | null> {
     const cacheKey = `${cwd}:${sourceBranch}:${targetBranch || 'any'}`;
     const cached = mrCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -120,20 +120,20 @@ export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string,
     }
 
     try {
-        const { projectPath } = await getGitlabAuthAndBaseUrl(cwd);
+        const { projectPath } = await getGitlabAuthAndBaseUrl(cwd, ctx);
         // We query MRs where source_branch = sourceBranch and optionally target_branch = targetBranch
         let path = `/api/v4/projects/${projectPath}/merge_requests?source_branch=${encodeURIComponent(sourceBranch)}&order_by=updated_at&sort=desc`;
         if (targetBranch) {
             path += `&target_branch=${encodeURIComponent(targetBranch)}`;
         }
         
-        const mrs = await gitlabRequest<any[]>(cwd, 'GET', path);
+        const mrs = await gitlabRequest<any[]>(cwd, 'GET', path, ctx);
         if (mrs && mrs.length > 0) {
             let mr = mrs[0]; // most recently updated
             
             try {
                 // The list endpoint often omits head_pipeline for performance, so we fetch the single MR details
-                const detailedMr = await gitlabRequest<any>(cwd, 'GET', `/api/v4/projects/${projectPath}/merge_requests/${mr.iid}`);
+                const detailedMr = await gitlabRequest<any>(cwd, 'GET', `/api/v4/projects/${projectPath}/merge_requests/${mr.iid}`, ctx);
                 if (detailedMr) {
                     mr = detailedMr;
                 }

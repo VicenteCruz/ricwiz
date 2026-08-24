@@ -33,7 +33,8 @@ export async function getRelatedBranchesStatus(
     cwd: string,
     branches: string[],
     ticketId: string,
-    environments: EnvironmentConfig[]
+    environments: EnvironmentConfig[],
+    ctx?: any
 ): Promise<RelatedBranch[]> {
     const hasGitlab = await hasGitlabToken();
 
@@ -45,7 +46,7 @@ export async function getRelatedBranchesStatus(
                 // If it's a deploy branch, we know exactly what target branch to look for.
                 // If it's the main branch, we just look for any MR originating from it.
                 const targetBranch = env ? env.sourceBranch : undefined;
-                const mrStatus = await fetchMergeRequestStatus(cwd, branch, targetBranch);
+                const mrStatus = await fetchMergeRequestStatus(cwd, branch, targetBranch, ctx);
                 if (mrStatus) {
                     return { 
                         name: branch, 
@@ -75,7 +76,8 @@ export async function getRelatedBranchesStatus(
 export async function getCurrentBranchMergeStatus(
     cwd: string,
     currentBranch: string,
-    environments: EnvironmentConfig[]
+    environments: EnvironmentConfig[],
+    ctx?: any
 ): Promise<boolean> {
     const env = findMatchingEnv(currentBranch, environments);
     if (!env) {
@@ -83,7 +85,7 @@ export async function getCurrentBranchMergeStatus(
     }
 
     if (await hasGitlabToken()) {
-        const mrStatus = await fetchMergeRequestStatus(cwd, currentBranch, env.sourceBranch);
+        const mrStatus = await fetchMergeRequestStatus(cwd, currentBranch, env.sourceBranch, ctx);
         if (mrStatus) {
             return mrStatus.isMerged;
         }

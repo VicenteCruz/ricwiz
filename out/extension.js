@@ -447,11 +447,11 @@
                                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; background: var(--vscode-editor-background); padding: 2px 6px; border-radius: 3px;">
                                         <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; cursor: pointer; flex: 1;" onclick="sendCheckoutCommand('${x(l.name)}', this)" title="Checkout ${x(l.name)}">
                                             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${x(l.name)}</span>
-                                            ${n?`<span title="Pipeline: ${l.pipelineStatus}" ${i}>${n}</span>`:""}
                                         </div>
                                         <div style="display: flex; gap: 6px; align-items: center;">
-                                            ${l.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${l.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">\u{1F517}</span>`:""}
                                             ${l.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 8px; font-weight: bold;">MERGED</span>':""}
+                                            ${n?`<span title="Pipeline: ${l.pipelineStatus}" ${i}>${n}</span>`:""}
+                                            ${l.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${l.mrUrl}');" title="Open Merge Request" style="cursor: pointer;">\u{1F517}</span>`:""}
                                         </div>
                                     </div>
                                     `}).join("")}
@@ -599,7 +599,7 @@
     `:"",u=r.find(b=>b.name===o),f="";u&&(f=be(u.pipelineStatus));let w=u?u.mrUrl:void 0,h=r.filter(b=>b.name!==o),y=o?`
         <div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative;">
             ${l&&n?`
-            <div style="position: absolute; top: 6px; right: 6px; z-index: 10; cursor: pointer; font-size: 9px; padding: 2px 6px; border-radius: 4px; background-color: ${He(n)}; color: white; border: 1px solid var(--vscode-panel-border); opacity: 0.9; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 4px;" onclick="sendCommand('changeJiraStatus', null, this)" title="Update Jira Status">
+            <div style="position: absolute; top: 6px; right: 6px; z-index: 10; cursor: pointer; font-size: 9px; padding: 2px 6px; border-radius: 18px; background-color: ${He(n)}; color: white; border: 1px solid var(--vscode-panel-border); opacity: 0.9; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 4px;" onclick="sendCommand('changeJiraStatus', null, this)" title="Update Jira Status">
                 <span>\u270E</span><span>${x(n)}</span>
             </div>
             `:""}
@@ -624,9 +624,9 @@
                                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;">${x(b.name)}</span>
                                 </div>
                                 <div style="display: flex; gap: 4px; align-items: center;">
+                                    ${b.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>':""}
                                     ${z?`<span title="Pipeline: ${b.pipelineStatus}" style="font-size: 10px;" ${D}>${z}</span>`:""}
                                     ${b.mrUrl?`<span onclick="event.stopPropagation(); sendCommand('openExternal', '${b.mrUrl}');" title="Open Merge Request" style="cursor: pointer; font-size: 10px;">\u{1F517}</span>`:""}
-                                    ${b.isMerged?'<span style="background-color: var(--vscode-charts-green); color: white; border-radius: 3px; padding: 1px 4px; font-size: 9px; font-weight: bold;" title="Merged to target env">MERGED</span>':""}
                                 </div>
                             </div>`}).join("")}
                     </div>

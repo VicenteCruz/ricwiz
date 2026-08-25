@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
-import { exec, getWorkspaceCwd, promptForTicketId } from '../git';
+﻿import * as vscode from 'vscode';
+import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists } from '../git';
 import { WorkflowContext } from '../workflows/WorkflowContext';
 import { resolveExistingBranchName } from '../branchStatus';
 
@@ -11,7 +11,8 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
     if (!ctx) return;
 
     const result = await promptForTicketId(cwd, {
-        prompt: 'Enter the full ticket ID for the Merge Requests (e.g., SCPSCA-1234) or just the number'
+        prefix: ctx.ticketPrefix,
+        prompt: 'Enter the full ticket ID for the Merge Requests (e.g., SFPSCA-1234) or just the number'
     });
     if (!result) return;
     const { ticketId } = result;
@@ -40,6 +41,8 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
         if (webUrl.startsWith('git@')) {
             webUrl = webUrl.replace('git@', '').replace(':', '/');
             webUrl = `https://${webUrl}`;
+        } else if (webUrl.startsWith('ssh://git@')) {
+            webUrl = webUrl.replace('ssh://git@', 'https://');
         }
     }
 
@@ -47,29 +50,73 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
 
     const actualMainBranch = await resolveExistingBranchName(cwd, ticketId);
 
-    let mainSourceBranch = ctx.ticketSourceBranch;
-    try {
-        if (actualMainBranch) {
-            const { stdout } = await exec(`git config branch.${actualMainBranch}.ricwiz-source`, { cwd });
-            if (stdout.trim()) {
-                mainSourceBranch = stdout.trim();
-            }
-        }
-    } catch (e) {}
-
-    if (ctx.environments.length === 0) {
-        // If there are no environments, just open the MR for the main ticket branch
-        mrLinks.push({
-            source: actualMainBranch,
-            target: mainSourceBranch
-        });
-    } else {
-        // If environments exist, open MRs for them
-        for (const env of ctx.environments) {
-            const actualEnvBranch = await resolveExistingBranchName(cwd, ticketId, env.name);
-            mrLinks.push({
+    // Check which environment branches actually exist in Git for this ticket
+    const existingEnvBranches: { envName: string, source: string, target: string }[] = [];
+    for (const env of ctx.environments) {
+        const actualEnvBranch = await resolveExistingBranchName(cwd, ticketId, env.name);
+        if (await checkBranchExists(cwd, actualEnvBranch)) {
+            existingEnvBranches.push({
+                envName: env.name,
                 source: actualEnvBranch,
                 target: env.sourceBranch
+            });
+        }
+    }
+
+    if (existingEnvBranches.length === 0) {
+        // ─── Single Release Ticket Flow ──────────────────────────────────────
+        // Attempt to discover candidate target release branch
+        let candidateTarget = '';
+        try {
+            if (actualMainBranch) {
+                const { stdout } = await exec(`git config branch.${actualMainBranch}.ricwiz-source`, { cwd });
+                if (stdout.trim()) {
+                    candidateTarget = stdout.trim();
+                }
+            }
+        } catch (e) {}
+
+        if (!candidateTarget) {
+            if (actualMainBranch.includes(ticketId) && actualMainBranch !== ticketId) {
+                const prefixPart = actualMainBranch.split(ticketId)[0].replace(/[-_]+$/, '');
+                if (prefixPart) candidateTarget = prefixPart;
+            }
+        }
+
+        if (!candidateTarget) {
+            candidateTarget = ctx.ticketSourceBranch || 'main';
+        }
+
+        // Confirm the target release branch in a text box
+        const targetInput = await vscode.window.showInputBox({
+            prompt: `Ricwiz: Confirm or enter the Target Release branch in GitLab for '${actualMainBranch}'`,
+            placeHolder: 'e.g. CRC-R19, main, release/v5.0',
+            value: candidateTarget,
+            ignoreFocusOut: true
+        });
+
+        if (targetInput === undefined || !targetInput.trim()) {
+            vscode.window.showInformationMessage('Ricwiz: Merge request creation cancelled.');
+            return;
+        }
+
+        const confirmedTarget = targetInput.trim();
+
+        // Save confirmed source branch into git config for future operations
+        try {
+            await exec(`git config branch.${actualMainBranch}.ricwiz-source "${confirmedTarget}"`, { cwd });
+        } catch (e) {}
+
+        mrLinks.push({
+            source: actualMainBranch,
+            target: confirmedTarget
+        });
+    } else {
+        // ─── Multi-Environment Deploy Flow ────────────────────────────────────
+        for (const envBranch of existingEnvBranches) {
+            mrLinks.push({
+                source: envBranch.source,
+                target: envBranch.target
             });
         }
     }
@@ -86,7 +133,7 @@ async function doCreateMergeRequests(openInVSCode: boolean = false): Promise<voi
         }
     }
 
-    vscode.window.showInformationMessage(`Ricwiz: Opening ${openInVSCode ? 'VS Code browser' : 'external browser'} for Merge Requests!`);
+    vscode.window.showInformationMessage(`Ricwiz: Opening ${mrLinks.length} Merge Request(s) in ${openInVSCode ? 'VS Code browser' : 'external browser'}!`);
 }
 
 export async function createMergeRequests(): Promise<void> {

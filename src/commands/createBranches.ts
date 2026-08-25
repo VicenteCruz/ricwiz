@@ -1,7 +1,13 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists } from '../git';
 import { Security } from '../security';
 import { WorkflowContext } from '../workflows/WorkflowContext';
+
+interface BranchSelectionItem extends vscode.QuickPickItem {
+    type: 'main' | 'env';
+    branchName: string;
+    envConfig?: { name: string; sourceBranch: string };
+}
 
 export async function createBranches(prefilledTicket?: string): Promise<void> {
     const cwd = getWorkspaceCwd();
@@ -22,32 +28,63 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
     const { ticketId } = result;
 
     const environments = ctx.environments;
-    let selectedOptionValue = 'all';
 
-    interface CreationOptionItem extends vscode.QuickPickItem {
-        value: string;
-    }
-
-    const quickPickOptions: CreationOptionItem[] = [
-        { label: 'Create Main Branch & Environments', description: 'Creates the main ticket branch and all environment branches', value: 'all' },
-        { label: 'Create Main Branch Only', description: 'Creates only the main ticket branch (skips environments)', value: 'mainOnly' },
-        { label: 'Create Environments Only', description: 'Creates only the environment branches (skip main branch)', value: 'envs' }
-    ];
-
-    if (environments.length > 0) {
-        const selectedOption = await vscode.window.showQuickPick(quickPickOptions, {
-            placeHolder: 'Ricwiz: What do you want to create?',
+    let actualBranchPrefix = '';
+    if (ctx.branchPrefix) {
+        const prefixInput = await vscode.window.showInputBox({
+            prompt: 'Ricwiz: Branch Prefix (leave empty to not use a prefix)',
+            placeHolder: 'e.g. CRC-R19-',
+            value: ctx.branchPrefix,
             ignoreFocusOut: true
         });
-
-        if (!selectedOption) {
+        if (prefixInput === undefined) {
+            vscode.window.showInformationMessage('Branch creation cancelled.');
             return;
         }
-        selectedOptionValue = selectedOption.value;
+        actualBranchPrefix = prefixInput.trim();
     }
 
+    const mainBranch = actualBranchPrefix ? `${actualBranchPrefix}${ticketId}` : ticketId;
+
+    // Build the selection checklist (Main Branch + all configured environments)
+    const pickItems: BranchSelectionItem[] = [
+        {
+            label: `$(git-branch) Main Branch (${mainBranch})`,
+            description: `Base: ${ctx.ticketSourceBranch}`,
+            picked: true,
+            type: 'main',
+            branchName: mainBranch
+        }
+    ];
+
+    for (const env of environments) {
+        const envBranchName = actualBranchPrefix ? `${actualBranchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
+        pickItems.push({
+            label: `$(cloud) ${env.name} (${envBranchName})`,
+            description: `Base: ${env.sourceBranch}`,
+            picked: true,
+            type: 'env',
+            branchName: envBranchName,
+            envConfig: env
+        });
+    }
+
+    const selectedItems = await vscode.window.showQuickPick(pickItems, {
+        placeHolder: 'Ricwiz: Select branches to create (check/uncheck as needed)',
+        canPickMany: true,
+        ignoreFocusOut: true
+    });
+
+    if (!selectedItems || selectedItems.length === 0) {
+        vscode.window.showInformationMessage('Branch creation cancelled: No branches selected.');
+        return;
+    }
+
+    const createMain = selectedItems.some(i => i.type === 'main');
+    const selectedEnvs = selectedItems.filter(i => i.type === 'env').map(i => ({ env: i.envConfig!, branchName: i.branchName }));
+
     let sourceBranchForTicket = ctx.ticketSourceBranch;
-    if (selectedOptionValue === 'all' || selectedOptionValue === 'mainOnly') {
+    if (createMain) {
         let branches: string[] = [];
         try {
             const { stdout } = await exec(`git branch --all --format="%(refname:short)"`, { cwd });
@@ -58,7 +95,7 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
         } catch(e) {}
 
         const quickPick = vscode.window.createQuickPick();
-        quickPick.title = 'Ricwiz: Ticket Source Branch';
+        quickPick.title = `Ricwiz: Base Source Branch for '${mainBranch}'`;
         quickPick.placeholder = 'Confirm or change the source branch for this ticket';
         quickPick.value = ctx.ticketSourceBranch;
         quickPick.ignoreFocusOut = true;
@@ -97,39 +134,22 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
         sourceBranchForTicket = userInput.trim();
     }
 
-    let actualBranchPrefix = '';
-    if (ctx.branchPrefix) {
-        const prefixInput = await vscode.window.showInputBox({
-            prompt: 'Ricwiz: Branch Prefix (leave empty to not use a prefix)',
-            placeHolder: 'e.g. CRC-R19-',
-            value: ctx.branchPrefix,
-            ignoreFocusOut: true
-        });
-        if (prefixInput === undefined) {
-            vscode.window.showInformationMessage('Branch creation cancelled.');
-            return;
-        }
-        actualBranchPrefix = prefixInput.trim();
-    }
-
-    const mainBranch = actualBranchPrefix ? `${actualBranchPrefix}${ticketId}` : ticketId;
-
     // Validate inputs to prevent command injection
-    if (!Security.isValidShellArg(mainBranch)) {
+    if (createMain && !Security.isValidShellArg(mainBranch)) {
         vscode.window.showErrorMessage(`Invalid format for ticket ID: ${mainBranch}`);
         return;
     }
-    if (!Security.isValidShellArg(sourceBranchForTicket)) {
+    if (createMain && !Security.isValidShellArg(sourceBranchForTicket)) {
         vscode.window.showErrorMessage(`Invalid format for ticketSourceBranch in settings: ${sourceBranchForTicket}`);
         return;
     }
-    for (const env of environments) {
-        if (!Security.isValidShellArg(env.name)) {
-            vscode.window.showErrorMessage(`Invalid format for environment name in settings: ${env.name}`);
+    for (const item of selectedEnvs) {
+        if (!Security.isValidShellArg(item.env.name)) {
+            vscode.window.showErrorMessage(`Invalid format for environment name: ${item.env.name}`);
             return;
         }
-        if (!Security.isValidShellArg(env.sourceBranch)) {
-            vscode.window.showErrorMessage(`Invalid format for environment sourceBranch in settings: ${env.sourceBranch}`);
+        if (!Security.isValidShellArg(item.env.sourceBranch)) {
+            vscode.window.showErrorMessage(`Invalid format for environment sourceBranch: ${item.env.sourceBranch}`);
             return;
         }
     }
@@ -157,9 +177,9 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
             }
 
             try {
-                // 1. Create main ticket branch (if requested)
-                if (selectedOptionValue === 'all' || selectedOptionValue === 'mainOnly') {
-                    progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 10 });
+                // 1. Create main ticket branch (if selected)
+                if (createMain) {
+                    progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 15 });
                     if (await checkBranchExists(cwd, mainBranch)) {
                         vscode.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
                         await exec(`git checkout ${mainBranch}`, { cwd });
@@ -192,12 +212,12 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
                     } catch(e) {}
                 }
 
-                // 2. Create environment branches based on configured source branches
-                if (selectedOptionValue === 'all' || selectedOptionValue === 'envs') {
-                    const envProgressStep = 50 / (environments.length || 1);
-                    for (const env of environments) {
-                        const envBranchName = actualBranchPrefix ? `${actualBranchPrefix}${ticketId}-to-${env.name}` : `${ticketId}-to-${env.name}`;
-                        const sourceBranch = env.sourceBranch;
+                // 2. Create selected environment branches
+                if (selectedEnvs.length > 0) {
+                    const envProgressStep = 50 / (selectedEnvs.length || 1);
+                    for (const item of selectedEnvs) {
+                        const envBranchName = item.branchName;
+                        const sourceBranch = item.env.sourceBranch;
 
                         progress.report({ message: `Processing environment branch ${envBranchName}...`, increment: envProgressStep });
 
@@ -221,7 +241,7 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
                 }
 
                 // 3. Publish (push) all branches only at the end
-                progress.report({ message: `Publishing branches to ${ctx.originRemote}...`, increment: 10 });
+                progress.report({ message: `Publishing branches to ${ctx.originRemote}...`, increment: 15 });
                 for (const b of createdLocalBranches) {
                     try { 
                         await exec(`git push -u ${ctx.originRemote} ${b}`, { cwd }); 
@@ -230,11 +250,12 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
                     } 
                 }
 
-                // 4. Switch back to the main branch at the end
-                if (selectedOptionValue === 'all' || selectedOptionValue === 'mainOnly') {
-                    progress.report({ message: `Switching to ${mainBranch}...`, increment: 10 });
+                // 4. Switch to main branch (or first created branch) at the end
+                const finalCheckoutBranch = createMain ? mainBranch : (selectedEnvs[0]?.branchName || '');
+                if (finalCheckoutBranch) {
+                    progress.report({ message: `Switching to ${finalCheckoutBranch}...`, increment: 10 });
                     try {
-                        await exec(`git checkout ${mainBranch}`, { cwd });
+                        await exec(`git checkout ${finalCheckoutBranch}`, { cwd });
                     } catch (e: any) {}
                 }
 

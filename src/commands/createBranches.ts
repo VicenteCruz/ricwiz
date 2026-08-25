@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists } from '../git';
 import { Security } from '../security';
 import { WorkflowContext } from '../workflows/WorkflowContext';
@@ -97,7 +97,11 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
         const quickPick = vscode.window.createQuickPick();
         quickPick.title = `Ricwiz: Base Source Branch for '${mainBranch}'`;
         quickPick.placeholder = 'Confirm or change the source branch for this ticket';
-        quickPick.value = ctx.ticketSourceBranch;
+        // Prefer the remote-tracking ref (e.g. origin/CRC-R19) so that getFetchRemote
+        // and buildUpstreamPath can extract the correct remote automatically.
+        const defaultSourceBranch = branches.find(b => b.endsWith(`/${ctx.ticketSourceBranch}`))
+            ?? ctx.ticketSourceBranch;
+        quickPick.value = defaultSourceBranch;
         quickPick.ignoreFocusOut = true;
         
         const updateItems = () => {
@@ -225,7 +229,10 @@ export async function createBranches(prefilledTicket?: string): Promise<void> {
                             // Already exists, skip
                         } else {
                             try {
+                                const fetchRemote = ctx.getFetchRemote(sourceBranch);
+                                const fetchBranch = ctx.getFetchBranch(sourceBranch);
                                 const fullUpstreamPath = ctx.buildUpstreamPath(sourceBranch);
+                                await exec(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
                                 await exec(`git checkout -b ${envBranchName} ${fullUpstreamPath}`, { cwd });
                                 createdLocalBranches.push(envBranchName);
                             } catch (e: any) {

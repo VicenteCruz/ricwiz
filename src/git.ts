@@ -104,7 +104,8 @@ export async function promptForTicketId(
     const input = await vscode.window.showInputBox({
         prompt: options?.prompt || 'Enter the full ticket ID (e.g., SCPSCA-1234) or just the number',
         placeHolder: options?.placeHolder || 'Ticket ID or number',
-        value: suggestedTicket
+        value: suggestedTicket,
+        ignoreFocusOut: true
     });
 
     if (!input) {

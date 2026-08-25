@@ -81,11 +81,6 @@ export interface BlameData {
     auditHistory: BlameAuditHistoryItem[];
 }
 
-export interface TicketInfo {
-    ticketId: string;
-    currentBranch: string;
-    prefix: string;
-}
 
 export interface ConflictedFileData {
     file: string;

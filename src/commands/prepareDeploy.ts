@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { exec, getWorkspaceCwd, promptForTicketId, checkBranchExists, getCurrentBranch } from '../git';
 import { handleMergeConflict } from '../conflictResolver';
 import { WorkflowContext } from '../workflows/WorkflowContext';
@@ -28,6 +28,15 @@ export async function prepareDeploy(): Promise<void> {
         return;
     }
     const { ticketId, currentBranch } = result;
+
+    // Fetch remote state before evaluating which env branches exist, so that
+    // isReleaseTicket is computed with up-to-date remote information.
+    try {
+        await exec('git fetch --all', { cwd });
+    } catch (e) {
+        // May fail if offline — continue with cached state
+    }
+
     const mainBranch = await resolveExistingBranchName(cwd, ticketId);
 
     // Verify the main branch exists
@@ -95,7 +104,7 @@ export async function prepareDeploy(): Promise<void> {
     // Try to get already saved reviewers for this specific branch
     let currentSavedReviewers = '';
     try {
-        const { stdout } = await exec(`git config branch.${ticketId}.ricwiz-reviewers`, { cwd });
+        const { stdout } = await exec(`git config branch.${mainBranch}.ricwiz-reviewers`, { cwd });
         currentSavedReviewers = stdout.trim();
     } catch(e) {}
 
@@ -115,9 +124,9 @@ export async function prepareDeploy(): Promise<void> {
         // Always save it if provided, or unset if cleared
         try {
             if (reviewerInput.trim()) {
-                await exec(`git config branch.${ticketId}.ricwiz-reviewers "${reviewerInput.trim()}"`, { cwd });
+                await exec(`git config branch.${mainBranch}.ricwiz-reviewers "${reviewerInput.trim()}"`, { cwd });
             } else if (currentSavedReviewers) {
-                await exec(`git config --unset branch.${ticketId}.ricwiz-reviewers`, { cwd });
+                await exec(`git config --unset branch.${mainBranch}.ricwiz-reviewers`, { cwd });
             }
         } catch(e) {}
     }
@@ -193,8 +202,6 @@ export async function prepareDeploy(): Promise<void> {
             // ─── Multi-Environment Deploy Flow ────────────────────────────────────────
             progress.report({ message: 'Syncing remote information...', increment: 10 });
             try {
-                await exec('git fetch --all', { cwd });
-                
                 const envSyncStep = 10 / (existingEnvBranches.length || 1);
                 for (const item of existingEnvBranches) {
                     try {
@@ -202,10 +209,11 @@ export async function prepareDeploy(): Promise<void> {
                         progress.report({ message: `Fetching ${item.env.sourceBranch}...`, increment: envSyncStep });
                         const fetchRemote = ctx.getFetchRemote(item.env.sourceBranch);
                         const fetchBranch = ctx.getFetchBranch(item.env.sourceBranch);
-                        await exec(`git fetch ${fetchRemote} ${fetchBranch}:${fetchBranch}`, { cwd });
+                        await exec(`git fetch ${fetchRemote} ${fetchBranch}`, { cwd });
                     } catch(e) {}
                 }
             } catch(e) {}
+
 
             const processStep = 60 / (existingEnvBranches.length || 1);
 

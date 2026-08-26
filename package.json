@@ -362,6 +362,18 @@
           "default": "",
           "description": "Your Jira Email address (required for fetching Jira ticket details via API)."
         },
+        "ricwiz.jiraApiToken": {
+          "order": 14,
+          "type": "string",
+          "default": "",
+          "description": "Your Jira API Token (or Personal Access Token)."
+        },
+        "ricwiz.gitlabApiToken": {
+          "order": 15,
+          "type": "string",
+          "default": "",
+          "description": "Your GitLab API Token (Personal Access Token)."
+        },
         "ricwiz.gitlabUrlOverride": {
           "order": 15,
           "type": "string",

@@ -129,7 +129,7 @@ export async function addJiraLabelCommand(): Promise<void> {
 
 export async function setJiraTokenCommand(): Promise<void> {
     const token = await vscode.window.showInputBox({
-        prompt: 'Enter your Jira API Token (or Personal Access Token). It will be securely stored in your OS keychain.',
+        prompt: 'Enter your Jira API Token (or Personal Access Token). It will be stored in your global VS Code settings.',
         password: true,
         ignoreFocusOut: true
     });

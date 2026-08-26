@@ -62,19 +62,25 @@ Write a **single, concise commit message description** in English that:
 - Does **NOT** include the ticket number (the ricwiz extension already handles that)
 - Does **NOT** use backticks, quotes, or any punctuation at the start
 
-### Step 4 — Output
+### Step 4 – Output & Auto-Prefill
 
-Present the result clearly so the user can copy it immediately:
+If the user just asks for suggestions, present the result clearly so they can copy it:
 
 ```
 <description>
 ```
+Alternative: `<description>`
 
-Then offer 1-2 alternatives if the change is ambiguous, using this format:
+**AUTO-PREFILL COMMAND:**
+If the user explicitly asks you to "prefill", "write it", "apply it", or "put it in the box", you MUST automatically inject the message into their VS Code Source Control input box. 
+To do this, use your terminal to run the following command (replacing `<generated_message>` with URL-encoded text):
 
+```bash
+node -e "require('child_process').exec('code --open-url \"vscode://VicenteCruz.ricwiz/setCommitMessage?msg=' + encodeURIComponent('<generated_message>') + '\"')"
 ```
-Alternative: <description>
-```
+*Note: We wrap it in a Node script to easily URL-encode the message so spaces and special characters don't break the URI.*
+
+After running it, tell the user: *"I have prefilled the commit message in your Source Control panel! You can review and click Commit."*
 
 ---
 

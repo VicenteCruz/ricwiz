@@ -5325,6 +5325,33 @@ async function activate(context) {
   const statusBarItem = vscode38.window.createStatusBarItem(vscode38.StatusBarAlignment.Left, 100);
   statusBarItem.command = "ricwiz.openJiraTicket";
   context.subscriptions.push(statusBarItem);
+  context.subscriptions.push(
+    vscode38.window.registerUriHandler({
+      handleUri(uri) {
+        if (uri.path === "/setCommitMessage") {
+          const queryParams = new URLSearchParams(uri.query);
+          const msg = queryParams.get("msg");
+          if (msg) {
+            const gitExt = vscode38.extensions.getExtension("vscode.git");
+            if (gitExt && gitExt.isActive) {
+              const git = gitExt.exports.getAPI(1);
+              if (git.repositories.length > 0) {
+                const repo = git.repositories[0];
+                const current = repo.inputBox.value;
+                const ticketPattern = /^[A-Z]+-\d+(?:-\d+)?\s*(?:-\s*|:\s*|\s+)?/i;
+                const match = current.match(ticketPattern);
+                if (match) {
+                  repo.inputBox.value = match[0] + msg;
+                } else {
+                  repo.inputBox.value = msg;
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+  );
   const forceUpdate = initializeGitMonitor(context, webviewProvider, statusBarItem);
   registerAllCommands(context, webviewProvider, forceUpdate);
   return {

@@ -35,7 +35,7 @@ __export(extension_exports, {
   webviewProvider: () => webviewProvider
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode37 = __toESM(require("vscode"));
+var vscode36 = __toESM(require("vscode"));
 
 // src/webview.ts
 var vscode = __toESM(require("vscode"));
@@ -1172,19 +1172,22 @@ var RicwizWebviewProvider = class {
 };
 
 // src/secrets.ts
-var vscode2 = __toESM(require("vscode"));
 var secretStorage;
 var cachedJiraToken;
 var cachedGitlabToken;
-function initializeSecrets(context) {
+async function initializeSecrets(context) {
   secretStorage = context.secrets;
+  cachedJiraToken = await secretStorage.get("ricwiz.jiraApiToken");
+  cachedGitlabToken = await secretStorage.get("ricwiz.gitlabApiToken");
   context.subscriptions.push(
-    vscode2.commands.registerCommand("ricwiz.internal.getSecret", async (key) => {
-      return await secretStorage.get(key);
+    context.secrets.onDidChange(async (e) => {
+      if (e.key === "ricwiz.jiraApiToken") {
+        cachedJiraToken = await secretStorage.get("ricwiz.jiraApiToken");
+      } else if (e.key === "ricwiz.gitlabApiToken") {
+        cachedGitlabToken = await secretStorage.get("ricwiz.gitlabApiToken");
+      }
     })
   );
-  secretStorage.get("ricwiz.jiraApiToken").then((t) => cachedJiraToken = t);
-  secretStorage.get("ricwiz.gitlabApiToken").then((t) => cachedGitlabToken = t);
 }
 async function storeJiraToken(token) {
   if (!secretStorage) {
@@ -1198,7 +1201,7 @@ async function getJiraToken() {
   if (!secretStorage) {
     throw new Error("SecretStorage is not initialized.");
   }
-  const t = await vscode2.commands.executeCommand("ricwiz.internal.getSecret", "ricwiz.jiraApiToken");
+  const t = await secretStorage.get("ricwiz.jiraApiToken");
   if (t) cachedJiraToken = t;
   return t;
 }
@@ -1214,25 +1217,25 @@ async function getGitlabToken() {
   if (!secretStorage) {
     throw new Error("SecretStorage is not initialized.");
   }
-  const t = await vscode2.commands.executeCommand("ricwiz.internal.getSecret", "ricwiz.gitlabApiToken");
+  const t = await secretStorage.get("ricwiz.gitlabApiToken");
   if (t) cachedGitlabToken = t;
   return t;
 }
 
 // src/commands/index.ts
-var vscode35 = __toESM(require("vscode"));
+var vscode34 = __toESM(require("vscode"));
 
 // src/commands/generateDestructiveChanges.ts
-var vscode5 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 var path2 = __toESM(require("path"));
 var fs2 = __toESM(require("fs"));
 
 // src/git.ts
-var vscode3 = __toESM(require("vscode"));
+var vscode2 = __toESM(require("vscode"));
 var cp = __toESM(require("child_process"));
 var util = __toESM(require("util"));
 var promisifiedExec = util.promisify(cp.exec);
-var ricwizLogger = vscode3.window.createOutputChannel("Ricwiz");
+var ricwizLogger = vscode2.window.createOutputChannel("Ricwiz");
 var exec2 = async (command, options) => {
   ricwizLogger.appendLine(`[EXEC] ${command}`);
   const result = await promisifiedExec(command, { maxBuffer: 50 * 1024 * 1024, ...options });
@@ -1242,7 +1245,7 @@ var exec2 = async (command, options) => {
   };
 };
 function getWorkspaceCwd() {
-  const workspaceFolders = vscode3.workspace.workspaceFolders;
+  const workspaceFolders = vscode2.workspace.workspaceFolders;
   if (!workspaceFolders) {
     return void 0;
   }
@@ -1284,12 +1287,12 @@ function normalizeTicketId(input, prefix) {
   return trimmed.toUpperCase();
 }
 async function promptForTicketId(cwd, options) {
-  const config = vscode3.workspace.getConfiguration("ricwiz");
+  const config = vscode2.workspace.getConfiguration("ricwiz");
   const configPrefix = options?.prefix ?? config.get("ticketPrefix", "SFPSCA-");
   const currentBranch = await getCurrentBranch(cwd);
   const prefix = resolvePrefix(currentBranch, configPrefix);
   const suggestedTicket = options?.suggestedValue ?? extractTicketSuggestion(currentBranch, prefix, options?.handleToSuffix);
-  const input = await vscode3.window.showInputBox({
+  const input = await vscode2.window.showInputBox({
     prompt: options?.prompt || "Enter the full ticket ID (e.g., SCPSCA-1234) or just the number",
     placeHolder: options?.placeHolder || "Ticket ID or number",
     value: suggestedTicket,
@@ -1322,7 +1325,7 @@ function sanitizeShellInput(input) {
 }
 
 // src/workflows/WorkflowContext.ts
-var vscode4 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var path = __toESM(require("path"));
 var fs = __toESM(require("fs"));
 var WorkflowContext = class _WorkflowContext {
@@ -1338,7 +1341,7 @@ var WorkflowContext = class _WorkflowContext {
   constructor(profile) {
     this.activeProfile = profile;
     this.profileName = profile?.name;
-    const config = vscode4.workspace.getConfiguration("ricwiz");
+    const config = vscode3.workspace.getConfiguration("ricwiz");
     this.style = profile?.workflowStyle || config.get("workflowStyle", "standard");
     if (this.style === "multi-remote") {
       this.upstreamRemote = profile?.upstreamRemote || config.get("upstreamRemote", "salesforce-master");
@@ -1364,10 +1367,10 @@ var WorkflowContext = class _WorkflowContext {
     if (this.activeProfile && this.activeProfile[key] !== void 0) {
       return this.activeProfile[key];
     }
-    return vscode4.workspace.getConfiguration("ricwiz").get(key, defaultValue);
+    return vscode3.workspace.getConfiguration("ricwiz").get(key, defaultValue);
   }
   static async initialize(cwd, options) {
-    const config = vscode4.workspace.getConfiguration("ricwiz");
+    const config = vscode3.workspace.getConfiguration("ricwiz");
     let profiles = config.get("profiles", []);
     const configPath = path.join(cwd, "ricwiz.json");
     if (fs.existsSync(configPath)) {
@@ -1378,7 +1381,7 @@ var WorkflowContext = class _WorkflowContext {
           profiles = [...profiles, ...parsed.profiles];
         }
       } catch (e) {
-        vscode4.window.showErrorMessage(`Ricwiz: Error parsing ricwiz.json: ${e.message}`);
+        vscode3.window.showErrorMessage(`Ricwiz: Error parsing ricwiz.json: ${e.message}`);
       }
     }
     if (profiles.length > 0) {
@@ -1405,7 +1408,7 @@ var WorkflowContext = class _WorkflowContext {
         return new _WorkflowContext();
       }
       const items = profiles.map((p) => p.name);
-      const selected = await vscode4.window.showQuickPick(items, {
+      const selected = await vscode3.window.showQuickPick(items, {
         placeHolder: "Ricwiz: Select Workflow Profile",
         ignoreFocusOut: true
       });
@@ -1502,14 +1505,14 @@ function parseMetadataFromPath(filePath) {
 async function generateDestructiveChanges() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode5.window.showErrorMessage("Ricwiz: Open a workspace that is a Git repository.");
+    vscode4.window.showErrorMessage("Ricwiz: Open a workspace that is a Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-  const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode5.workspace.getConfiguration("ricwiz").get("ticketSourceBranch", "main");
+  const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode4.workspace.getConfiguration("ricwiz").get("ticketSourceBranch", "main");
   const originRemote = ctx ? ctx.originRemote : "origin";
-  await vscode5.window.withProgress({
-    location: vscode5.ProgressLocation.Notification,
+  await vscode4.window.withProgress({
+    location: vscode4.ProgressLocation.Notification,
     title: `Ricwiz: Finding deleted files compared to ${originRemote}/${sourceBranch}...`,
     cancellable: false
   }, async () => {
@@ -1517,7 +1520,7 @@ async function generateDestructiveChanges() {
       const { stdout } = await exec2(`git diff --name-only --diff-filter=D ${originRemote}/${sourceBranch}...HEAD`, { cwd });
       const files = stdout.split("\n").map((f) => f.trim()).filter((f) => f.length > 0);
       if (files.length === 0) {
-        vscode5.window.showInformationMessage(`Ricwiz: No deleted files found compared to ${originRemote}/${sourceBranch}.`);
+        vscode4.window.showInformationMessage(`Ricwiz: No deleted files found compared to ${originRemote}/${sourceBranch}.`);
         return;
       }
       const metadataMap = {};
@@ -1532,7 +1535,7 @@ async function generateDestructiveChanges() {
         }
       }
       if (Object.keys(metadataMap).length === 0) {
-        vscode5.window.showInformationMessage(`Ricwiz: Found deleted files in Git, but none mapped to recognizable Salesforce metadata.`);
+        vscode4.window.showInformationMessage(`Ricwiz: Found deleted files in Git, but none mapped to recognizable Salesforce metadata.`);
         return;
       }
       let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1564,25 +1567,25 @@ async function generateDestructiveChanges() {
     <version>58.0</version>
 </Package>`, "utf8");
       }
-      const doc = await vscode5.workspace.openTextDocument(outPath);
-      await vscode5.window.showTextDocument(doc);
-      vscode5.window.showInformationMessage(`Ricwiz: destructiveChanges.xml generated successfully!`);
+      const doc = await vscode4.workspace.openTextDocument(outPath);
+      await vscode4.window.showTextDocument(doc);
+      vscode4.window.showInformationMessage(`Ricwiz: destructiveChanges.xml generated successfully!`);
     } catch (e) {
-      vscode5.window.showErrorMessage(`Ricwiz: Error generating destructive changes: ${e.message}`);
+      vscode4.window.showErrorMessage(`Ricwiz: Error generating destructive changes: ${e.message}`);
     }
   });
 }
 
 // src/commands/runSmartTests.ts
-var vscode6 = __toESM(require("vscode"));
+var vscode5 = __toESM(require("vscode"));
 async function runSmartTests() {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
   const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-  const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode6.workspace.getConfiguration("ricwiz").get("ticketSourceBranch", "main");
+  const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode5.workspace.getConfiguration("ricwiz").get("ticketSourceBranch", "main");
   const originRemote = ctx ? ctx.originRemote : "origin";
-  await vscode6.window.withProgress({
-    location: vscode6.ProgressLocation.Notification,
+  await vscode5.window.withProgress({
+    location: vscode5.ProgressLocation.Notification,
     title: "Ricwiz: Finding Apex Tests to run...",
     cancellable: false
   }, async () => {
@@ -1612,14 +1615,14 @@ async function runSmartTests() {
         testClassesToRun.add(`${cls}Test`);
       }
       if (testClassesToRun.size === 0) {
-        vscode6.window.showInformationMessage(`Ricwiz: No Apex Classes were modified in this branch.`);
+        vscode5.window.showInformationMessage(`Ricwiz: No Apex Classes were modified in this branch.`);
         return;
       }
       const items = Array.from(testClassesToRun).map((t) => ({
         label: `$(beaker) ${t}`,
         description: "Apex Test Class"
       }));
-      const selection = await vscode6.window.showQuickPick(items, {
+      const selection = await vscode5.window.showQuickPick(items, {
         canPickMany: true,
         title: "Select Test Classes to Run",
         placeHolder: "Select tests..."
@@ -1627,17 +1630,17 @@ async function runSmartTests() {
       if (!selection || selection.length === 0) return;
       const classNames = selection.map((s) => s.label.replace("$(beaker) ", "").trim());
       const command = `sf apex run test -n ${classNames.join(",")} -r human -w 30`;
-      const terminal = vscode6.window.createTerminal("Ricwiz: Smart Tests");
+      const terminal = vscode5.window.createTerminal("Ricwiz: Smart Tests");
       terminal.show();
       terminal.sendText(command);
     } catch (e) {
-      vscode6.window.showErrorMessage(`Ricwiz: Error finding tests: ${e.message}`);
+      vscode5.window.showErrorMessage(`Ricwiz: Error finding tests: ${e.message}`);
     }
   });
 }
 
 // src/commands/createBranches.ts
-var vscode7 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 
 // src/security.ts
 var Security = class {
@@ -1658,7 +1661,7 @@ var Security = class {
 async function createBranches(prefilledTicket) {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode7.window.showErrorMessage("Open a folder or workspace that is a Git repository.");
+    vscode6.window.showErrorMessage("Open a folder or workspace that is a Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd, { forcePrompt: true });
@@ -1666,21 +1669,21 @@ async function createBranches(prefilledTicket) {
   const suggestedTicket = typeof prefilledTicket === "string" ? prefilledTicket : void 0;
   const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix, suggestedValue: suggestedTicket });
   if (!result) {
-    vscode7.window.showErrorMessage("Branch creation cancelled: Ticket not provided.");
+    vscode6.window.showErrorMessage("Branch creation cancelled: Ticket not provided.");
     return;
   }
   const { ticketId } = result;
   const environments = ctx.environments;
   let actualBranchPrefix = "";
   if (ctx.branchPrefix) {
-    const prefixInput = await vscode7.window.showInputBox({
+    const prefixInput = await vscode6.window.showInputBox({
       prompt: "Ricwiz: Branch Prefix (leave empty to not use a prefix)",
       placeHolder: "e.g. CRC-R19-",
       value: ctx.branchPrefix,
       ignoreFocusOut: true
     });
     if (prefixInput === void 0) {
-      vscode7.window.showInformationMessage("Branch creation cancelled.");
+      vscode6.window.showInformationMessage("Branch creation cancelled.");
       return;
     }
     actualBranchPrefix = prefixInput.trim();
@@ -1706,13 +1709,13 @@ async function createBranches(prefilledTicket) {
       envConfig: env5
     });
   }
-  const selectedItems = await vscode7.window.showQuickPick(pickItems, {
+  const selectedItems = await vscode6.window.showQuickPick(pickItems, {
     placeHolder: "Ricwiz: Select branches to create (check/uncheck as needed)",
     canPickMany: true,
     ignoreFocusOut: true
   });
   if (!selectedItems || selectedItems.length === 0) {
-    vscode7.window.showInformationMessage("Branch creation cancelled: No branches selected.");
+    vscode6.window.showInformationMessage("Branch creation cancelled: No branches selected.");
     return;
   }
   const createMain = selectedItems.some((i) => i.type === "main");
@@ -1726,7 +1729,7 @@ async function createBranches(prefilledTicket) {
       branches = [...new Set(branches)];
     } catch (e) {
     }
-    const quickPick = vscode7.window.createQuickPick();
+    const quickPick = vscode6.window.createQuickPick();
     quickPick.title = `Ricwiz: Base Source Branch for '${mainBranch}'`;
     quickPick.placeholder = "Confirm or change the source branch for this ticket";
     const defaultSourceBranch = branches.find((b) => b.endsWith(`/${ctx.ticketSourceBranch}`)) ?? ctx.ticketSourceBranch;
@@ -1756,38 +1759,38 @@ async function createBranches(prefilledTicket) {
       quickPick.show();
     });
     if (!userInput) {
-      vscode7.window.showInformationMessage("Branch creation cancelled.");
+      vscode6.window.showInformationMessage("Branch creation cancelled.");
       return;
     }
     sourceBranchForTicket = userInput.trim();
   }
   if (createMain && !Security.isValidShellArg(mainBranch)) {
-    vscode7.window.showErrorMessage(`Invalid format for ticket ID: ${mainBranch}`);
+    vscode6.window.showErrorMessage(`Invalid format for ticket ID: ${mainBranch}`);
     return;
   }
   if (createMain && !Security.isValidShellArg(sourceBranchForTicket)) {
-    vscode7.window.showErrorMessage(`Invalid format for ticketSourceBranch in settings: ${sourceBranchForTicket}`);
+    vscode6.window.showErrorMessage(`Invalid format for ticketSourceBranch in settings: ${sourceBranchForTicket}`);
     return;
   }
   for (const item of selectedEnvs) {
     if (!Security.isValidShellArg(item.env.name)) {
-      vscode7.window.showErrorMessage(`Invalid format for environment name: ${item.env.name}`);
+      vscode6.window.showErrorMessage(`Invalid format for environment name: ${item.env.name}`);
       return;
     }
     if (!Security.isValidShellArg(item.env.sourceBranch)) {
-      vscode7.window.showErrorMessage(`Invalid format for environment sourceBranch: ${item.env.sourceBranch}`);
+      vscode6.window.showErrorMessage(`Invalid format for environment sourceBranch: ${item.env.sourceBranch}`);
       return;
     }
   }
   try {
     await exec2("git status", { cwd });
   } catch (e) {
-    vscode7.window.showErrorMessage("The opened folder does not appear to be a valid Git repository.");
+    vscode6.window.showErrorMessage("The opened folder does not appear to be a valid Git repository.");
     return;
   }
   try {
-    await vscode7.window.withProgress({
-      location: vscode7.ProgressLocation.Notification,
+    await vscode6.window.withProgress({
+      location: vscode6.ProgressLocation.Notification,
       title: "Ricwiz: Creating Branches",
       cancellable: false
     }, async (progress) => {
@@ -1801,7 +1804,7 @@ async function createBranches(prefilledTicket) {
         if (createMain) {
           progress.report({ message: `Creating main branch ${mainBranch}...`, increment: 15 });
           if (await checkBranchExists(cwd, mainBranch)) {
-            vscode7.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
+            vscode6.window.showInformationMessage(`Ricwiz: The branch ${mainBranch} already exists. Skipping creation...`);
             await exec2(`git checkout ${mainBranch}`, { cwd });
           } else {
             try {
@@ -1859,7 +1862,7 @@ async function createBranches(prefilledTicket) {
           try {
             await exec2(`git push -u ${ctx.originRemote} ${b}`, { cwd });
           } catch (e) {
-            vscode7.window.showWarningMessage(`Ricwiz: Branch ${b} was created locally but could not be pushed to ${ctx.originRemote}.`);
+            vscode6.window.showWarningMessage(`Ricwiz: Branch ${b} was created locally but could not be pushed to ${ctx.originRemote}.`);
           }
         }
         const finalCheckoutBranch = createMain ? mainBranch : selectedEnvs[0]?.branchName || "";
@@ -1871,9 +1874,9 @@ async function createBranches(prefilledTicket) {
           }
         }
         progress.report({ increment: 100 });
-        vscode7.window.showInformationMessage(`Ricwiz: All set! You can start working on your branches! \u{1F680}`);
+        vscode6.window.showInformationMessage(`Ricwiz: All set! You can start working on your branches! \u{1F680}`);
       } catch (err) {
-        vscode7.window.showErrorMessage(`Ricwiz Branch Creation Failed: ${err.message}`);
+        vscode6.window.showErrorMessage(`Ricwiz Branch Creation Failed: ${err.message}`);
         if (createdLocalBranches.length > 0) {
           try {
             await exec2(`git checkout ${sourceBranchForTicket}`, { cwd });
@@ -1885,20 +1888,20 @@ async function createBranches(prefilledTicket) {
             } catch (e) {
             }
           }
-          vscode7.window.showWarningMessage(`Ricwiz: Rolled back (deleted) ${createdLocalBranches.length} branch(es) locally due to failure.`);
+          vscode6.window.showWarningMessage(`Ricwiz: Rolled back (deleted) ${createdLocalBranches.length} branch(es) locally due to failure.`);
         }
       }
     });
   } catch (error) {
-    vscode7.window.showErrorMessage(`Ricwiz general error: ${error.message}`);
+    vscode6.window.showErrorMessage(`Ricwiz general error: ${error.message}`);
   }
 }
 
 // src/commands/prepareDeploy.ts
-var vscode10 = __toESM(require("vscode"));
+var vscode9 = __toESM(require("vscode"));
 
 // src/conflictResolver.ts
-var vscode8 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 var fs3 = __toESM(require("fs"));
 var path3 = __toESM(require("path"));
 var activeConflictActionHandler;
@@ -1978,7 +1981,7 @@ async function handleMergeConflict(cwd, sourceStr, targetStr, progress, token) {
       try {
         const deletions = await getDeletionConflicts();
         const items = deletions.map((file) => ({ label: file }));
-        const toDelete = await vscode8.window.showQuickPick(items, {
+        const toDelete = await vscode7.window.showQuickPick(items, {
           canPickMany: true,
           placeHolder: "Select conflicted files to DELETE",
           title: "Ricwiz: Delete Conflicted Files"
@@ -1990,10 +1993,10 @@ async function handleMergeConflict(cwd, sourceStr, targetStr, progress, token) {
             } catch (e) {
             }
           }
-          vscode8.window.showInformationMessage(`Ricwiz: Deleted ${toDelete.length} conflicted file(s).`);
+          vscode7.window.showInformationMessage(`Ricwiz: Deleted ${toDelete.length} conflicted file(s).`);
         }
       } catch (e) {
-        vscode8.window.showErrorMessage(`Ricwiz: Error. (${e.message})`);
+        vscode7.window.showErrorMessage(`Ricwiz: Error. (${e.message})`);
       }
       updateWebviewState();
     } else if (action === "commitAndContinue") {
@@ -2001,7 +2004,7 @@ async function handleMergeConflict(cwd, sourceStr, targetStr, progress, token) {
         const deletions = await getDeletionConflicts();
         const keptFiles = deletions.filter((file) => fs3.existsSync(path3.join(cwd, file)));
         if (keptFiles.length > 0) {
-          const confirm = await vscode8.window.showWarningMessage(
+          const confirm = await vscode7.window.showWarningMessage(
             `Wait! There are ${keptFiles.length} file(s) with deletion conflicts that are still on your disk.
 
 If you commit now, you will KEEP them in the project.
@@ -2023,14 +2026,14 @@ Are you sure you want to KEEP them?`,
         } catch (e) {
         }
         if (hasMarkers) {
-          vscode8.window.showErrorMessage("Ricwiz: You still have unresolved conflict markers (<<<<<<<) in your files. Please resolve them first!");
+          vscode7.window.showErrorMessage("Ricwiz: You still have unresolved conflict markers (<<<<<<<) in your files. Please resolve them first!");
           updateWebviewState();
           return;
         }
         await exec2("git add .", { cwd });
         await exec2("git commit --no-edit", { cwd });
       } catch (e) {
-        vscode8.window.showErrorMessage(`Ricwiz: Could not commit automatically. (${e.message})`);
+        vscode7.window.showErrorMessage(`Ricwiz: Could not commit automatically. (${e.message})`);
         updateWebviewState();
       }
     }
@@ -2061,7 +2064,7 @@ Are you sure you want to KEEP them?`,
         isResolved = true;
         setActiveConflictHandler(void 0);
         webviewProvider?.setConflictState(null);
-        vscode8.window.showInformationMessage(`Ricwiz: Changes committed!`);
+        vscode7.window.showInformationMessage(`Ricwiz: Changes committed!`);
         return true;
       }
     } catch (e) {
@@ -2072,13 +2075,13 @@ Are you sure you want to KEEP them?`,
 
 // src/gitlabApi.ts
 var https = __toESM(require("https"));
-var vscode9 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 async function hasGitlabToken() {
   const token = await getGitlabToken();
   return !!(token && token.trim());
 }
 async function getGitlabTargets(cwd, ctx) {
-  const config = vscode9.workspace.getConfiguration("ricwiz");
+  const config = vscode8.workspace.getConfiguration("ricwiz");
   const token = (await getGitlabToken())?.trim();
   if (!token) {
     throw new Error("No GitLab token");
@@ -2402,13 +2405,13 @@ async function resolveExistingBranchName(cwd, ticketId, envName) {
 async function prepareDeploy() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode10.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode9.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
   try {
     await exec2("git status", { cwd });
   } catch (e) {
-    vscode10.window.showErrorMessage("Ricwiz: The opened folder does not appear to be a valid Git repository.");
+    vscode9.window.showErrorMessage("Ricwiz: The opened folder does not appear to be a valid Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd);
@@ -2416,7 +2419,7 @@ async function prepareDeploy() {
   const environments = ctx.environments;
   const result = await promptForTicketId(cwd, { prefix: ctx.ticketPrefix });
   if (!result) {
-    vscode10.window.showErrorMessage("Operation cancelled: Ticket not provided.");
+    vscode9.window.showErrorMessage("Operation cancelled: Ticket not provided.");
     return;
   }
   const { ticketId, currentBranch } = result;
@@ -2426,7 +2429,7 @@ async function prepareDeploy() {
   }
   const mainBranch = await resolveExistingBranchName(cwd, ticketId);
   if (!await checkBranchExists(cwd, mainBranch)) {
-    vscode10.window.showErrorMessage(`Ricwiz: Main branch '${mainBranch}' does not exist! Prepare deploy is only available when a main ticket branch is used.`);
+    vscode9.window.showErrorMessage(`Ricwiz: Main branch '${mainBranch}' does not exist! Prepare deploy is only available when a main ticket branch is used.`);
     return;
   }
   const existingEnvBranches = [];
@@ -2454,14 +2457,14 @@ async function prepareDeploy() {
     if (!candidateSource) {
       candidateSource = ctx.ticketSourceBranch || "main";
     }
-    const releaseInput = await vscode10.window.showInputBox({
+    const releaseInput = await vscode9.window.showInputBox({
       prompt: `Ricwiz: Confirm or enter the Release branch in '${ctx.originRemote}' to merge into '${mainBranch}'`,
       placeHolder: "e.g. CRC-R19, main, release/v5.0",
       value: candidateSource,
       ignoreFocusOut: true
     });
     if (releaseInput === void 0 || !releaseInput.trim()) {
-      vscode10.window.showInformationMessage("Ricwiz: Prepare deploy cancelled.");
+      vscode9.window.showInformationMessage("Ricwiz: Prepare deploy cancelled.");
       return;
     }
     confirmedReleaseBranch = releaseInput.trim();
@@ -2478,7 +2481,7 @@ async function prepareDeploy() {
   } catch (e) {
   }
   if (defaultReviewers.trim()) {
-    const reviewerInput = await vscode10.window.showInputBox({
+    const reviewerInput = await vscode9.window.showInputBox({
       prompt: "Ricwiz: Reviewers for this deploy (optional, comma-separated)",
       placeHolder: "e.g. @joao, 123456",
       value: currentSavedReviewers || defaultReviewers,
@@ -2496,8 +2499,8 @@ async function prepareDeploy() {
     } catch (e) {
     }
   }
-  await vscode10.window.withProgress({
-    location: vscode10.ProgressLocation.Notification,
+  await vscode9.window.withProgress({
+    location: vscode9.ProgressLocation.Notification,
     title: "Ricwiz: Preparing Deploy",
     cancellable: true
   }, async (progress, token) => {
@@ -2545,12 +2548,12 @@ async function prepareDeploy() {
         progress.report({ message: `Pushing ${mainBranch} to ${ctx.originRemote}...`, increment: 25 });
         await exec2(`git push ${ctx.originRemote} ${mainBranch}`, { cwd });
         progress.report({ message: "Finishing up...", increment: 10 });
-        vscode10.window.showInformationMessage(`Ricwiz: Release branch '${confirmedReleaseBranch}' merged into '${mainBranch}' and pushed to ${ctx.originRemote}! \u{1F680}`);
+        vscode9.window.showInformationMessage(`Ricwiz: Release branch '${confirmedReleaseBranch}' merged into '${mainBranch}' and pushed to ${ctx.originRemote}! \u{1F680}`);
       } catch (e) {
         if (e.message?.includes("aborted")) {
-          vscode10.window.showInformationMessage("Ricwiz: Deploy cancelled.");
+          vscode9.window.showInformationMessage("Ricwiz: Deploy cancelled.");
         } else {
-          vscode10.window.showErrorMessage(`Ricwiz: Failed to prepare release ticket ${mainBranch}. Detail: ${e.message}`);
+          vscode9.window.showErrorMessage(`Ricwiz: Failed to prepare release ticket ${mainBranch}. Detail: ${e.message}`);
         }
       }
     } else {
@@ -2595,9 +2598,9 @@ async function prepareDeploy() {
           successCount++;
         } catch (e) {
           if (e.message.includes("aborted")) {
-            vscode10.window.showInformationMessage("Ricwiz: Deploy cancelled.");
+            vscode9.window.showInformationMessage("Ricwiz: Deploy cancelled.");
           } else {
-            vscode10.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
+            vscode9.window.showErrorMessage(`Ricwiz: Failed to process branch ${targetBranch}. Detail: ${e.message}`);
           }
           return;
         }
@@ -2614,12 +2617,12 @@ async function prepareDeploy() {
           const current = await getCurrentBranch(cwd);
           if (targetReturnBranch && targetReturnBranch !== current) {
             await exec2(`git checkout ${targetReturnBranch}`, { cwd });
-            vscode10.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${targetReturnBranch}.`);
+            vscode9.window.showInformationMessage(`Ricwiz: Operation complete. Back on branch ${targetReturnBranch}.`);
           } else {
-            vscode10.window.showInformationMessage(`Ricwiz: Operation complete.`);
+            vscode9.window.showInformationMessage(`Ricwiz: Operation complete.`);
           }
         } catch (e) {
-          vscode10.window.showInformationMessage(`Ricwiz: Operation complete.`);
+          vscode9.window.showInformationMessage(`Ricwiz: Operation complete.`);
         }
       }
     }
@@ -2627,7 +2630,7 @@ async function prepareDeploy() {
 }
 
 // src/commands/mergeRequests.ts
-var vscode11 = __toESM(require("vscode"));
+var vscode10 = __toESM(require("vscode"));
 async function doCreateMergeRequests(openInVSCode = false) {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
@@ -2650,7 +2653,7 @@ async function doCreateMergeRequests(openInVSCode = false) {
       const { stdout } = await exec2(`git remote get-url ${targetRemote}`, { cwd });
       remoteUrl = stdout.trim();
     } catch (e) {
-      vscode11.window.showErrorMessage("Ricwiz: Could not get the remote origin URL. Please configure the URL manually in the extension settings.");
+      vscode10.window.showErrorMessage("Ricwiz: Could not get the remote origin URL. Please configure the URL manually in the extension settings.");
       return;
     }
     webUrl = remoteUrl;
@@ -2697,14 +2700,14 @@ async function doCreateMergeRequests(openInVSCode = false) {
     if (!candidateTarget) {
       candidateTarget = ctx.ticketSourceBranch || "main";
     }
-    const targetInput = await vscode11.window.showInputBox({
+    const targetInput = await vscode10.window.showInputBox({
       prompt: `Ricwiz: Confirm or enter the Target Release branch in GitLab for '${actualMainBranch}'`,
       placeHolder: "e.g. CRC-R19, main, release/v5.0",
       value: candidateTarget,
       ignoreFocusOut: true
     });
     if (targetInput === void 0 || !targetInput.trim()) {
-      vscode11.window.showInformationMessage("Ricwiz: Merge request creation cancelled.");
+      vscode10.window.showInformationMessage("Ricwiz: Merge request creation cancelled.");
       return;
     }
     const confirmedTarget = targetInput.trim();
@@ -2727,12 +2730,12 @@ async function doCreateMergeRequests(openInVSCode = false) {
   for (const link of mrLinks) {
     const url = `${webUrl}/-/merge_requests/new?merge_request[source_branch]=${encodeURIComponent(link.source)}&merge_request[target_branch]=${encodeURIComponent(link.target)}`;
     if (openInVSCode) {
-      vscode11.commands.executeCommand("simpleBrowser.show", url);
+      vscode10.commands.executeCommand("simpleBrowser.show", url);
     } else {
-      vscode11.env.openExternal(vscode11.Uri.parse(url));
+      vscode10.env.openExternal(vscode10.Uri.parse(url));
     }
   }
-  vscode11.window.showInformationMessage(`Ricwiz: Opening ${mrLinks.length} Merge Request(s) in ${openInVSCode ? "VS Code browser" : "external browser"}!`);
+  vscode10.window.showInformationMessage(`Ricwiz: Opening ${mrLinks.length} Merge Request(s) in ${openInVSCode ? "VS Code browser" : "external browser"}!`);
 }
 async function createMergeRequests() {
   return doCreateMergeRequests(false);
@@ -2742,14 +2745,14 @@ async function createMergeRequestsVSCode() {
 }
 
 // src/commands/jira.ts
-var vscode12 = __toESM(require("vscode"));
+var vscode11 = __toESM(require("vscode"));
 async function doOpenJiraTicket(openInVSCode = false) {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
-  const config = vscode12.workspace.getConfiguration("ricwiz");
+  const config = vscode11.workspace.getConfiguration("ricwiz");
   const jiraUrl = config.get("jiraUrl", "");
   if (!jiraUrl || jiraUrl.trim() === "") {
-    vscode12.window.showErrorMessage("Ricwiz: Jira URL is not configured. Please set it in the extension settings (e.g., https://jira.company.com/browse/).");
+    vscode11.window.showErrorMessage("Ricwiz: Jira URL is not configured. Please set it in the extension settings (e.g., https://jira.company.com/browse/).");
     return;
   }
   const currentBranch = await getCurrentBranch(cwd);
@@ -2773,11 +2776,11 @@ async function doOpenJiraTicket(openInVSCode = false) {
   }
   url += finalTicketId;
   if (openInVSCode) {
-    vscode12.commands.executeCommand("simpleBrowser.show", url);
+    vscode11.commands.executeCommand("simpleBrowser.show", url);
   } else {
-    vscode12.env.openExternal(vscode12.Uri.parse(url));
+    vscode11.env.openExternal(vscode11.Uri.parse(url));
   }
-  vscode12.window.showInformationMessage(`Ricwiz: Opening Jira Ticket ${finalTicketId} in ${openInVSCode ? "VS Code" : "browser"}!`);
+  vscode11.window.showInformationMessage(`Ricwiz: Opening Jira Ticket ${finalTicketId} in ${openInVSCode ? "VS Code" : "browser"}!`);
 }
 async function openJiraTicket() {
   return doOpenJiraTicket(false);
@@ -2787,13 +2790,13 @@ async function openJiraTicketVSCode() {
 }
 
 // src/commands/showJiraDetails.ts
-var vscode14 = __toESM(require("vscode"));
+var vscode13 = __toESM(require("vscode"));
 
 // src/jiraApi.ts
 var https2 = __toESM(require("https"));
-var vscode13 = __toESM(require("vscode"));
+var vscode12 = __toESM(require("vscode"));
 async function getJiraAuthAndBaseUrl() {
-  const config = vscode13.workspace.getConfiguration("ricwiz");
+  const config = vscode12.workspace.getConfiguration("ricwiz");
   const jiraUrlStr = config.get("jiraUrl", "");
   const email = config.get("jiraEmail", "")?.trim();
   let token = (await getJiraToken())?.trim();
@@ -2998,11 +3001,11 @@ async function showJiraDetails(webviewProvider2) {
       ticketId = currentBranch.split("-to-")[0];
     }
     if (!ticketId) {
-      vscode14.window.showErrorMessage("Ricwiz: You are not currently on a valid ticket branch.");
+      vscode13.window.showErrorMessage("Ricwiz: You are not currently on a valid ticket branch.");
       return;
     }
-    await vscode14.window.withProgress({
-      location: vscode14.ProgressLocation.Notification,
+    await vscode13.window.withProgress({
+      location: vscode13.ProgressLocation.Notification,
       title: `Fetching details for ${ticketId}...`,
       cancellable: false
     }, async () => {
@@ -3010,7 +3013,7 @@ async function showJiraDetails(webviewProvider2) {
       if (data) {
         let relatedBranches = [];
         try {
-          const environments = ctx.environments || vscode14.workspace.getConfiguration("ricwiz").get("environments", [
+          const environments = ctx.environments || vscode13.workspace.getConfiguration("ricwiz").get("environments", [
             { name: "Qual", sourceBranch: "quality" },
             { name: "Val", sourceBranch: "validation" },
             { name: "Prod", sourceBranch: "main" }
@@ -3022,26 +3025,26 @@ async function showJiraDetails(webviewProvider2) {
         webviewProvider2.setJiraData({ ticketId, relatedBranches, ...data });
         webviewProvider2.setPage("jira");
       } else {
-        vscode14.window.showErrorMessage("Ricwiz: No data found for this ticket.");
+        vscode13.window.showErrorMessage("Ricwiz: No data found for this ticket.");
       }
     });
   } catch (e) {
     if (e.message && e.message.includes("securely configured")) {
-      const action = await vscode14.window.showErrorMessage(e.message, "Set Token Now");
+      const action = await vscode13.window.showErrorMessage(e.message, "Set Token Now");
       if (action === "Set Token Now") {
-        vscode14.commands.executeCommand("ricwiz.setJiraToken");
+        vscode13.commands.executeCommand("ricwiz.setJiraToken");
       }
     } else {
-      vscode14.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+      vscode13.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
     }
   }
 }
 
 // src/commands/openDashboard.ts
-var vscode15 = __toESM(require("vscode"));
+var vscode14 = __toESM(require("vscode"));
 var currentSelectedIndex = 0;
 async function openJiraDashboard(webviewProvider2, indexOverride) {
-  const config = vscode15.workspace.getConfiguration("ricwiz");
+  const config = vscode14.workspace.getConfiguration("ricwiz");
   const queries = config.get("jiraDashboards", []);
   if (indexOverride !== void 0) {
     currentSelectedIndex = indexOverride;
@@ -3110,8 +3113,8 @@ async function openJiraDashboard(webviewProvider2, indexOverride) {
   }
 }
 async function openJiraDetailsForId(webviewProvider2, ticketId) {
-  await vscode15.window.withProgress({
-    location: vscode15.ProgressLocation.Notification,
+  await vscode14.window.withProgress({
+    location: vscode14.ProgressLocation.Notification,
     title: `Fetching details for ${ticketId}...`,
     cancellable: false
   }, async () => {
@@ -3123,7 +3126,7 @@ async function openJiraDetailsForId(webviewProvider2, ticketId) {
         if (cwd) {
           try {
             const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-            const environments = ctx?.environments || vscode15.workspace.getConfiguration("ricwiz").get("environments", [
+            const environments = ctx?.environments || vscode14.workspace.getConfiguration("ricwiz").get("environments", [
               { name: "Qual", sourceBranch: "quality" },
               { name: "Val", sourceBranch: "validation" },
               { name: "Prod", sourceBranch: "main" }
@@ -3136,16 +3139,16 @@ async function openJiraDetailsForId(webviewProvider2, ticketId) {
         webviewProvider2.setJiraData({ ticketId, relatedBranches, ...data });
         webviewProvider2.setPage("jira");
       } else {
-        vscode15.window.showErrorMessage(`Ricwiz: No data found for ticket ${ticketId}.`);
+        vscode14.window.showErrorMessage(`Ricwiz: No data found for ticket ${ticketId}.`);
       }
     } catch (e) {
-      vscode15.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+      vscode14.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
     }
   });
 }
 
 // src/commands/jiraOperations.ts
-var vscode16 = __toESM(require("vscode"));
+var vscode15 = __toESM(require("vscode"));
 async function getTicketId() {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
@@ -3162,43 +3165,43 @@ async function getTicketId() {
 }
 function handleJiraError(e) {
   if (e.message && e.message.includes("securely configured")) {
-    vscode16.window.showErrorMessage(e.message, "Set Token Now").then((action) => {
+    vscode15.window.showErrorMessage(e.message, "Set Token Now").then((action) => {
       if (action === "Set Token Now") {
-        vscode16.commands.executeCommand("ricwiz.setJiraToken");
+        vscode15.commands.executeCommand("ricwiz.setJiraToken");
       }
     });
   } else {
-    vscode16.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
+    vscode15.window.showErrorMessage(`Ricwiz Jira Error: ${e.message}`);
   }
 }
 async function changeJiraStatus() {
   try {
     const ticketId = await getTicketId();
     if (!ticketId) {
-      vscode16.window.showErrorMessage("Ricwiz: You are not on a valid ticket branch.");
+      vscode15.window.showErrorMessage("Ricwiz: You are not on a valid ticket branch.");
       return;
     }
-    const transitions = await vscode16.window.withProgress({
-      location: vscode16.ProgressLocation.Notification,
+    const transitions = await vscode15.window.withProgress({
+      location: vscode15.ProgressLocation.Notification,
       title: `Fetching available status for ${ticketId}...`,
       cancellable: false
     }, () => fetchJiraTransitions(ticketId));
     if (!transitions || transitions.length === 0) {
-      vscode16.window.showInformationMessage(`Ricwiz: No transitions available for ${ticketId}.`);
+      vscode15.window.showInformationMessage(`Ricwiz: No transitions available for ${ticketId}.`);
       return;
     }
     const items = transitions.map((t) => ({ label: t.name, id: t.id }));
-    const selected = await vscode16.window.showQuickPick(items, {
+    const selected = await vscode15.window.showQuickPick(items, {
       placeHolder: `Select new status for ${ticketId}`,
       ignoreFocusOut: true
     });
     if (selected) {
-      await vscode16.window.withProgress({
-        location: vscode16.ProgressLocation.Notification,
+      await vscode15.window.withProgress({
+        location: vscode15.ProgressLocation.Notification,
         title: `Updating status to ${selected.label}...`,
         cancellable: false
       }, () => transitionJiraIssue(ticketId, selected.id));
-      vscode16.window.showInformationMessage(`Ricwiz: Status for ${ticketId} updated to ${selected.label}.`);
+      vscode15.window.showInformationMessage(`Ricwiz: Status for ${ticketId} updated to ${selected.label}.`);
     }
   } catch (e) {
     handleJiraError(e);
@@ -3208,21 +3211,21 @@ async function addJiraCommentCommand() {
   try {
     const ticketId = await getTicketId();
     if (!ticketId) {
-      vscode16.window.showErrorMessage("Ricwiz: You are not on a valid ticket branch.");
+      vscode15.window.showErrorMessage("Ricwiz: You are not on a valid ticket branch.");
       return;
     }
-    const comment = await vscode16.window.showInputBox({
+    const comment = await vscode15.window.showInputBox({
       prompt: `Add comment to ${ticketId}`,
       placeHolder: "Type your comment here...",
       ignoreFocusOut: true
     });
     if (comment) {
-      await vscode16.window.withProgress({
-        location: vscode16.ProgressLocation.Notification,
+      await vscode15.window.withProgress({
+        location: vscode15.ProgressLocation.Notification,
         title: `Adding comment to ${ticketId}...`,
         cancellable: false
       }, () => addJiraComment(ticketId, comment));
-      vscode16.window.showInformationMessage(`Ricwiz: Comment added to ${ticketId}.`);
+      vscode15.window.showInformationMessage(`Ricwiz: Comment added to ${ticketId}.`);
     }
   } catch (e) {
     handleJiraError(e);
@@ -3232,28 +3235,28 @@ async function addJiraLabelCommand() {
   try {
     const ticketId = await getTicketId();
     if (!ticketId) {
-      vscode16.window.showErrorMessage("Ricwiz: You are not on a valid ticket branch.");
+      vscode15.window.showErrorMessage("Ricwiz: You are not on a valid ticket branch.");
       return;
     }
-    const label = await vscode16.window.showInputBox({
+    const label = await vscode15.window.showInputBox({
       prompt: `Add a label to ${ticketId}`,
       placeHolder: "e.g. Needs-Review, Bug, High-Priority",
       ignoreFocusOut: true
     });
     if (label && label.trim()) {
-      await vscode16.window.withProgress({
-        location: vscode16.ProgressLocation.Notification,
+      await vscode15.window.withProgress({
+        location: vscode15.ProgressLocation.Notification,
         title: `Adding label to ${ticketId}...`,
         cancellable: false
       }, () => addJiraLabel(ticketId, label.trim()));
-      vscode16.window.showInformationMessage(`Ricwiz: Label '${label.trim()}' added to ${ticketId}.`);
+      vscode15.window.showInformationMessage(`Ricwiz: Label '${label.trim()}' added to ${ticketId}.`);
     }
   } catch (e) {
     handleJiraError(e);
   }
 }
 async function setJiraTokenCommand() {
-  const token = await vscode16.window.showInputBox({
+  const token = await vscode15.window.showInputBox({
     prompt: "Enter your Jira API Token (or Personal Access Token). It will be securely stored in your OS keychain.",
     password: true,
     ignoreFocusOut: true
@@ -3261,18 +3264,18 @@ async function setJiraTokenCommand() {
   if (token) {
     try {
       await storeJiraToken(token.trim());
-      vscode16.window.showInformationMessage("Ricwiz: Jira API Token securely stored!");
+      vscode15.window.showInformationMessage("Ricwiz: Jira API Token securely stored!");
     } catch (e) {
-      vscode16.window.showErrorMessage(`Ricwiz: Failed to store token: ${e.message}`);
+      vscode15.window.showErrorMessage(`Ricwiz: Failed to store token: ${e.message}`);
     }
   }
 }
 
 // src/commands/gitlabOperations.ts
-var vscode17 = __toESM(require("vscode"));
+var vscode16 = __toESM(require("vscode"));
 var https3 = __toESM(require("https"));
 async function setGitlabTokenCommand() {
-  const token = await vscode17.window.showInputBox({
+  const token = await vscode16.window.showInputBox({
     prompt: "Enter your GitLab Personal Access Token",
     placeHolder: "glpat-xxxxxxxxxxxxxxxxxxxx",
     ignoreFocusOut: true,
@@ -3280,17 +3283,17 @@ async function setGitlabTokenCommand() {
   });
   if (token && token.trim()) {
     const cleanToken = token.trim();
-    await vscode17.window.withProgress({
-      location: vscode17.ProgressLocation.Notification,
+    await vscode16.window.withProgress({
+      location: vscode16.ProgressLocation.Notification,
       title: "Ricwiz: Validating GitLab Token...",
       cancellable: false
     }, async () => {
       try {
-        const config = vscode17.workspace.getConfiguration("ricwiz");
+        const config = vscode16.workspace.getConfiguration("ricwiz");
         let webUrl = config.get("gitlabUrlOverride", "").trim();
-        if (!webUrl && vscode17.workspace.workspaceFolders) {
+        if (!webUrl && vscode16.workspace.workspaceFolders) {
           try {
-            const cwd = vscode17.workspace.workspaceFolders[0].uri.fsPath;
+            const cwd = vscode16.workspace.workspaceFolders[0].uri.fsPath;
             const { stdout } = await exec2("git remote get-url origin", { cwd });
             let remoteUrl = stdout.trim();
             if (remoteUrl.startsWith("git@")) remoteUrl = `https://${remoteUrl.replace("git@", "").replace(":", "/")}`;
@@ -3323,21 +3326,21 @@ async function setGitlabTokenCommand() {
           req.end();
         });
         await storeGitlabToken(cleanToken);
-        vscode17.window.showInformationMessage(`Ricwiz: \u2705 GitLab API Token saved and validated successfully for ${user.username || "user"}!`);
-        vscode17.commands.executeCommand("ricwiz.manualRefresh");
+        vscode16.window.showInformationMessage(`Ricwiz: \u2705 GitLab API Token saved and validated successfully for ${user.username || "user"}!`);
+        vscode16.commands.executeCommand("ricwiz.manualRefresh");
       } catch (error) {
-        vscode17.window.showErrorMessage(`Ricwiz: \u274C Invalid token or cannot reach GitLab (${error.message}). Please check the token and try again.`);
+        vscode16.window.showErrorMessage(`Ricwiz: \u274C Invalid token or cannot reach GitLab (${error.message}). Please check the token and try again.`);
       }
     });
   }
 }
 
 // src/commands/syncAll.ts
-var vscode18 = __toESM(require("vscode"));
+var vscode17 = __toESM(require("vscode"));
 async function syncAll() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode18.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode17.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd);
@@ -3348,8 +3351,8 @@ async function syncAll() {
   });
   if (!result) return;
   const { ticketId, currentBranch } = result;
-  await vscode18.window.withProgress({
-    location: vscode18.ProgressLocation.Notification,
+  await vscode17.window.withProgress({
+    location: vscode17.ProgressLocation.Notification,
     title: `Ricwiz: Syncing all branches for ${ticketId}...`,
     cancellable: false
   }, async (progress) => {
@@ -3363,7 +3366,7 @@ async function syncAll() {
       const exactTicketRegex = new RegExp(`${ticketId}(?!\\d)`, "i");
       const branches = stdout.split("\n").map((b) => b.replace("*", "").trim()).filter((b) => b.length > 0 && exactTicketRegex.test(b));
       if (branches.length === 0) {
-        vscode18.window.showWarningMessage(`Ricwiz: No local branches found for ${ticketId}.`);
+        vscode17.window.showWarningMessage(`Ricwiz: No local branches found for ${ticketId}.`);
         return;
       }
       let synced = 0;
@@ -3434,28 +3437,28 @@ async function syncAll() {
         }
       }
       if (failed > 0) {
-        vscode18.window.showWarningMessage(`Ricwiz: Synced ${synced}/${branches.length} branches. ${failed} branch(es) could not be synced (possible conflicts or diverged history).`);
+        vscode17.window.showWarningMessage(`Ricwiz: Synced ${synced}/${branches.length} branches. ${failed} branch(es) could not be synced (possible conflicts or diverged history).`);
       } else {
-        vscode18.window.showInformationMessage(`Ricwiz: \u{1F504} All ${synced} branches for ${ticketId} are up to date!`);
+        vscode17.window.showInformationMessage(`Ricwiz: \u{1F504} All ${synced} branches for ${ticketId} are up to date!`);
       }
     } catch (e) {
-      vscode18.window.showErrorMessage(`Ricwiz: Sync failed: ${e.message}`);
+      vscode17.window.showErrorMessage(`Ricwiz: Sync failed: ${e.message}`);
     }
   });
 }
 
 // src/commands/updateBases.ts
-var vscode19 = __toESM(require("vscode"));
+var vscode18 = __toESM(require("vscode"));
 async function updateBases() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode19.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode18.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
   try {
     await exec2("git status", { cwd });
   } catch (e) {
-    vscode19.window.showErrorMessage("Ricwiz: The opened folder does not appear to be a valid Git repository.");
+    vscode18.window.showErrorMessage("Ricwiz: The opened folder does not appear to be a valid Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd);
@@ -3466,8 +3469,8 @@ async function updateBases() {
     return;
   }
   const { ticketId, currentBranch } = result;
-  await vscode19.window.withProgress({
-    location: vscode19.ProgressLocation.Notification,
+  await vscode18.window.withProgress({
+    location: vscode18.ProgressLocation.Notification,
     title: "Ricwiz: Updating environment branches from their bases",
     cancellable: true
   }, async (progress, token) => {
@@ -3523,9 +3526,9 @@ async function updateBases() {
         successCount++;
       } catch (e) {
         if (e.message.includes("aborted")) {
-          vscode19.window.showInformationMessage("Ricwiz: Update cancelled.");
+          vscode18.window.showInformationMessage("Ricwiz: Update cancelled.");
         } else {
-          vscode19.window.showErrorMessage(`Ricwiz: Failed to update branch ${targetBranch}. Detail: ${e.message}`);
+          vscode18.window.showErrorMessage(`Ricwiz: Failed to update branch ${targetBranch}. Detail: ${e.message}`);
         }
         return;
       }
@@ -3539,23 +3542,23 @@ async function updateBases() {
         }
       } catch (e) {
       }
-      vscode19.window.showInformationMessage(`Ricwiz: Successfully updated ${successCount} environment branches from their bases!`);
+      vscode18.window.showInformationMessage(`Ricwiz: Successfully updated ${successCount} environment branches from their bases!`);
     }
   });
 }
 
 // src/commands/deleteUnused.ts
-var vscode20 = __toESM(require("vscode"));
+var vscode19 = __toESM(require("vscode"));
 async function deleteUnusedBranches() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode20.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode19.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
   let currentBranch = await getCurrentBranch(cwd);
-  const config = vscode20.workspace.getConfiguration("ricwiz");
-  await vscode20.window.withProgress({
-    location: vscode20.ProgressLocation.Notification,
+  const config = vscode19.workspace.getConfiguration("ricwiz");
+  await vscode19.window.withProgress({
+    location: vscode19.ProgressLocation.Notification,
     title: `Ricwiz: Scanning for unused local branches...`,
     cancellable: false
   }, async () => {
@@ -3570,7 +3573,7 @@ async function deleteUnusedBranches() {
     } catch (e) {
     }
     if (localBranches.length === 0) {
-      vscode20.window.showInformationMessage(`Ricwiz: No local branches found.`);
+      vscode19.window.showInformationMessage(`Ricwiz: No local branches found.`);
       return;
     }
     let remoteBranchNames = [];
@@ -3587,7 +3590,7 @@ async function deleteUnusedBranches() {
     }
     const orphanedBranches = localBranches.filter((b) => !remoteBranchNames.includes(b));
     if (orphanedBranches.length === 0) {
-      vscode20.window.showInformationMessage(`Ricwiz: Your local repository is totally clean! All local branches exist on the remote.`);
+      vscode19.window.showInformationMessage(`Ricwiz: Your local repository is totally clean! All local branches exist on the remote.`);
       return;
     }
     const items = orphanedBranches.map((name) => {
@@ -3603,23 +3606,23 @@ async function deleteUnusedBranches() {
         picked: isGone && !isCurrent
       };
     });
-    const selected = await vscode20.window.showQuickPick(items, {
+    const selected = await vscode19.window.showQuickPick(items, {
       canPickMany: true,
       placeHolder: `Select local branches to delete`,
       title: "Ricwiz: Delete Unused Branches"
     });
     if (!selected || selected.length === 0) {
-      vscode20.window.showInformationMessage("Ricwiz: No branches selected for deletion.");
+      vscode19.window.showInformationMessage("Ricwiz: No branches selected for deletion.");
       return;
     }
-    const confirm = await vscode20.window.showWarningMessage(
+    const confirm = await vscode19.window.showWarningMessage(
       `Ricwiz: Delete ${selected.length} local branch(es)?
 This cannot be undone!`,
       { modal: true },
       "Yes, delete them"
     );
     if (confirm !== "Yes, delete them") {
-      vscode20.window.showInformationMessage("Ricwiz: Deletion cancelled.");
+      vscode19.window.showInformationMessage("Ricwiz: Deletion cancelled.");
       return;
     }
     let deleted = 0;
@@ -3631,7 +3634,7 @@ This cannot be undone!`,
           await exec2(`git checkout ${fallbackBranch}`, { cwd });
           currentBranch = fallbackBranch;
         } catch (e) {
-          vscode20.window.showWarningMessage(`Ricwiz: Could not switch away from ${name}. Skipping.`);
+          vscode19.window.showWarningMessage(`Ricwiz: Could not switch away from ${name}. Skipping.`);
           continue;
         }
       }
@@ -3639,20 +3642,20 @@ This cannot be undone!`,
         await exec2(`git branch -D ${name}`, { cwd });
         deleted++;
       } catch (e) {
-        vscode20.window.showWarningMessage(`Ricwiz: Could not delete local branch ${name}.`);
+        vscode19.window.showWarningMessage(`Ricwiz: Could not delete local branch ${name}.`);
       }
     }
-    vscode20.window.showInformationMessage(`Ricwiz: \u{1F5D1}\uFE0F Cleaned up ${deleted} unused local branch(es).`);
+    vscode19.window.showInformationMessage(`Ricwiz: \u{1F5D1}\uFE0F Cleaned up ${deleted} unused local branch(es).`);
   });
 }
 
 // src/commands/checkoutBranch.ts
-var vscode21 = __toESM(require("vscode"));
+var vscode20 = __toESM(require("vscode"));
 async function checkoutBranch(branchName) {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
-  await vscode21.window.withProgress({
-    location: vscode21.ProgressLocation.Notification,
+  await vscode20.window.withProgress({
+    location: vscode20.ProgressLocation.Notification,
     title: `Ricwiz: Switching to ${branchName}...`,
     cancellable: false
   }, async () => {
@@ -3667,9 +3670,9 @@ async function checkoutBranch(branchName) {
       if (hasChanges && currentBranch) {
         try {
           await exec2(`git stash push --include-untracked -m "ricwiz-auto:${currentBranch}"`, { cwd });
-          vscode21.window.showInformationMessage(`Ricwiz: \u{1F4E6} Stashed changes from ${currentBranch}`);
+          vscode20.window.showInformationMessage(`Ricwiz: \u{1F4E6} Stashed changes from ${currentBranch}`);
         } catch (e) {
-          vscode21.window.showWarningMessage(`Ricwiz: Could not stash changes. Checkout may fail if there are conflicts.`);
+          vscode20.window.showWarningMessage(`Ricwiz: Could not stash changes. Checkout may fail if there are conflicts.`);
         }
       }
       let targetLocalBranch = branchName;
@@ -3694,7 +3697,7 @@ async function checkoutBranch(branchName) {
             }
           }
           if (matchingRemotes.length === 0) {
-            vscode21.window.showErrorMessage(`Ricwiz: A branch "${targetLocalBranch}" n\xE3o existe localmente nem em nenhuma remote!`);
+            vscode20.window.showErrorMessage(`Ricwiz: A branch "${targetLocalBranch}" n\xE3o existe localmente nem em nenhuma remote!`);
             return;
           } else if (matchingRemotes.length === 1) {
             remoteToUse = matchingRemotes[0];
@@ -3713,7 +3716,7 @@ async function checkoutBranch(branchName) {
           await exec2(`git fetch ${remoteToUse} ${targetLocalBranch}`, { cwd });
           await exec2(`git checkout -b ${targetLocalBranch} --track ${remoteToUse}/${targetLocalBranch}`, { cwd });
         } catch (fallbackError) {
-          vscode21.window.showErrorMessage(`Ricwiz: Encontrou na remote ${remoteToUse} mas falhou a fazer checkout.`);
+          vscode20.window.showErrorMessage(`Ricwiz: Encontrou na remote ${remoteToUse} mas falhou a fazer checkout.`);
           return;
         }
       }
@@ -3725,22 +3728,22 @@ async function checkoutBranch(branchName) {
             const stashMatch = lines[i].match(/stash@\{(\d+)\}/);
             if (stashMatch) {
               await exec2(`git stash pop stash@{${stashMatch[1]}}`, { cwd });
-              vscode21.window.showInformationMessage(`Ricwiz: \u{1F4E6} Restored stashed changes on ${targetLocalBranch}`);
+              vscode20.window.showInformationMessage(`Ricwiz: \u{1F4E6} Restored stashed changes on ${targetLocalBranch}`);
             }
             break;
           }
         }
       } catch (e) {
-        vscode21.window.showWarningMessage(`Ricwiz: Could not restore stashed changes on ${targetLocalBranch}. You may need to resolve conflicts manually (check git stash list).`);
+        vscode20.window.showWarningMessage(`Ricwiz: Could not restore stashed changes on ${targetLocalBranch}. You may need to resolve conflicts manually (check git stash list).`);
       }
     } catch (e) {
-      vscode21.window.showErrorMessage(`Ricwiz: Could not checkout branch ${branchName}.`);
+      vscode20.window.showErrorMessage(`Ricwiz: Could not checkout branch ${branchName}.`);
     }
   });
 }
 
 // src/commands/copyBranch.ts
-var vscode22 = __toESM(require("vscode"));
+var vscode21 = __toESM(require("vscode"));
 async function copyBranchName() {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
@@ -3748,26 +3751,26 @@ async function copyBranchName() {
     const { stdout } = await exec2("git branch --show-current", { cwd });
     const branchName = stdout.trim();
     if (branchName) {
-      await vscode22.env.clipboard.writeText(branchName);
-      vscode22.window.showInformationMessage(`Ricwiz: \u{1F4CB} Copied "${branchName}" to clipboard`);
+      await vscode21.env.clipboard.writeText(branchName);
+      vscode21.window.showInformationMessage(`Ricwiz: \u{1F4CB} Copied "${branchName}" to clipboard`);
     }
   } catch (e) {
-    vscode22.window.showErrorMessage("Ricwiz: Could not get the current branch name.");
+    vscode21.window.showErrorMessage("Ricwiz: Could not get the current branch name.");
   }
 }
 
 // src/commands/generatePackageXml.ts
-var vscode23 = __toESM(require("vscode"));
+var vscode22 = __toESM(require("vscode"));
 var path4 = __toESM(require("path"));
 var fs4 = __toESM(require("fs"));
 async function generatePackageXml() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode23.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode22.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-  const config = vscode23.workspace.getConfiguration("ricwiz");
+  const config = vscode22.workspace.getConfiguration("ricwiz");
   const sourceBranch = ctx?.ticketSourceBranch || config.get("ticketSourceBranch", "main");
   const originRemote = ctx?.originRemote || "origin";
   const rawCommand = config.get(
@@ -3775,7 +3778,7 @@ async function generatePackageXml() {
     'sf sgd source delta --to "HEAD" --from "{originRemote}/{baseBranch}" --output-dir "."'
   );
   const command = rawCommand.replace("origin/{baseBranch}", "{originRemote}/{baseBranch}").replace(/{originRemote}/g, originRemote).replace(/{baseBranch}/g, sourceBranch);
-  const confirm = await vscode23.window.showWarningMessage(
+  const confirm = await vscode22.window.showWarningMessage(
     "Are you sure you want to generate the package.xml? This may overwrite existing local manifest files.",
     { modal: true },
     "Yes, Generate"
@@ -3783,41 +3786,41 @@ async function generatePackageXml() {
   if (confirm !== "Yes, Generate") {
     return;
   }
-  await vscode23.window.withProgress({
-    location: vscode23.ProgressLocation.Notification,
+  await vscode22.window.withProgress({
+    location: vscode22.ProgressLocation.Notification,
     title: `Ricwiz: Generating package.xml using Salesforce CLI...`,
     cancellable: false
   }, async () => {
     try {
       await exec2(command, { cwd, maxBuffer: 10 * 1024 * 1024 });
-      vscode23.window.showInformationMessage(`Ricwiz: Successfully generated package.xml!`);
+      vscode22.window.showInformationMessage(`Ricwiz: Successfully generated package.xml!`);
       const sgdPath = path4.join(cwd, "package", "package.xml");
       const rootPath = path4.join(cwd, "package.xml");
       const manifestPath = path4.join(cwd, "manifest", "package.xml");
       for (const p of [sgdPath, rootPath, manifestPath]) {
         if (fs4.existsSync(p)) {
-          const doc = await vscode23.workspace.openTextDocument(p);
-          await vscode23.window.showTextDocument(doc);
+          const doc = await vscode22.workspace.openTextDocument(p);
+          await vscode22.window.showTextDocument(doc);
           break;
         }
       }
     } catch (e) {
-      vscode23.window.showErrorMessage(`Ricwiz: Error running sf command - ${e.message}`);
+      vscode22.window.showErrorMessage(`Ricwiz: Error running sf command - ${e.message}`);
     }
   });
 }
 
 // src/commands/deployPackage.ts
-var vscode24 = __toESM(require("vscode"));
+var vscode23 = __toESM(require("vscode"));
 async function deployPackage() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode24.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode23.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
-  const config = vscode24.workspace.getConfiguration("ricwiz");
+  const config = vscode23.workspace.getConfiguration("ricwiz");
   const command = config.get("deployCommand", "sf project deploy start --manifest package/package.xml --post-destructive-changes destructiveChanges/destructiveChanges.xml -c -l NoTestRun -g");
-  const confirm = await vscode24.window.showWarningMessage(
+  const confirm = await vscode23.window.showWarningMessage(
     "Are you sure you want to deploy to Salesforce? This action modifies your org and cannot be easily undone.",
     { modal: true },
     "Yes, Deploy"
@@ -3825,14 +3828,14 @@ async function deployPackage() {
   if (confirm !== "Yes, Deploy") {
     return;
   }
-  await vscode24.window.withProgress({
-    location: vscode24.ProgressLocation.Notification,
+  await vscode23.window.withProgress({
+    location: vscode23.ProgressLocation.Notification,
     title: `Ricwiz: Deploying package...`,
     cancellable: false
   }, async () => {
     try {
       const { stdout, stderr } = await exec2(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
-      const outputChannel = vscode24.window.createOutputChannel("Ricwiz Deploy");
+      const outputChannel = vscode23.window.createOutputChannel("Ricwiz Deploy");
       outputChannel.appendLine(`Executing: ${command}`);
       outputChannel.appendLine(stdout);
       if (stderr) {
@@ -3840,30 +3843,30 @@ async function deployPackage() {
         outputChannel.appendLine(stderr);
       }
       outputChannel.show();
-      vscode24.window.showInformationMessage(`Ricwiz: Successfully ran deploy command!`);
+      vscode23.window.showInformationMessage(`Ricwiz: Successfully ran deploy command!`);
     } catch (e) {
-      const outputChannel = vscode24.window.createOutputChannel("Ricwiz Deploy");
+      const outputChannel = vscode23.window.createOutputChannel("Ricwiz Deploy");
       outputChannel.appendLine(`Error executing: ${command}`);
       if (e.stdout) outputChannel.appendLine(e.stdout);
       if (e.stderr) outputChannel.appendLine(e.stderr);
       outputChannel.appendLine(e.message);
       outputChannel.show();
-      vscode24.window.showErrorMessage(`Ricwiz: Error running deploy command. See output channel for details.`);
+      vscode23.window.showErrorMessage(`Ricwiz: Error running deploy command. See output channel for details.`);
     }
   });
 }
 
 // src/commands/importData.ts
-var vscode25 = __toESM(require("vscode"));
+var vscode24 = __toESM(require("vscode"));
 async function importData() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode25.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode24.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
-  const config = vscode25.workspace.getConfiguration("ricwiz");
+  const config = vscode24.workspace.getConfiguration("ricwiz");
   const command = config.get("importDataCommand", "sfdx force:data:tree:import --plan data/plan.json");
-  const confirm = await vscode25.window.showWarningMessage(
+  const confirm = await vscode24.window.showWarningMessage(
     "Are you sure you want to import data into Salesforce? This action modifies records in your org.",
     { modal: true },
     "Yes, Import"
@@ -3871,14 +3874,14 @@ async function importData() {
   if (confirm !== "Yes, Import") {
     return;
   }
-  await vscode25.window.withProgress({
-    location: vscode25.ProgressLocation.Notification,
+  await vscode24.window.withProgress({
+    location: vscode24.ProgressLocation.Notification,
     title: `Ricwiz: Importing data...`,
     cancellable: false
   }, async () => {
     try {
       const { stdout, stderr } = await exec2(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
-      const outputChannel = vscode25.window.createOutputChannel("Ricwiz Import Data");
+      const outputChannel = vscode24.window.createOutputChannel("Ricwiz Import Data");
       outputChannel.appendLine(`Executing: ${command}`);
       outputChannel.appendLine(stdout);
       if (stderr) {
@@ -3886,36 +3889,36 @@ async function importData() {
         outputChannel.appendLine(stderr);
       }
       outputChannel.show();
-      vscode25.window.showInformationMessage(`Ricwiz: Successfully ran import data command!`);
+      vscode24.window.showInformationMessage(`Ricwiz: Successfully ran import data command!`);
     } catch (e) {
-      const outputChannel = vscode25.window.createOutputChannel("Ricwiz Import Data");
+      const outputChannel = vscode24.window.createOutputChannel("Ricwiz Import Data");
       outputChannel.appendLine(`Error executing: ${command}`);
       if (e.stdout) outputChannel.appendLine(e.stdout);
       if (e.stderr) outputChannel.appendLine(e.stderr);
       outputChannel.appendLine(e.message);
       outputChannel.show();
-      vscode25.window.showErrorMessage(`Ricwiz: Error running import data command. See output channel for details.`);
+      vscode24.window.showErrorMessage(`Ricwiz: Error running import data command. See output channel for details.`);
     }
   });
 }
 
 // src/commands/listTicketFiles.ts
-var vscode26 = __toESM(require("vscode"));
+var vscode25 = __toESM(require("vscode"));
 async function listTicketFiles() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode26.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode25.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
   const ctx = await WorkflowContext.initialize(cwd, { skipPrompt: true });
-  const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode26.workspace.getConfiguration("ricwiz").get("ticketSourceBranch", "main");
+  const sourceBranch = ctx ? ctx.ticketSourceBranch : vscode25.workspace.getConfiguration("ricwiz").get("ticketSourceBranch", "main");
   const originRemote = ctx ? ctx.originRemote : "origin";
   let currentBranch = "";
   try {
     currentBranch = await getCurrentBranch(cwd);
   } catch (e) {
   }
-  const targetBranch = await vscode26.window.showInputBox({
+  const targetBranch = await vscode25.window.showInputBox({
     prompt: `Enter the branch name to list modified files (compared to ${sourceBranch})`,
     value: currentBranch,
     placeHolder: "SFPSCA-1234"
@@ -3924,13 +3927,13 @@ async function listTicketFiles() {
     return;
   }
   const sanitizedTarget = sanitizeShellInput(targetBranch);
-  await vscode26.window.withProgress({
-    location: vscode26.ProgressLocation.Notification,
+  await vscode25.window.withProgress({
+    location: vscode25.ProgressLocation.Notification,
     title: `Ricwiz: Finding files for ${sanitizedTarget}...`,
     cancellable: false
   }, async () => {
     try {
-      const configPrefix = ctx ? ctx.ticketPrefix : vscode26.workspace.getConfiguration("ricwiz").get("ticketPrefix", "SFPSC-");
+      const configPrefix = ctx ? ctx.ticketPrefix : vscode25.workspace.getConfiguration("ricwiz").get("ticketPrefix", "SFPSC-");
       const prefix = resolvePrefix(sanitizedTarget, configPrefix);
       const ticketId = extractTicketSuggestion(sanitizedTarget, prefix, true) || sanitizedTarget.replace(/-to-[a-zA-Z0-9]+$/i, "");
       let resolvedTargetBranch = await resolveExistingBranchName(cwd, ticketId);
@@ -3988,7 +3991,7 @@ async function listTicketFiles() {
       }
       const lines = [...diffLines, ...logLines];
       if (lines.length === 0) {
-        vscode26.window.showInformationMessage(`Ricwiz: No modified files found for ${sanitizedTarget}.`);
+        vscode25.window.showInformationMessage(`Ricwiz: No modified files found for ${sanitizedTarget}.`);
         return;
       }
       const uniqueFiles = Array.from(new Set(lines)).sort();
@@ -4010,35 +4013,35 @@ async function listTicketFiles() {
 `;
         output += groups[group].join("\n") + "\n";
       }
-      const doc = await vscode26.workspace.openTextDocument({
+      const doc = await vscode25.workspace.openTextDocument({
         content: output,
         language: "plaintext"
       });
-      await vscode26.window.showTextDocument(doc);
+      await vscode25.window.showTextDocument(doc);
     } catch (e) {
-      vscode26.window.showErrorMessage(`Ricwiz: Error running git log - ${e.message}`);
+      vscode25.window.showErrorMessage(`Ricwiz: Error running git log - ${e.message}`);
     }
   });
 }
 
 // src/commands/resetTracking.ts
-var vscode27 = __toESM(require("vscode"));
+var vscode26 = __toESM(require("vscode"));
 async function resetTracking() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode27.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode26.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
-  const config = vscode27.workspace.getConfiguration("ricwiz");
+  const config = vscode26.workspace.getConfiguration("ricwiz");
   const command = config.get("resetTrackingCommand", "sf org disable tracking && sf project reset tracking --no-prompt");
-  await vscode27.window.withProgress({
-    location: vscode27.ProgressLocation.Notification,
+  await vscode26.window.withProgress({
+    location: vscode26.ProgressLocation.Notification,
     title: `Ricwiz: Resetting tracking...`,
     cancellable: false
   }, async () => {
     try {
       const { stdout, stderr } = await exec2(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
-      const outputChannel = vscode27.window.createOutputChannel("Ricwiz Reset Tracking");
+      const outputChannel = vscode26.window.createOutputChannel("Ricwiz Reset Tracking");
       outputChannel.appendLine(`Executing: ${command}`);
       outputChannel.appendLine(stdout);
       if (stderr) {
@@ -4046,25 +4049,25 @@ async function resetTracking() {
         outputChannel.appendLine(stderr);
       }
       outputChannel.show();
-      vscode27.window.showInformationMessage(`Ricwiz: Successfully reset tracking!`);
+      vscode26.window.showInformationMessage(`Ricwiz: Successfully reset tracking!`);
     } catch (e) {
-      const outputChannel = vscode27.window.createOutputChannel("Ricwiz Reset Tracking");
+      const outputChannel = vscode26.window.createOutputChannel("Ricwiz Reset Tracking");
       outputChannel.appendLine(`Error executing: ${command}`);
       if (e.stdout) outputChannel.appendLine(e.stdout);
       if (e.stderr) outputChannel.appendLine(e.stderr);
       outputChannel.appendLine(e.message);
       outputChannel.show();
-      vscode27.window.showErrorMessage(`Ricwiz: Error resetting tracking. See output channel for details.`);
+      vscode26.window.showErrorMessage(`Ricwiz: Error resetting tracking. See output channel for details.`);
     }
   });
 }
 
 // src/commands/extractComponent.ts
-var vscode28 = __toESM(require("vscode"));
+var vscode27 = __toESM(require("vscode"));
 async function extractComponent() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode28.window.showErrorMessage("Ricwiz: Open a workspace first.");
+    vscode27.window.showErrorMessage("Ricwiz: Open a workspace first.");
     return;
   }
   const commonTypes = [
@@ -4089,13 +4092,13 @@ async function extractComponent() {
     "EmailTemplate",
     "Other (Type manually)..."
   ];
-  let metadataType = await vscode28.window.showQuickPick(commonTypes, {
+  let metadataType = await vscode27.window.showQuickPick(commonTypes, {
     placeHolder: "Select Metadata Type to extract (e.g., ApexClass)",
     ignoreFocusOut: true
   });
   if (!metadataType) return;
   if (metadataType === "Other (Type manually)...") {
-    metadataType = await vscode28.window.showInputBox({
+    metadataType = await vscode27.window.showInputBox({
       prompt: "Enter Metadata Type (e.g., CustomApplication, Queue)",
       ignoreFocusOut: true
     });
@@ -4124,7 +4127,7 @@ async function extractComponent() {
   const globPattern = globMap[metadataType];
   if (globPattern) {
     try {
-      const files = await vscode28.workspace.findFiles(globPattern, "**/node_modules/**");
+      const files = await vscode27.workspace.findFiles(globPattern, "**/node_modules/**");
       localSuggestions = files.map((f) => {
         const basename4 = f.fsPath.split(/[\\/]/).pop() || "";
         if (metadataType === "LightningComponentBundle" || metadataType === "AuraDefinitionBundle") {
@@ -4138,7 +4141,7 @@ async function extractComponent() {
     }
   }
   const componentName = await new Promise((resolve) => {
-    const quickPick = vscode28.window.createQuickPick();
+    const quickPick = vscode27.window.createQuickPick();
     quickPick.title = `Extract ${metadataType}`;
     quickPick.placeholder = `Type name (e.g. MyComponent) or * for all`;
     quickPick.ignoreFocusOut = true;
@@ -4191,8 +4194,8 @@ async function extractComponent() {
     quickPick.show();
   });
   if (!componentName) return;
-  await vscode28.window.withProgress({
-    location: vscode28.ProgressLocation.Notification,
+  await vscode27.window.withProgress({
+    location: vscode27.ProgressLocation.Notification,
     title: `Ricwiz: Extracting ${metadataType}:${componentName} from Salesforce...`,
     cancellable: true
   }, async (progress, token) => {
@@ -4202,31 +4205,31 @@ async function extractComponent() {
       const { stdout, stderr } = await exec2(`sf project retrieve start -m "${manifestStr}"`, { cwd });
       if (stdout) ricwizLogger.appendLine(stdout);
       if (stderr) ricwizLogger.appendLine(stderr);
-      vscode28.window.showInformationMessage(`Ricwiz: Successfully extracted ${manifestStr}.`);
+      vscode27.window.showInformationMessage(`Ricwiz: Successfully extracted ${manifestStr}.`);
     } catch (e) {
       ricwizLogger.appendLine(`ERROR: ${e.message}`);
       if (e.stdout) ricwizLogger.appendLine(e.stdout);
       if (e.stderr) ricwizLogger.appendLine(e.stderr);
-      vscode28.window.showErrorMessage(`Ricwiz: Extraction failed. See Output channel for details.`);
+      vscode27.window.showErrorMessage(`Ricwiz: Extraction failed. See Output channel for details.`);
     }
   });
 }
 
 // src/commands/deployMultiOrg.ts
-var vscode29 = __toESM(require("vscode"));
+var vscode28 = __toESM(require("vscode"));
 var path5 = __toESM(require("path"));
 async function deployMultiOrg() {
-  const editor = vscode29.window.activeTextEditor;
+  const editor = vscode28.window.activeTextEditor;
   if (!editor) {
-    vscode29.window.showErrorMessage("Ricwiz: Please open the file you want to deploy in the editor first.");
+    vscode28.window.showErrorMessage("Ricwiz: Please open the file you want to deploy in the editor first.");
     return;
   }
   const fsPath = editor.document.uri.fsPath;
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
   let orgListJson = "";
-  await vscode29.window.withProgress({
-    location: vscode29.ProgressLocation.Notification,
+  await vscode28.window.withProgress({
+    location: vscode28.ProgressLocation.Notification,
     title: "Ricwiz: Fetching available Salesforce orgs...",
     cancellable: false
   }, async () => {
@@ -4238,7 +4241,7 @@ async function deployMultiOrg() {
     }
   });
   if (!orgListJson) {
-    vscode29.window.showErrorMessage("Ricwiz: Failed to fetch orgs. Is Salesforce CLI installed?");
+    vscode28.window.showErrorMessage("Ricwiz: Failed to fetch orgs. Is Salesforce CLI installed?");
     return;
   }
   let orgs = [];
@@ -4248,11 +4251,11 @@ async function deployMultiOrg() {
     const scratch = parsed.result?.scratchOrgs || [];
     orgs = [...nonScratch, ...scratch];
   } catch (e) {
-    vscode29.window.showErrorMessage("Ricwiz: Failed to parse org list.");
+    vscode28.window.showErrorMessage("Ricwiz: Failed to parse org list.");
     return;
   }
   if (orgs.length === 0) {
-    vscode29.window.showInformationMessage("Ricwiz: No authenticated orgs found.");
+    vscode28.window.showInformationMessage("Ricwiz: No authenticated orgs found.");
     return;
   }
   const quickPickItems = orgs.map((org) => ({
@@ -4260,15 +4263,15 @@ async function deployMultiOrg() {
     description: org.alias ? org.username : "",
     picked: org.isDefaultUsername
   }));
-  const selectedOrgs = await vscode29.window.showQuickPick(quickPickItems, {
+  const selectedOrgs = await vscode28.window.showQuickPick(quickPickItems, {
     placeHolder: "Select the org(s) to deploy this file to",
     canPickMany: true,
     ignoreFocusOut: true
   });
   if (!selectedOrgs || selectedOrgs.length === 0) return;
   const fileName = path5.basename(fsPath);
-  await vscode29.window.withProgress({
-    location: vscode29.ProgressLocation.Notification,
+  await vscode28.window.withProgress({
+    location: vscode28.ProgressLocation.Notification,
     title: `Ricwiz: Deploying ${fileName} to ${selectedOrgs.length} org(s)...`,
     cancellable: false
   }, async () => {
@@ -4293,34 +4296,34 @@ async function deployMultiOrg() {
     const successes = results.filter((r) => r.success).length;
     const fails = results.filter((r) => !r.success).length;
     if (fails === 0) {
-      vscode29.window.showInformationMessage(`Ricwiz: Successfully deployed to all ${successes} orgs!`);
+      vscode28.window.showInformationMessage(`Ricwiz: Successfully deployed to all ${successes} orgs!`);
     } else {
-      vscode29.window.showErrorMessage(`Ricwiz: Deploy finished with errors (${successes} success, ${fails} failed). Check Output channel.`);
+      vscode28.window.showErrorMessage(`Ricwiz: Deploy finished with errors (${successes} success, ${fails} failed). Check Output channel.`);
     }
   });
 }
 
 // src/commands/captureAdminChanges.ts
-var vscode30 = __toESM(require("vscode"));
+var vscode29 = __toESM(require("vscode"));
 var fs5 = __toESM(require("fs"));
 var path6 = __toESM(require("path"));
 async function captureAdminChanges() {
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode30.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
+    vscode29.window.showErrorMessage("Ricwiz: Open a folder or workspace that is a Git repository.");
     return;
   }
-  const config = vscode30.workspace.getConfiguration("ricwiz");
+  const config = vscode29.workspace.getConfiguration("ricwiz");
   const defaultUsername = config.get("auditUsername", "");
   const defaultHours = config.get("auditHours", 8);
-  let username = await vscode30.window.showInputBox({
+  let username = await vscode29.window.showInputBox({
     prompt: "Enter your Salesforce Username to query in SetupAuditTrail",
     value: defaultUsername,
     placeHolder: "admin@tuaorg.com"
   });
   if (!username) return;
   username = sanitizeShellInput(username);
-  const hoursStr = await vscode30.window.showInputBox({
+  const hoursStr = await vscode29.window.showInputBox({
     prompt: "How many hours back do you want to search?",
     value: defaultHours.toString(),
     placeHolder: "8"
@@ -4328,14 +4331,14 @@ async function captureAdminChanges() {
   if (!hoursStr) return;
   const hours = parseFloat(hoursStr);
   if (isNaN(hours) || hours <= 0) {
-    vscode30.window.showErrorMessage("Ricwiz: Invalid hours specified.");
+    vscode29.window.showErrorMessage("Ricwiz: Invalid hours specified.");
     return;
   }
   const searchDate = new Date(Date.now() - hours * 60 * 60 * 1e3).toISOString();
   const query = `SELECT Action, Display, Section FROM SetupAuditTrail WHERE CreatedBy.Username = '${username}' AND CreatedDate >= ${searchDate}`;
   const command = `sf data query -q "${query}" --json`;
-  await vscode30.window.withProgress({
-    location: vscode30.ProgressLocation.Notification,
+  await vscode29.window.withProgress({
+    location: vscode29.ProgressLocation.Notification,
     title: `Ricwiz: Interrogating Setup Audit Trail...`,
     cancellable: false
   }, async () => {
@@ -4343,7 +4346,7 @@ async function captureAdminChanges() {
       const { stdout } = await exec2(command, { cwd, maxBuffer: 50 * 1024 * 1024 });
       const result = JSON.parse(stdout);
       if (!result.result || result.result.records.length === 0) {
-        vscode30.window.showInformationMessage(`Ricwiz: No changes found for ${username} in the last ${hours} hours.`);
+        vscode29.window.showInformationMessage(`Ricwiz: No changes found for ${username} in the last ${hours} hours.`);
         return;
       }
       const records = result.result.records;
@@ -4366,21 +4369,21 @@ async function captureAdminChanges() {
         }
       }
       if (items.length === 0) {
-        vscode30.window.showInformationMessage(`Ricwiz: No extractable metadata changes found for ${username} in the last ${hours} hours (ignored passwords/logins).`);
+        vscode29.window.showInformationMessage(`Ricwiz: No extractable metadata changes found for ${username} in the last ${hours} hours (ignored passwords/logins).`);
         return;
       }
-      const selection = await vscode30.window.showQuickPick(items, {
+      const selection = await vscode29.window.showQuickPick(items, {
         canPickMany: true,
         placeHolder: "Select the changes you want to extract to GitLab",
         ignoreFocusOut: true
       });
       if (!selection || selection.length === 0) {
-        vscode30.window.showInformationMessage("Ricwiz: No changes selected.");
+        vscode29.window.showInformationMessage("Ricwiz: No changes selected.");
         return;
       }
       const toDelete = selection.filter((i) => i.isDelete);
       const toRetrieve = selection.filter((i) => !i.isDelete);
-      const outputChannel = vscode30.window.createOutputChannel("Ricwiz Admin Bridge");
+      const outputChannel = vscode29.window.createOutputChannel("Ricwiz Admin Bridge");
       outputChannel.show();
       if (toDelete.length > 0) {
         const { stdout: lsFiles } = await exec2(`git ls-files`, { cwd });
@@ -4407,13 +4410,13 @@ async function captureAdminChanges() {
             }
           }
         }
-        vscode30.window.showInformationMessage(`Ricwiz: Deleted ${deletedCount} local files from Git workspace.`);
+        vscode29.window.showInformationMessage(`Ricwiz: Deleted ${deletedCount} local files from Git workspace.`);
       }
       if (toRetrieve.length === 0) {
         return;
       }
       let initialMetadata = toRetrieve.map((item) => item.metadataFormat).filter((m) => m !== "").join(", ");
-      let finalMetadata = await vscode30.window.showInputBox({
+      let finalMetadata = await vscode29.window.showInputBox({
         prompt: "Review and adjust the metadata components to retrieve",
         value: initialMetadata,
         ignoreFocusOut: true
@@ -4423,16 +4426,16 @@ async function captureAdminChanges() {
       }
       const retrieveCmd = `sf project retrieve start -m "${finalMetadata}"`;
       outputChannel.appendLine(`Executing: ${retrieveCmd}`);
-      vscode30.window.showInformationMessage(`Ricwiz: Extracting ${toRetrieve.length} components...`);
+      vscode29.window.showInformationMessage(`Ricwiz: Extracting ${toRetrieve.length} components...`);
       const retrieveResult = await exec2(retrieveCmd, { cwd });
       outputChannel.appendLine(retrieveResult.stdout);
       if (retrieveResult.stderr) {
         outputChannel.appendLine("--- STDERR ---");
         outputChannel.appendLine(retrieveResult.stderr);
       }
-      vscode30.window.showInformationMessage("Ricwiz: Changes extracted successfully! Ready for Git Commit.");
+      vscode29.window.showInformationMessage("Ricwiz: Changes extracted successfully! Ready for Git Commit.");
     } catch (e) {
-      vscode30.window.showErrorMessage(`Ricwiz: Error capturing changes - ${e.message}`);
+      vscode29.window.showErrorMessage(`Ricwiz: Error capturing changes - ${e.message}`);
     }
   });
 }
@@ -4539,7 +4542,7 @@ function translateToMetadata(action, display, section) {
 }
 
 // src/commands/openHistory.ts
-var vscode31 = __toESM(require("vscode"));
+var vscode30 = __toESM(require("vscode"));
 async function openHistory() {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
@@ -4554,7 +4557,7 @@ async function openHistory() {
         branchName: parts[0]
       };
     });
-    const selected = await vscode31.window.showQuickPick(branches, {
+    const selected = await vscode30.window.showQuickPick(branches, {
       placeHolder: "Select a branch from history to checkout",
       matchOnDescription: true,
       matchOnDetail: true
@@ -4563,16 +4566,16 @@ async function openHistory() {
       await checkoutBranch(selected.branchName);
     }
   } catch (e) {
-    vscode31.window.showErrorMessage("Ricwiz: Failed to get branch history");
+    vscode30.window.showErrorMessage("Ricwiz: Failed to get branch history");
   }
 }
 
 // src/commands/searchTicket.ts
-var vscode32 = __toESM(require("vscode"));
+var vscode31 = __toESM(require("vscode"));
 async function searchTicket() {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
-  const ticketId = await vscode32.window.showInputBox({
+  const ticketId = await vscode31.window.showInputBox({
     prompt: "Enter ticket number or name (e.g., 48934)",
     placeHolder: "48934"
   });
@@ -4582,38 +4585,38 @@ async function searchTicket() {
     const { stdout } = await exec2(`git branch --list "*${sanitizedSearch}*"`, { cwd });
     const branches = stdout.split("\n").map((b) => b.replace("*", "").trim()).filter((b) => b);
     if (branches.length === 0) {
-      vscode32.window.showInformationMessage(`Ricwiz: No branches found matching "${ticketId}"`);
+      vscode31.window.showInformationMessage(`Ricwiz: No branches found matching "${ticketId}"`);
       return;
     }
     const items = branches.map((b) => ({
       label: `$(git-branch) ${b}`,
       branchName: b
     }));
-    const selected = await vscode32.window.showQuickPick(items, {
+    const selected = await vscode31.window.showQuickPick(items, {
       placeHolder: `Select a branch for ${ticketId}`
     });
     if (selected) {
       await checkoutBranch(selected.branchName);
     }
   } catch (e) {
-    vscode32.window.showErrorMessage("Ricwiz: Failed to search branches");
+    vscode31.window.showErrorMessage("Ricwiz: Failed to search branches");
   }
 }
 
 // src/commands/whoToBlame.ts
-var vscode33 = __toESM(require("vscode"));
+var vscode32 = __toESM(require("vscode"));
 var path7 = __toESM(require("path"));
 async function getBlameData() {
-  const editor = vscode33.window.activeTextEditor;
+  const editor = vscode32.window.activeTextEditor;
   if (!editor) {
-    vscode33.window.showErrorMessage("Ricwiz: Please open a file in the editor to check blame.");
+    vscode32.window.showErrorMessage("Ricwiz: Please open a file in the editor to check blame.");
     return null;
   }
   const filePath = editor.document.fileName;
   const fileName = path7.basename(filePath);
   const cwd = getWorkspaceCwd();
   if (!cwd) {
-    vscode33.window.showErrorMessage("Ricwiz: Workspace is not a git repository.");
+    vscode32.window.showErrorMessage("Ricwiz: Workspace is not a git repository.");
     return null;
   }
   let gitHistory = [];
@@ -4641,8 +4644,8 @@ async function getBlameData() {
   const metaInfo = parseMetadataFromPath(filePath);
   if (metaInfo) {
     try {
-      await vscode33.window.withProgress({
-        location: vscode33.ProgressLocation.Notification,
+      await vscode32.window.withProgress({
+        location: vscode32.ProgressLocation.Notification,
         title: `Ricwiz: Analyzing ${metaInfo.name} in Salesforce...`,
         cancellable: false
       }, async () => {
@@ -4716,14 +4719,14 @@ async function getBlameData() {
 }
 
 // src/commands/showPipelineLogs.ts
-var vscode34 = __toESM(require("vscode"));
+var vscode33 = __toESM(require("vscode"));
 var https4 = __toESM(require("https"));
 async function showPipelineLogs(projectPath, pipelineId) {
   const cwd = getWorkspaceCwd();
   if (!cwd) return;
   const token = (await getGitlabToken())?.trim();
   if (!token) {
-    vscode34.window.showErrorMessage("Ricwiz: GitLab token is not configured.");
+    vscode33.window.showErrorMessage("Ricwiz: GitLab token is not configured.");
     return;
   }
   try {
@@ -4754,15 +4757,15 @@ async function showPipelineLogs(projectPath, pipelineId) {
         }
       }
       if (!found) {
-        vscode34.window.showErrorMessage(`Ricwiz: Could not determine base URL for project ${projectPath}`);
+        vscode33.window.showErrorMessage(`Ricwiz: Could not determine base URL for project ${projectPath}`);
         return;
       }
     } else {
       const urlObj = new URL(baseUrl);
       baseUrl = `${urlObj.protocol}//${urlObj.host}`;
     }
-    await vscode34.window.withProgress({
-      location: vscode34.ProgressLocation.Notification,
+    await vscode33.window.withProgress({
+      location: vscode33.ProgressLocation.Notification,
       title: `Fetching failed jobs for Pipeline #${pipelineId}...`,
       cancellable: false
     }, async () => {
@@ -4786,7 +4789,7 @@ async function showPipelineLogs(projectPath, pipelineId) {
         }).on("error", () => resolve([]));
       });
       if (!jobs || jobs.length === 0) {
-        vscode34.window.showInformationMessage("Ricwiz: No failed jobs found for this pipeline.");
+        vscode33.window.showInformationMessage("Ricwiz: No failed jobs found for this pipeline.");
         return;
       }
       const failedJob = jobs[0];
@@ -4799,7 +4802,7 @@ async function showPipelineLogs(projectPath, pipelineId) {
         }).on("error", (err) => resolve(`Failed to fetch log: ${err.message}`));
       });
       const cleanLog = logData.replace(/\x1B\[[0-9;]*[mK]/g, "");
-      const channel = vscode34.window.createOutputChannel(`Pipeline #${pipelineId} - Job ${failedJob.name}`);
+      const channel = vscode33.window.createOutputChannel(`Pipeline #${pipelineId} - Job ${failedJob.name}`);
       channel.appendLine(`Pipeline ID: ${pipelineId}`);
       channel.appendLine(`Job Name: ${failedJob.name}`);
       channel.appendLine(`Status: ${failedJob.status}`);
@@ -4809,270 +4812,270 @@ async function showPipelineLogs(projectPath, pipelineId) {
       channel.show();
     });
   } catch (e) {
-    vscode34.window.showErrorMessage(`Ricwiz: Error fetching pipeline logs - ${e.message}`);
+    vscode33.window.showErrorMessage(`Ricwiz: Error fetching pipeline logs - ${e.message}`);
   }
 }
 
 // src/commands/index.ts
 function registerAllCommands(context, webviewProvider2, forceUpdate) {
   context.subscriptions.push(
-    vscode35.commands.registerCommand("ricwiz.conflictAction", executeConflictAction),
-    vscode35.commands.registerCommand("ricwiz.generateDestructiveChanges", async () => {
+    vscode34.commands.registerCommand("ricwiz.conflictAction", executeConflictAction),
+    vscode34.commands.registerCommand("ricwiz.generateDestructiveChanges", async () => {
       try {
         await generateDestructiveChanges();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.runSmartTests", async () => {
+    vscode34.commands.registerCommand("ricwiz.runSmartTests", async () => {
       try {
         await runSmartTests();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.refreshWebview", () => {
-      if (webviewProvider2) vscode35.commands.executeCommand("workbench.action.webview.reloadWebviewAction");
+    vscode34.commands.registerCommand("ricwiz.refreshWebview", () => {
+      if (webviewProvider2) vscode34.commands.executeCommand("workbench.action.webview.reloadWebviewAction");
     }),
-    vscode35.commands.registerCommand("ricwiz.createBranches", async (ticket) => {
+    vscode34.commands.registerCommand("ricwiz.createBranches", async (ticket) => {
       try {
         await createBranches(ticket);
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.prepareDeploy", async () => {
+    vscode34.commands.registerCommand("ricwiz.prepareDeploy", async () => {
       try {
         await prepareDeploy();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.createMergeRequests", async () => {
+    vscode34.commands.registerCommand("ricwiz.createMergeRequests", async () => {
       try {
         await createMergeRequests();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.createMergeRequestsVSCode", async () => {
+    vscode34.commands.registerCommand("ricwiz.createMergeRequestsVSCode", async () => {
       try {
         await createMergeRequestsVSCode();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.openJiraTicket", async () => {
+    vscode34.commands.registerCommand("ricwiz.openJiraTicket", async () => {
       try {
         await openJiraTicket();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.openJiraTicketVSCode", async () => {
+    vscode34.commands.registerCommand("ricwiz.openJiraTicketVSCode", async () => {
       try {
         await openJiraTicketVSCode();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.showJiraDetails", () => {
+    vscode34.commands.registerCommand("ricwiz.showJiraDetails", () => {
       if (webviewProvider2) showJiraDetails(webviewProvider2);
     }),
-    vscode35.commands.registerCommand("ricwiz.openJiraDashboard", (indexOverride) => {
+    vscode34.commands.registerCommand("ricwiz.openJiraDashboard", (indexOverride) => {
       if (webviewProvider2) openJiraDashboard(webviewProvider2, indexOverride);
     }),
-    vscode35.commands.registerCommand("ricwiz.openJiraDetailsForId", (ticketId) => {
+    vscode34.commands.registerCommand("ricwiz.openJiraDetailsForId", (ticketId) => {
       if (webviewProvider2) openJiraDetailsForId(webviewProvider2, ticketId);
     }),
-    vscode35.commands.registerCommand("ricwiz.toggleDashboardBranches", (show) => {
+    vscode34.commands.registerCommand("ricwiz.toggleDashboardBranches", (show) => {
       if (webviewProvider2) {
         webviewProvider2.setDashboardShowBranches(show);
-        vscode35.commands.executeCommand("ricwiz.openJiraDashboard");
+        vscode34.commands.executeCommand("ricwiz.openJiraDashboard");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.changeJiraStatus", async () => {
+    vscode34.commands.registerCommand("ricwiz.changeJiraStatus", async () => {
       try {
         await changeJiraStatus();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.addJiraComment", async () => {
+    vscode34.commands.registerCommand("ricwiz.addJiraComment", async () => {
       try {
         await addJiraCommentCommand();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.addJiraLabel", async () => {
+    vscode34.commands.registerCommand("ricwiz.addJiraLabel", async () => {
       try {
         await addJiraLabelCommand();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.setJiraToken", setJiraTokenCommand),
-    vscode35.commands.registerCommand("ricwiz.setGitlabToken", setGitlabTokenCommand),
-    vscode35.commands.registerCommand("ricwiz.syncAll", async () => {
+    vscode34.commands.registerCommand("ricwiz.setJiraToken", setJiraTokenCommand),
+    vscode34.commands.registerCommand("ricwiz.setGitlabToken", setGitlabTokenCommand),
+    vscode34.commands.registerCommand("ricwiz.syncAll", async () => {
       try {
         await syncAll();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.updateBases", async () => {
+    vscode34.commands.registerCommand("ricwiz.updateBases", async () => {
       try {
         await updateBases();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.deleteUnusedBranches", async () => {
+    vscode34.commands.registerCommand("ricwiz.deleteUnusedBranches", async () => {
       try {
         await deleteUnusedBranches();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.checkoutBranch", async (branchName) => {
+    vscode34.commands.registerCommand("ricwiz.checkoutBranch", async (branchName) => {
       try {
         await checkoutBranch(branchName);
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.copyBranchName", async () => {
+    vscode34.commands.registerCommand("ricwiz.copyBranchName", async () => {
       try {
         await copyBranchName();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.generatePackageXml", async () => {
+    vscode34.commands.registerCommand("ricwiz.generatePackageXml", async () => {
       try {
         await generatePackageXml();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.deployPackage", async () => {
+    vscode34.commands.registerCommand("ricwiz.deployPackage", async () => {
       try {
         await deployPackage();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.importData", async () => {
+    vscode34.commands.registerCommand("ricwiz.importData", async () => {
       try {
         await importData();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.listTicketFiles", async () => {
+    vscode34.commands.registerCommand("ricwiz.listTicketFiles", async () => {
       try {
         await listTicketFiles();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.resetTracking", async () => {
+    vscode34.commands.registerCommand("ricwiz.resetTracking", async () => {
       try {
         await resetTracking();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.extractComponent", async () => {
+    vscode34.commands.registerCommand("ricwiz.extractComponent", async () => {
       try {
         await extractComponent();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.deployMultiOrg", async () => {
+    vscode34.commands.registerCommand("ricwiz.deployMultiOrg", async () => {
       try {
         await deployMultiOrg();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.captureAdminChanges", async () => {
+    vscode34.commands.registerCommand("ricwiz.captureAdminChanges", async () => {
       try {
         await captureAdminChanges();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.openHistory", async () => {
+    vscode34.commands.registerCommand("ricwiz.openHistory", async () => {
       try {
         await openHistory();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.searchTicket", async () => {
+    vscode34.commands.registerCommand("ricwiz.searchTicket", async () => {
       try {
         await searchTicket();
       } finally {
-        vscode35.commands.executeCommand("ricwiz.manualRefresh");
+        vscode34.commands.executeCommand("ricwiz.manualRefresh");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.whoToBlame", async () => {
+    vscode34.commands.registerCommand("ricwiz.whoToBlame", async () => {
       const data = await getBlameData();
       if (data && webviewProvider2) {
         webviewProvider2.setBlameData(data);
         webviewProvider2.setPage("blame");
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.showPipelineLogs", (projectPath, pipelineId) => showPipelineLogs(projectPath, pipelineId)),
-    vscode35.commands.registerCommand("ricwiz.manualRefresh", () => {
+    vscode34.commands.registerCommand("ricwiz.showPipelineLogs", (projectPath, pipelineId) => showPipelineLogs(projectPath, pipelineId)),
+    vscode34.commands.registerCommand("ricwiz.manualRefresh", () => {
       if (forceUpdate) {
         forceUpdate();
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.toggleAutoRefresh", () => {
+    vscode34.commands.registerCommand("ricwiz.toggleAutoRefresh", () => {
       if (webviewProvider2) {
         const newState = !webviewProvider2.isAutoRefreshEnabled();
         webviewProvider2.setAutoRefresh(newState);
-        vscode35.workspace.getConfiguration("ricwiz").update("autoRefresh", newState, vscode35.ConfigurationTarget.Global);
+        vscode34.workspace.getConfiguration("ricwiz").update("autoRefresh", newState, vscode34.ConfigurationTarget.Global);
       }
     }),
-    vscode35.commands.registerCommand("ricwiz.openSettings", () => {
-      vscode35.commands.executeCommand("workbench.action.openSettings", "ricwiz");
+    vscode34.commands.registerCommand("ricwiz.openSettings", () => {
+      vscode34.commands.executeCommand("workbench.action.openSettings", "ricwiz");
     })
   );
 }
 
 // src/gitMonitor.ts
-var vscode36 = __toESM(require("vscode"));
+var vscode35 = __toESM(require("vscode"));
 function initializeGitMonitor(context, webviewProvider2, statusBarItem) {
   let forceUpdate;
-  const initialAutoRefresh = vscode36.workspace.getConfiguration("ricwiz").get("autoRefresh", true);
+  const initialAutoRefresh = vscode35.workspace.getConfiguration("ricwiz").get("autoRefresh", true);
   webviewProvider2?.setAutoRefresh(initialAutoRefresh);
   context.subscriptions.push(
-    vscode36.workspace.onDidChangeConfiguration((e) => {
+    vscode35.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("ricwiz.autoRefresh")) {
-        const enabled = vscode36.workspace.getConfiguration("ricwiz").get("autoRefresh", true);
+        const enabled = vscode35.workspace.getConfiguration("ricwiz").get("autoRefresh", true);
         webviewProvider2?.setAutoRefresh(enabled);
       }
     })
   );
   async function initGit() {
-    const gitExtension = vscode36.extensions.getExtension("vscode.git");
+    const gitExtension = vscode35.extensions.getExtension("vscode.git");
     if (gitExtension) {
       let setupRepo2 = function(repo) {
         let lastBranch = "";
         let updateTimer;
         async function update() {
-          const workspaceFolders = vscode36.workspace.workspaceFolders;
+          const workspaceFolders = vscode35.workspace.workspaceFolders;
           if (!workspaceFolders) return;
           const cwd = workspaceFolders[0].uri.fsPath;
           const currentBranch = await getCurrentBranch(cwd);
           if (currentBranch && currentBranch !== lastBranch) {
             lastBranch = currentBranch;
-            const config = vscode36.workspace.getConfiguration("ricwiz");
+            const config = vscode35.workspace.getConfiguration("ricwiz");
             let prefix = config.get("ticketPrefix", "SFPSCA-");
             if (!currentBranch.includes(prefix)) {
               const guessMatch = currentBranch.match(/([A-Z]+-)\d+/i);
@@ -5160,7 +5163,7 @@ Click to open Jira ticket`;
         };
         update();
         context.subscriptions.push(repo.state.onDidChange(() => scheduleUpdate()));
-        context.subscriptions.push(vscode36.window.onDidChangeWindowState((e) => {
+        context.subscriptions.push(vscode35.window.onDidChangeWindowState((e) => {
           if (e.focused) {
             scheduleUpdate();
           }
@@ -5301,21 +5304,21 @@ function stopLocalServer() {
 
 // src/extension.ts
 var webviewProvider;
-function activate(context) {
-  initializeSecrets(context);
+async function activate(context) {
+  await initializeSecrets(context);
   startLocalServer();
   webviewProvider = new RicwizWebviewProvider(context.extensionUri);
   context.subscriptions.push(
-    vscode37.window.registerWebviewViewProvider("ricwiz-webview", webviewProvider)
+    vscode36.window.registerWebviewViewProvider("ricwiz-webview", webviewProvider)
   );
-  const statusBarItem = vscode37.window.createStatusBarItem(vscode37.StatusBarAlignment.Left, 100);
+  const statusBarItem = vscode36.window.createStatusBarItem(vscode36.StatusBarAlignment.Left, 100);
   statusBarItem.command = "ricwiz.openJiraTicket";
   context.subscriptions.push(statusBarItem);
   const forceUpdate = initializeGitMonitor(context, webviewProvider, statusBarItem);
   registerAllCommands(context, webviewProvider, forceUpdate);
   return {
     getJiraCredentials: async () => ({
-      email: vscode37.workspace.getConfiguration("ricwiz").get("jiraEmail", ""),
+      email: vscode36.workspace.getConfiguration("ricwiz").get("jiraEmail", ""),
       token: await getJiraToken()
     }),
     getGitLabToken: async () => getGitlabToken(),

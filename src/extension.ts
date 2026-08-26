@@ -9,8 +9,8 @@ import { startLocalServer, stopLocalServer } from './localServer';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
-export function activate(context: vscode.ExtensionContext): RicwizPublicApi {
-    initializeSecrets(context);
+export async function activate(context: vscode.ExtensionContext): Promise<RicwizPublicApi> {
+    await initializeSecrets(context);
     startLocalServer();
     
     webviewProvider = new RicwizWebviewProvider(context.extensionUri);

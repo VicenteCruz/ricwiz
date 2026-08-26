@@ -4,22 +4,23 @@ let secretStorage: vscode.SecretStorage;
 let cachedJiraToken: string | undefined;
 let cachedGitlabToken: string | undefined;
 
-export function initializeSecrets(context: vscode.ExtensionContext) {
+export async function initializeSecrets(context: vscode.ExtensionContext) {
     secretStorage = context.secrets;
 
-    // Register an internal command to fetch secrets.
-    // This bridges the context gap when fetching from background HTTP callbacks,
-    // ensuring VS Code executes the retrieval in the correct extension context.
+    // Await pre-loading to guarantee the cache is populated before the background server starts.
+    cachedJiraToken = await secretStorage.get('ricwiz.jiraApiToken');
+    cachedGitlabToken = await secretStorage.get('ricwiz.gitlabApiToken');
+
+    // Keep cache synced if tokens change in another VS Code window or UI command
     context.subscriptions.push(
-        vscode.commands.registerCommand('ricwiz.internal.getSecret', async (key: string) => {
-            return await secretStorage.get(key);
+        context.secrets.onDidChange(async (e) => {
+            if (e.key === 'ricwiz.jiraApiToken') {
+                cachedJiraToken = await secretStorage.get('ricwiz.jiraApiToken');
+            } else if (e.key === 'ricwiz.gitlabApiToken') {
+                cachedGitlabToken = await secretStorage.get('ricwiz.gitlabApiToken');
+            }
         })
     );
-
-    // Pre-load secrets into memory so background tasks (like the HTTP server) 
-    // don't get blocked by OS keychain background-access restrictions.
-    secretStorage.get('ricwiz.jiraApiToken').then(t => cachedJiraToken = t);
-    secretStorage.get('ricwiz.gitlabApiToken').then(t => cachedGitlabToken = t);
 }
 
 export async function storeJiraToken(token: string): Promise<void> {
@@ -35,7 +36,7 @@ export async function getJiraToken(): Promise<string | undefined> {
     if (!secretStorage) {
         throw new Error('SecretStorage is not initialized.');
     }
-    const t = await vscode.commands.executeCommand<string | undefined>('ricwiz.internal.getSecret', 'ricwiz.jiraApiToken');
+    const t = await secretStorage.get('ricwiz.jiraApiToken');
     if (t) cachedJiraToken = t;
     return t;
 }
@@ -53,7 +54,7 @@ export async function getGitlabToken(): Promise<string | undefined> {
     if (!secretStorage) {
         throw new Error('SecretStorage is not initialized.');
     }
-    const t = await vscode.commands.executeCommand<string | undefined>('ricwiz.internal.getSecret', 'ricwiz.gitlabApiToken');
+    const t = await secretStorage.get('ricwiz.gitlabApiToken');
     if (t) cachedGitlabToken = t;
     return t;
 }

@@ -1,6 +1,7 @@
 import * as https from 'https';
 import * as vscode from 'vscode';
 import { getJiraToken } from './secrets';
+import { logDebug } from './logger';
 
 export interface JiraIssueData {
     summary: string;
@@ -15,15 +16,20 @@ export interface JiraTransition {
 }
 
 async function getJiraAuthAndBaseUrl() {
+    logDebug('getJiraAuthAndBaseUrl: Starting...');
     const config = vscode.workspace.getConfiguration('ricwiz');
     const jiraUrlStr = config.get<string>('jiraUrl', '');
     const email = config.get<string>('jiraEmail', '')?.trim();
+    
+    logDebug('getJiraAuthAndBaseUrl: Calling getJiraToken()...');
     let token = (await getJiraToken())?.trim();
     if (!token && process.env.RICWIZ_JIRA_TOKEN) {
+        logDebug('getJiraAuthAndBaseUrl: Token not found in secretStorage, using process.env');
         token = process.env.RICWIZ_JIRA_TOKEN.trim();
     }
 
     if (!jiraUrlStr || !token) {
+        logDebug(`getJiraAuthAndBaseUrl: FAILED. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
         throw new Error(`[v5.1.6] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
     }
 

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { fetchJiraIssuesBatch } from './jiraApi';
+import { logDebug } from './logger';
 
 let server: http.Server | undefined;
 
@@ -10,6 +11,7 @@ export function startLocalServer() {
     if (server) return;
 
     server = http.createServer(async (req, res) => {
+        logDebug(`startLocalServer: Received request for ${req.url}`);
         try {
             const url = new URL(req.url || '', `http://${req.headers.host}`);
             
@@ -21,6 +23,7 @@ export function startLocalServer() {
                 }
 
                 const ticketIds = idsParam.split(',').map(id => id.trim()).filter(Boolean);
+                logDebug(`startLocalServer: Fetching issues batch for: ${ticketIds.join(',')}`);
                 const data = await fetchJiraIssuesBatch(ticketIds);
                 
                 res.writeHead(200, { 'Content-Type': 'application/json' });

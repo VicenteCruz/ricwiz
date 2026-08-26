@@ -24,7 +24,7 @@ async function getJiraAuthAndBaseUrl() {
     }
 
     if (!jiraUrlStr || !token) {
-        throw new Error(`[v5.1.3] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
+        throw new Error(`[v5.1.6] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
     }
 
     let baseUrl = jiraUrlStr;

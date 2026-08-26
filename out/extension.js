@@ -1179,6 +1179,19 @@ async function initializeSecrets(context) {
   secretStorage = context.secrets;
   cachedJiraToken = await secretStorage.get("ricwiz.jiraApiToken");
   cachedGitlabToken = await secretStorage.get("ricwiz.gitlabApiToken");
+  const poller = setInterval(async () => {
+    if (!cachedJiraToken) {
+      const t = await secretStorage.get("ricwiz.jiraApiToken");
+      if (t) cachedJiraToken = t;
+    }
+    if (!cachedGitlabToken) {
+      const t = await secretStorage.get("ricwiz.gitlabApiToken");
+      if (t) cachedGitlabToken = t;
+    }
+    if (cachedJiraToken && cachedGitlabToken) {
+      clearInterval(poller);
+    }
+  }, 2e3);
   context.subscriptions.push(
     context.secrets.onDidChange(async (e) => {
       if (e.key === "ricwiz.jiraApiToken") {
@@ -2804,7 +2817,7 @@ async function getJiraAuthAndBaseUrl() {
     token = process.env.RICWIZ_JIRA_TOKEN.trim();
   }
   if (!jiraUrlStr || !token) {
-    throw new Error(`[v5.1.3] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
+    throw new Error(`[v5.1.6] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
   }
   let baseUrl = jiraUrlStr;
   if (baseUrl.includes("/browse")) {

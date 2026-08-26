@@ -11,6 +11,24 @@ export async function initializeSecrets(context: vscode.ExtensionContext) {
     cachedJiraToken = await secretStorage.get('ricwiz.jiraApiToken');
     cachedGitlabToken = await secretStorage.get('ricwiz.gitlabApiToken');
 
+    // Background poller: if the OS Credential Manager was too slow to initialize during activate(),
+    // retry fetching every 2 seconds. Because this interval is created here, it inherits the correct VS Code context!
+    const poller = setInterval(async () => {
+        if (!cachedJiraToken) {
+            const t = await secretStorage.get('ricwiz.jiraApiToken');
+            if (t) cachedJiraToken = t;
+        }
+        if (!cachedGitlabToken) {
+            const t = await secretStorage.get('ricwiz.gitlabApiToken');
+            if (t) cachedGitlabToken = t;
+        }
+        // If both are found, we can optionally clear the interval, but it's cheap to leave it or we can clear it.
+        // We'll leave it running just in case, or clear it if both are found.
+        if (cachedJiraToken && cachedGitlabToken) {
+            clearInterval(poller);
+        }
+    }, 2000);
+
     // Keep cache synced if tokens change in another VS Code window or UI command
     context.subscriptions.push(
         context.secrets.onDidChange(async (e) => {

@@ -35,10 +35,14 @@ If the user pastes code directly, identify the file it belongs to using the work
 
 ### Step 2 — Surgical Analysis (git blame)
 
-Call `get_git_blame` with the identified file and line range:
+Use the `get_git_blame` tool (provided by the ricwiz extension) for the identified file and line range. 
+Do NOT prefix it with `default_api:`.
 
-```
-get_git_blame(filepath, lines)
+```json
+{
+  "filepath": "path/to/file",
+  "lines": "start,end"
+}
 ```
 
 Parse the output to extract:
@@ -83,12 +87,15 @@ Collect **all unique ticket IDs** found — blame gives the current state, log g
 
 ---
 
-### Step 5 — Fetch full Jira context (Scatter-Gather)
+### Step 5 — Fetch full Jira context
 
-Call `get_tickets_batch` with all extracted ticket IDs in a **single request**:
+Use the `get_tickets_batch` tool (provided by the ricwiz extension) to fetch all extracted ticket IDs in a single request. 
+Do NOT prefix it with `default_api:` and make sure to use the exact name `get_tickets_batch`.
 
-```
-get_tickets_batch(ticketIds)
+```json
+{
+  "ticketIds": ["SFPSCA-1234", "SFPSCA-5678"]
+}
 ```
 
 The response includes for each ticket:
@@ -138,5 +145,5 @@ Structure the answer as:
 - Always run **both** git blame AND git log — blame shows the current state, log shows the full story
 - Always show WHICH ticket the code traces back to — never answer without the blame step
 - If no ticket ID is found (e.g. an old commit predating the convention), say so clearly and answer based on code analysis and git history only
-- If `get_git_blame` or `get_tickets_batch` are unavailable, fall back to git log analysis only and inform the user that Jira context could not be fetched
+- If `get_git_blame` or `get_tickets_batch` tools fail or are unavailable, fall back to git log analysis only and inform the user that Jira context could not be fetched
 - Never guess at business requirements — only state what is in the ticket

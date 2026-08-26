@@ -22,7 +22,12 @@ Activate when the user asks to:
 
 ### Step 1 — Get the staged diff
 
-Always run **both** commands in the workspace root:
+Always run these commands in the workspace root to get the state:
+
+```bash
+git status
+```
+This lets you check if there are any modified but unstaged files. If so, you may want to ask the user if they intended to stage them.
 
 ```bash
 git diff --cached --stat
@@ -36,7 +41,7 @@ Then run:
 git diff --cached
 ```
 
-This gives the full diff. If the output is very large (>300 lines), rely on the `--stat` summary to identify the key files and focus only on those hunks.
+This gives the full diff. Se o output for demasiado longo (ex: ficheiros gerados, locks), cancela e corre `git diff --cached -- <ficheiros chave>` apenas para os ficheiros cruciais identificados no `--stat`.
 
 If both commands return empty output, inform the user: _"No staged files found. Run `git add <files>` first."_
 
@@ -88,6 +93,7 @@ Alternative: <description>
 ## Rules
 
 - **All output must be in English** — commit message, alternatives, and any explanations
+- Se a intenção do código for ambígua e impossível de deduzir, pergunta ao utilizador o motivo da alteração antes de gerares a mensagem final.
 - Never include the ticket ID — the extension already prepends it
 - Never generate multi-line commit messages unless explicitly asked
 - Prefer specificity over vagueness ("Fix null check on Account trigger" > "Fix bug")

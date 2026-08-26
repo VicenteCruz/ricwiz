@@ -21,7 +21,7 @@ async function getJiraAuthAndBaseUrl() {
     const token = (await getJiraToken())?.trim();
 
     if (!jiraUrlStr || !token) {
-        throw new Error('Jira API Token is not securely configured. Please run the "Ricwiz: Set Secure Jira API Token" command.');
+        throw new Error(`Jira API Token is not securely configured. jiraUrlStr: "${jiraUrlStr}", hasToken: ${!!token}`);
     }
 
     let baseUrl = jiraUrlStr;

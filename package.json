@@ -11,6 +11,11 @@
     "Other"
   ],
   "activationEvents": [],
+  "publisher": "vicente",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VicenteCruz/ricwiz.git"
+  },
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {

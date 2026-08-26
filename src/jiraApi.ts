@@ -213,26 +213,24 @@ export async function fetchJiraIssuesBatch(ticketIds: string[]): Promise<import(
     const json = await jiraRequest<any>('POST', '/rest/api/3/search/jql', {
         jql,
         maxResults: 15,
-        fields: ['summary', 'description', 'parent', 'subtasks', 'issuelinks']
+        fields: ['summary', 'description', 'parent', 'subtasks', 'issuelinks', 'issuetype', 'status', 'assignee', 'priority', 'labels', 'fixVersions']
     });
 
     if (!json || !json.issues) { return []; }
 
     return json.issues.map((issue: any): import('./types').BatchIssueResult => {
-        // ── Parent ──────────────────────────────────────────────────────────
+        // --- Parent ---
         const parentRaw = issue.fields?.parent;
         const parent = parentRaw
             ? { key: parentRaw.key, title: parentRaw.fields?.summary || '' }
             : undefined;
 
-        // ── Subtasks ─────────────────────────────────────────────────────────
+        // --- Subtasks ---
         const subtasks: import('./types').IssueSummary[] = (issue.fields?.subtasks ?? []).map(
             (s: any) => ({ key: s.key, title: s.fields?.summary || '' })
         );
 
-        // ── Issue Links ───────────────────────────────────────────────────────
-        // Each link has either inwardIssue or outwardIssue (never both).
-        // The matching direction determines which relationship label to use.
+        // --- Issue Links ---
         const issueLinks: import('./types').IssueLink[] = (issue.fields?.issuelinks ?? []).map(
             (link: any): import('./types').IssueLink => {
                 if (link.outwardIssue) {
@@ -247,10 +245,19 @@ export async function fetchJiraIssuesBatch(ticketIds: string[]): Promise<import(
                 };
             }
         );
+        
+        // --- Fix Versions ---
+        const fixVersions: string[] = (issue.fields?.fixVersions ?? []).map((v: any) => v.name).filter(Boolean);
 
         return {
             key: issue.key,
             title: issue.fields?.summary || '',
+            type: issue.fields?.issuetype?.name || '',
+            status: issue.fields?.status?.name || '',
+            assignee: issue.fields?.assignee?.displayName || '',
+            priority: issue.fields?.priority?.name || '',
+            labels: issue.fields?.labels || [],
+            fixVersions,
             description: extractTextFromADF(issue.fields?.description),
             parent,
             subtasks,

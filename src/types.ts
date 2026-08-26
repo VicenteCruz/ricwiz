@@ -134,6 +134,12 @@ export interface IssueLink {
 export interface BatchIssueResult {
     key: string;
     title: string;
+    type?: string;
+    status?: string;
+    assignee?: string;
+    priority?: string;
+    labels?: string[];
+    fixVersions?: string[];
     description: string;
     /** Direct parent ticket (Epic, Story, etc.) if this issue has one */
     parent?: IssueSummary;

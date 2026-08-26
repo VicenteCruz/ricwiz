@@ -2953,7 +2953,7 @@ async function fetchJiraIssuesBatch(ticketIds) {
   const json = await jiraRequest("POST", "/rest/api/3/search/jql", {
     jql,
     maxResults: 15,
-    fields: ["summary", "description", "parent", "subtasks", "issuelinks"]
+    fields: ["summary", "description", "parent", "subtasks", "issuelinks", "issuetype", "status", "assignee", "priority", "labels", "fixVersions"]
   });
   if (!json || !json.issues) {
     return [];
@@ -2978,9 +2978,16 @@ async function fetchJiraIssuesBatch(ticketIds) {
         };
       }
     );
+    const fixVersions = (issue.fields?.fixVersions ?? []).map((v) => v.name).filter(Boolean);
     return {
       key: issue.key,
       title: issue.fields?.summary || "",
+      type: issue.fields?.issuetype?.name || "",
+      status: issue.fields?.status?.name || "",
+      assignee: issue.fields?.assignee?.displayName || "",
+      priority: issue.fields?.priority?.name || "",
+      labels: issue.fields?.labels || [],
+      fixVersions,
       description: extractTextFromADF(issue.fields?.description),
       parent,
       subtasks,

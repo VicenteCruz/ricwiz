@@ -5,11 +5,13 @@ import { registerAllCommands } from './commands/index';
 import { initializeGitMonitor } from './gitMonitor';
 import { AiSkills } from './acpSkills';
 import { RicwizPublicApi } from './types';
+import { startLocalServer, stopLocalServer } from './localServer';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): RicwizPublicApi {
     initializeSecrets(context);
+    startLocalServer();
     
     webviewProvider = new RicwizWebviewProvider(context.extensionUri);
     context.subscriptions.push(
@@ -38,5 +40,6 @@ export function activate(context: vscode.ExtensionContext): RicwizPublicApi {
     };
 }
 
-export function deactivate() {}
-
+export function deactivate() {
+    stopLocalServer();
+}

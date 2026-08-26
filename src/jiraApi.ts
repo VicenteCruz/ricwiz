@@ -166,3 +166,86 @@ export async function searchJira(jql: string): Promise<JiraSearchResult[]> {
     }
     return [];
 }
+
+/**
+ * Recursively extracts plain text from an Atlassian Document Format (ADF) node.
+ * Jira API v3 returns rich text fields (e.g. description) as ADF instead of plain strings.
+ */
+export function extractTextFromADF(adfNode: unknown): string {
+    if (!adfNode || typeof adfNode !== 'object') { return ''; }
+    const node = adfNode as Record<string, unknown>;
+
+    if (node.type === 'text') {
+        return typeof node.text === 'string' ? node.text : '';
+    }
+
+    let text = '';
+    if (Array.isArray(node.content)) {
+        for (const child of node.content) {
+            const childText = extractTextFromADF(child);
+            if (childText) {
+                text += childText + ' ';
+            }
+        }
+    }
+    return text.trim();
+}
+
+/**
+ * Fetches multiple Jira issues in a single JQL batch request using API v3.
+ * Converts ADF description fields to plain text to reduce token consumption for AI contexts.
+ * Includes parent, subtasks, and issue links for full relationship context.
+ * @param ticketIds - Array of Jira issue keys, e.g. ["SFPSCA-1234", "SFPSCA-5678"]
+ */
+export async function fetchJiraIssuesBatch(ticketIds: string[]): Promise<import('./types').BatchIssueResult[]> {
+    if (ticketIds.length === 0) { return []; }
+
+    const jql = `issueKey IN (${ticketIds.join(',')})`;
+    const json = await jiraRequest<any>('POST', '/rest/api/3/search/jql', {
+        jql,
+        maxResults: 15,
+        fields: ['summary', 'description', 'parent', 'subtasks', 'issuelinks']
+    });
+
+    if (!json || !json.issues) { return []; }
+
+    return json.issues.map((issue: any): import('./types').BatchIssueResult => {
+        // ── Parent ──────────────────────────────────────────────────────────
+        const parentRaw = issue.fields?.parent;
+        const parent = parentRaw
+            ? { key: parentRaw.key, title: parentRaw.fields?.summary || '' }
+            : undefined;
+
+        // ── Subtasks ─────────────────────────────────────────────────────────
+        const subtasks: import('./types').IssueSummary[] = (issue.fields?.subtasks ?? []).map(
+            (s: any) => ({ key: s.key, title: s.fields?.summary || '' })
+        );
+
+        // ── Issue Links ───────────────────────────────────────────────────────
+        // Each link has either inwardIssue or outwardIssue (never both).
+        // The matching direction determines which relationship label to use.
+        const issueLinks: import('./types').IssueLink[] = (issue.fields?.issuelinks ?? []).map(
+            (link: any): import('./types').IssueLink => {
+                if (link.outwardIssue) {
+                    return {
+                        type: link.type?.outward || 'relates to',
+                        issue: { key: link.outwardIssue.key, title: link.outwardIssue.fields?.summary || '' }
+                    };
+                }
+                return {
+                    type: link.type?.inward || 'relates to',
+                    issue: { key: link.inwardIssue.key, title: link.inwardIssue.fields?.summary || '' }
+                };
+            }
+        );
+
+        return {
+            key: issue.key,
+            title: issue.fields?.summary || '',
+            description: extractTextFromADF(issue.fields?.description),
+            parent,
+            subtasks,
+            issueLinks
+        };
+    });
+}

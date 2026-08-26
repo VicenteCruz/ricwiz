@@ -59,9 +59,7 @@ export function renderDashboardView(props: DashboardViewProps): string {
                                 ${r.detailedBranches.map(b => {
                                     let pipelineIcon = getPipelineIcon(b.pipelineStatus);
                                     let pipelineAction = '';
-                                    if (b.pipelineStatus === 'failed' && b.projectPath && b.pipelineId) {
-                                        pipelineAction = `onclick="event.stopPropagation(); sendCommand('showPipelineLogs', { projectPath: '${b.projectPath}', pipelineId: ${b.pipelineId} });" style="cursor: pointer;"`;
-                                    }
+
                                     return `
                                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; background: var(--vscode-editor-background); padding: 2px 6px; border-radius: 3px;">
                                         <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; cursor: pointer; flex: 1;" onclick="sendCheckoutCommand('${escapeHtml(b.name)}', this)" title="Checkout ${escapeHtml(b.name)}">

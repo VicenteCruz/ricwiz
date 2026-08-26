@@ -35,14 +35,10 @@ If the user pastes code directly, identify the file it belongs to using the work
 
 ### Step 2 — Surgical Analysis (git blame)
 
-Use the `get_git_blame` tool (provided by the ricwiz extension) for the identified file and line range. 
-Do NOT prefix it with `default_api:`.
+Usa a tua capacidade nativa de correr comandos no terminal para executar `git blame` nas linhas identificadas. Para ignorares espaços em branco e detetares código movido, usa:
 
-```json
-{
-  "filepath": "path/to/file",
-  "lines": "start,end"
-}
+```bash
+git blame -w -C -C -L <start_line>,<end_line> <filepath>
 ```
 
 Parse the output to extract:
@@ -145,5 +141,5 @@ Structure the answer as:
 - Always run **both** git blame AND git log — blame shows the current state, log shows the full story
 - Always show WHICH ticket the code traces back to — never answer without the blame step
 - If no ticket ID is found (e.g. an old commit predating the convention), say so clearly and answer based on code analysis and git history only
-- If `get_git_blame` or `get_tickets_batch` tools fail or are unavailable, fall back to git log analysis only and inform the user that Jira context could not be fetched
+- If the `get_tickets_batch` tool fails or is unavailable, fall back to git log analysis only and inform the user that Jira context could not be fetched
 - Never guess at business requirements — only state what is in the ticket

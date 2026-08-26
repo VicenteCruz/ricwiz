@@ -18,10 +18,13 @@ async function getJiraAuthAndBaseUrl() {
     const config = vscode.workspace.getConfiguration('ricwiz');
     const jiraUrlStr = config.get<string>('jiraUrl', '');
     const email = config.get<string>('jiraEmail', '')?.trim();
-    const token = (await getJiraToken())?.trim();
+    let token = (await getJiraToken())?.trim();
+    if (!token && process.env.RICWIZ_JIRA_TOKEN) {
+        token = process.env.RICWIZ_JIRA_TOKEN.trim();
+    }
 
     if (!jiraUrlStr || !token) {
-        throw new Error(`[v5.1.2] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
+        throw new Error(`[v5.1.3] Jira API Token is not securely configured. URL: "${jiraUrlStr}", hasToken: ${!!token}`);
     }
 
     let baseUrl = jiraUrlStr;

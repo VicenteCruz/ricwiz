@@ -172,6 +172,14 @@
       {
         "command": "ricwiz.toggleAutoRefresh",
         "title": "Ricwiz: Toggle Auto Refresh"
+      },
+      {
+        "command": "ricwiz.generateCommitMessage",
+        "title": "Ricwiz: Generate Commit Message"
+      },
+      {
+        "command": "ricwiz.codeContext",
+        "title": "Ricwiz: Ask AI about Code Context"
       }
     ],
     "configuration": {

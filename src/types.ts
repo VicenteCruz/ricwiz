@@ -168,12 +168,6 @@ export interface RicwizPublicApi {
     /** AI Skills invocable by the ACP agent via Function Calling */
     AiSkills: {
         /**
-         * Runs git blame on a specific line range of a file.
-         * @param filepath - Relative path to the file from workspace root
-         * @param lines - Line range in git blame -L format, e.g. "45,50"
-         */
-        get_git_blame: (filepath: string, lines: string) => Promise<string>;
-        /**
          * Fetches multiple Jira tickets in a single JQL batch request (API v3).
          * Returns a JSON string of BatchIssueResult[] with ADF descriptions converted to plain text.
          * @param ticketIds - Array of Jira issue keys, e.g. ["SFPSCA-1234", "SFPSCA-5678"]

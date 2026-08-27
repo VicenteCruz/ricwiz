@@ -11,7 +11,22 @@
 - Prefer creating small, well-named helper functions over duplicating code across files.
 
 ## Packaging & Releases
-- When generating a new version (e.g. running `vsce package`), **ALWAYS delete the older `.vsix` file** from the repository and `git rm` it. Only 1 `.vsix` file (the latest one) should ever be versioned to save repository space.
+- Deployments are authorized and encouraged when new features or fixes are implemented, as long as the correct workflow is followed.
+- **Proper Deployment Workflow**:
+  1. Increment the version (`npm version patch/minor/major`).
+  2. Create the package (`npx vsce package`).
+  3. Delete the older `.vsix` file from the repository (`git rm <old>.vsix`).
+  4. Only 1 `.vsix` file (the latest one) should ever be versioned to save repository space.
+  5. Stage the changes, commit (`git commit -m "..."`), push the commit (`git push`), and ensure tags are also pushed (`git push --tags`).
+
+## Continuous Learning & Findings
+- **Self-Correction & Memory**: Whenever a mistake is made or a highly important detail for the project's progress is discovered, document it in this file (`GEMINI.md`) to maintain crucial context for the future.
+- **VS Code Commands**: When adding new commands in the TypeScript code (e.g., `src/commands/`), they **must** also be declared in the `contributes.commands` array in `package.json`. Otherwise, they won't appear in the VS Code Command Palette.
+- **Type Definitions vs. Implementation**: Ensure that shared API interfaces (e.g., `RicwizPublicApi`, `AiSkills`) perfectly match their implementations. If a method (like `get_git_blame`) is deprecated or native tools are used instead, remove it from the TypeScript interface to avoid silent compilation errors.
+
+## Git Multi-Remote Topology
+- Em contexto multi-remote, o **`originRemote`** é o repositório da equipa (onde mora a release branch, ex: `CRC-R19`). Diffs de validação locais de um ticket (para deployment, listagem de ficheiros ou testes) devem sempre ser calculados comparando a HEAD com o `originRemote` (ex: `originRemote/ticketSourceBranch`).
+- O **`upstreamRemote`** é o repositório global/principal da empresa (usado para descer o topo da cadeia, mas não para diffs locais de tickets).
 
 ## Good Programming Practices
 - Use proper TypeScript types instead of `any` wherever possible.
@@ -19,7 +34,3 @@
 - Preserve all existing comments and docstrings when modifying code.
 - Write clear JSDoc comments on exported functions and interfaces.
 - Use meaningful, descriptive names for files, functions, and variables.
-
-## Git Multi-Remote Topology
-- Em contexto multi-remote, o **`originRemote`** é o repositório da equipa (onde mora a release branch, ex: `CRC-R19`). Diffs de validação locais de um ticket (para deployment, listagem de ficheiros ou testes) devem sempre ser calculados comparando a HEAD com o `originRemote` (ex: `originRemote/ticketSourceBranch`).
-- O **`upstreamRemote`** é o repositório global/principal da empresa (usado para descer o topo da cadeia, mas não para diffs locais de tickets).

@@ -212,6 +212,20 @@ export function renderMainView(props: MainViewProps): string {
             </button>
         </div>
 
+        <!-- AI ASSISTANCE CARD -->
+        <div style="background-color: var(--vscode-editor-inactiveSelectionBackground); padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--vscode-panel-border); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 10px; opacity: 0.7; margin-bottom: 10px; text-transform: uppercase; font-weight: bold; text-align: center;">AI Assistance</div>
+            
+            <button class="btn" style="margin-bottom: 10px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Generate Commit Message with Gemini" onclick="sendCommand('generateCommitMessage', null, this)">
+                <span class="icon" style="color: #BF5AF2;">✨</span> Generate Commit Message
+            </button>
+
+            <div style="display: flex; gap: 4px;">
+                <input type="text" id="aiContextInput" placeholder="Ask AI about code context..." style="flex: 1; padding: 4px 8px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 4px; font-size: 11px;" onkeydown="if(event.key === 'Enter') { const input = document.getElementById('aiContextInput'); sendCommand('codeContext', input.value, this); input.value = ''; }">
+                <button class="btn" style="width: auto; padding: 4px 10px; background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" onclick="const input = document.getElementById('aiContextInput'); sendCommand('codeContext', input.value, this); input.value = '';">Ask</button>
+            </div>
+        </div>
+
         ${commitsHtml}
         
         ${getWebviewScript()}

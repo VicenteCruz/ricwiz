@@ -198,6 +198,12 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'openHistory':
                     vscode.commands.executeCommand('ricwiz.openHistory');
                     break;
+                case 'generateCommitMessage':
+                    vscode.commands.executeCommand('ricwiz.generateCommitMessage');
+                    break;
+                case 'codeContext':
+                    vscode.commands.executeCommand('ricwiz.codeContext', data.args);
+                    break;
             }
         });
     }

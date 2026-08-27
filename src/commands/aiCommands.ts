@@ -7,10 +7,22 @@ import * as cp from 'child_process';
  */
 async function runGeminiCLI(prompt: string, workspacePath: string, channel?: vscode.OutputChannel): Promise<string> {
     return new Promise((resolve, reject) => {
+        let geminiPath = 'gemini';
+        if (process.platform === 'win32') {
+            try {
+                const out = cp.execSync('where gemini', { encoding: 'utf8' });
+                if (out) {
+                    geminiPath = out.split('\\n')[0].trim();
+                }
+            } catch (e) {
+                // fallback
+            }
+        }
+        
         // We use -y (yolo) to avoid interactive prompts, and --output-format text
-        const child = cp.spawn('gemini', ['-y', '-p', prompt, '--output-format', 'text'], {
+        const child = cp.spawn(geminiPath, ['-y', '-p', prompt, '--output-format', 'text'], {
             cwd: workspacePath,
-            shell: true
+            shell: false
         });
 
         let stdout = '';

@@ -10,7 +10,7 @@ async function runGeminiCLI(prompt: string, workspacePath: string, channel?: vsc
         let geminiPath = 'gemini';
         
         // We use -y (yolo) to avoid interactive prompts, and --output-format text
-        const child = cp.spawn(geminiPath , ['-y', '-p', prompt, '--output-format', 'text'], {
+        const child = cp.spawn(geminiPath , ['-y', '--output-format', 'text', prompt], {
             cwd: workspacePath,
             shell: true
         });

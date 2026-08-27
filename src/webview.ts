@@ -201,9 +201,6 @@ export class RicwizWebviewProvider implements vscode.WebviewViewProvider {
                 case 'generateCommitMessage':
                     vscode.commands.executeCommand('ricwiz.generateCommitMessage');
                     break;
-                case 'codeContext':
-                    vscode.commands.executeCommand('ricwiz.codeContext', data.args);
-                    break;
             }
         });
     }

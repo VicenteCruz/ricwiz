@@ -28,7 +28,7 @@ import { getBlameData } from './whoToBlame';
 import { showPipelineLogs } from './showPipelineLogs';
 import { RicwizWebviewProvider } from '../webview';
 import { executeConflictAction } from '../conflictResolver';
-import { generateCommitMessage, askCodeContext } from './aiCommands';
+import { generateCommitMessage } from './aiCommands';
 
 export function registerAllCommands(
     context: vscode.ExtensionContext,
@@ -160,9 +160,6 @@ export function registerAllCommands(
         }),
         vscode.commands.registerCommand('ricwiz.generateCommitMessage', async () => {
             await generateCommitMessage();
-        }),
-        vscode.commands.registerCommand('ricwiz.codeContext', async (question?: string) => {
-            await askCodeContext(question || '');
         })
     );
 }

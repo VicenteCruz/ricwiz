@@ -4851,15 +4851,6 @@ var cp2 = __toESM(require("child_process"));
 async function runGeminiCLI(prompt, workspacePath, channel, token) {
   return new Promise((resolve, reject) => {
     let geminiPath = "gemini";
-    if (process.platform === "win32") {
-      try {
-        const out = cp2.execSync("where gemini", { encoding: "utf8" });
-        if (out) {
-          geminiPath = out.split("\\n")[0].trim();
-        }
-      } catch (e) {
-      }
-    }
     const child = cp2.spawn(geminiPath, ["-y", "-p", prompt, "--output-format", "text"], {
       cwd: workspacePath,
       shell: true

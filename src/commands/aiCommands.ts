@@ -58,9 +58,9 @@ async function runGeminiCLI(prompt: string, workspacePath: string, channel?: vsc
 import { getCurrentBranch, resolvePrefix } from '../git';
 
 /**
- * Sanitizes and extracts ONLY the final commit message from raw AI output.
- * Handles thought/reasoning tags, thinking process blocks, markdown fences,
- * preamble text, conversational filler, bullet lists, quotes, and ticket prefixes.
+ * Extracts ONLY the final commit message from raw AI output.
+ * Looks for '###<commit message>###' as requested in the prompt,
+ * ignores alternative phrases, and cleans ticket numbers and quotes.
  */
 export function extractCommitMessage(rawOutput: string): string {
     if (!rawOutput || !rawOutput.trim()) {
@@ -69,121 +69,41 @@ export function extractCommitMessage(rawOutput: string): string {
 
     let text = rawOutput.trim();
 
-    // 0. If output is JSON (e.g. {"commit_message": "..."} or {"message": "..."}), extract from JSON
-    if (text.startsWith('{') && text.endsWith('}')) {
-        try {
-            const parsed = JSON.parse(text);
-            const val = parsed.commit_message || parsed.message || parsed.commit || parsed.description || parsed.summary;
-            if (typeof val === 'string' && val.trim()) {
-                text = val.trim();
-            }
-        } catch (e) {
-            // Not valid JSON, continue with standard parsing
-        }
-    }
-
-    // 1. If explicitly enclosed in <commit_message>...</commit_message> (or similar tags), extract that directly first
-    const tagMatch = text.match(/<commit_message>([\s\S]*?)<\/commit_message>/i)
-        || text.match(/<commit>([\s\S]*?)<\/commit>/i)
-        || text.match(/<message>([\s\S]*?)<\/message>/i)
-        || text.match(/<final_answer>([\s\S]*?)<\/final_answer>/i)
-        || text.match(/<answer>([\s\S]*?)<\/answer>/i)
-        || text.match(/<output>([\s\S]*?)<\/output>/i)
-        || text.match(/<result>([\s\S]*?)<\/result>/i);
-
-    if (tagMatch && tagMatch[1]?.trim()) {
-        text = tagMatch[1].trim();
-    }
-
-    // 2. Strip XML-style thinking/reasoning/scratchpad tags (closed and unclosed)
-    text = text.replace(/<thought[\s\S]*?<\/thought>/gi, '');
-    text = text.replace(/<think[\s\S]*?<\/think>/gi, '');
-    text = text.replace(/<thinking[\s\S]*?<\/thinking>/gi, '');
-    text = text.replace(/<reasoning[\s\S]*?<\/reasoning>/gi, '');
-    text = text.replace(/<reflection[\s\S]*?<\/reflection>/gi, '');
-    text = text.replace(/<scratchpad[\s\S]*?<\/scratchpad>/gi, '');
-    text = text.replace(/<context[\s\S]*?<\/context>/gi, '');
-    // In case tags were cut off / unclosed
-    text = text.replace(/<(?:thought|think|thinking|reasoning|reflection|scratchpad)[\s\S]*$/gi, '');
-
-    // 2b. Strip whole multiline "Thinking Process: ... \n\n" blocks if present
-    text = text.replace(/(?:^|\n)(?:thinking|thought|reasoning|analysis)(?:\s+process)?\s*:[\s\S]*?(?=\n\s*\n|\n\s*[A-Z]|$)/gi, '\n');
-
-    // 2c. Strip trailing explanation/details/why sections (e.g. "\nWhy this message? ...")
-    text = text.replace(/\n\s*(?:why(?:\s+this\s+message|\s+this\s+commit)?|explanation|details|notes?|summary|rationale)\s*[:?][\s\S]*$/gi, '');
-
-    // 3. Strip Markdown code fences (e.g. ```commit ... ``` or ```text ... ``` or ``` ... ```)
-    text = text.replace(/^```[a-zA-Z0-9_-]*\s*\n?/gm, '');
-    text = text.replace(/```$/gm, '');
-    text = text.replace(/`+/g, '');
-
-    // 4. Split into lines and filter out thoughts/preambles/explanations
-    const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-
-    const ignoreLinePatterns: RegExp[] = [
-        /^(?:thinking|thought|reasoning|analysis|diff analysis|summary|explanation|notes?|details?)(?:\s+process)?\s*:/i,
-        /^(?:here\s+is|here's|based\s+on|according\s+to|i\s+have|i\s+suggest|suggested|proposed|output)\b.*?:/i,
-        /^(?:sure|certainly|okay|ok|here\s+you\s+go)[!.,]?/i,
-        /^(?:let\s+me\s+know|hope\s+this\s+helps|feel\s+free|this\s+commit)\b/i,
-        /^(?:why\s+this\s+message|changes\s+included|key\s+changes|files\s+changed|diff\s+summary|reasons?)\b/i,
-        /^[-=*_]{3,}$/, // Markdown thematic breaks / horizontal rules
-    ];
-
-    const validLines = rawLines.filter(line => {
-        for (const pattern of ignoreLinePatterns) {
-            if (pattern.test(line)) {
-                return false;
-            }
-        }
-        return true;
-    });
-
-    let candidate = '';
-
-    if (validLines.length === 0) {
-        candidate = rawLines[rawLines.length - 1] || '';
-    } else if (validLines.length === 1) {
-        candidate = validLines[0];
+    // 1. Look for ###<commit message>### marker (or ###Answer###: format)
+    const hashMatch = text.match(/###\s*([^#\r\n]+)\s*###/);
+    if (hashMatch && hashMatch[1]?.trim()) {
+        text = hashMatch[1].trim();
     } else {
-        const explicitCommitLine = validLines.find(l => /^(?:commit\s+message|commit\s+description|commit|message)\s*:/i.test(l));
-        if (explicitCommitLine) {
-            candidate = explicitCommitLine;
+        const answerMatch = text.match(/###\s*Answer\s*###\s*:?\s*([^\r\n]+)/i);
+        if (answerMatch && answerMatch[1]?.trim()) {
+            text = answerMatch[1].trim();
         } else {
-            const goodLine = validLines.find(l => l.length <= 120 && !/^[-*•]\s+(?:why|because|fixes|changes|note|added|updated)/i.test(l));
-            candidate = goodLine || validLines[0];
+            // Fallback: strip XML tags or extract tag content
+            const tagMatch = text.match(/<(?:commit_message|answer|output)>([\s\S]*?)<\/(?:commit_message|answer|output)>/i);
+            if (tagMatch && tagMatch[1]?.trim()) {
+                text = tagMatch[1].trim();
+            } else {
+                text = text.replace(/<(?:thought|think|thinking)[\s\S]*?<\/(?:thought|think|thinking)>/gi, '');
+                const validLine = text.split(/\r?\n/)
+                    .map(l => l.trim())
+                    .find(l => l.length > 0 && !/^alternative\b/i.test(l) && !/^(?:thinking|thought|here\s+is)/i.test(l));
+                text = validLine || text;
+            }
         }
     }
 
-    // 5. Clean up the candidate line
-    // Strip common labels at the start
-    candidate = candidate.replace(/^(?:commit\s+message|commit\s+description|commit|description|message|title|summary)\s*:\s*/i, '');
-    
-    // Strip bullet markers and list numbers at the start
+    // 2. Clean up line (quotes, bullet points, ticket IDs, trailing period)
+    let candidate = text.split(/\r?\n/)[0].trim();
+    candidate = candidate.replace(/^#+|#+$/g, '').trim();
+    candidate = candidate.replace(/^###\s*Answer\s*###\s*:?\s*/i, '');
+    candidate = candidate.replace(/^[`"']+|[`"']+$/g, '').trim();
     candidate = candidate.replace(/^[-*•]\s+/, '');
     candidate = candidate.replace(/^\d+[\.\)]\s+/, '');
-
-    // Strip bold/italic markdown (**text** or *text* or __text__)
-    candidate = candidate.replace(/^\*\*([\s\S]*)\*\*$/g, '$1');
-    candidate = candidate.replace(/^__([\s\S]*)__$/g, '$1');
-    candidate = candidate.replace(/^\*([\s\S]*)\*$/g, '$1');
-    candidate = candidate.replace(/^_([\s\S]*)_$/g, '$1');
-
-    // Strip surrounding quotes
-    candidate = candidate.replace(/^["'`]+|["'`]+$/g, '').trim();
-
-    // Strip any HTML tags (e.g. <b>...</b>)
-    candidate = candidate.replace(/<\/?[a-zA-Z0-9]+(?:\s+[^>]*)?>/g, '');
-
-    // Strip any ticket IDs or prefixes accidentally added by the model at the beginning (e.g., "SFPSCA-123: ", "[CRC-R19-123] - ")
+    // Strip ticket ID prefix if AI added one (e.g., SFPSCA-1234 - or [CRC-R19-123])
     candidate = candidate.replace(/^\[?[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+(?:-\d+)?\]?\s*(?:-\s*|:\s*|\s+)?/i, '');
-
-    // Strip blockquote markers
-    candidate = candidate.replace(/^>\s*/, '');
-
-    // Normalize whitespace
     candidate = candidate.replace(/\s+/g, ' ').trim();
 
-    // Ensure it starts with a capital letter if it starts with an alphabetical character
+    // Capitalize first letter (unless conventional commit prefix like feat:)
     if (candidate.length > 0 && /^[a-z]/.test(candidate)) {
         const isConventional = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^\)]+\))?:/.test(candidate);
         if (!isConventional) {
@@ -191,7 +111,6 @@ export function extractCommitMessage(rawOutput: string): string {
         }
     }
 
-    // Strip trailing period if single line short message
     if (candidate.endsWith('.') && !candidate.endsWith('..')) {
         candidate = candidate.slice(0, -1).trim();
     }
@@ -226,16 +145,16 @@ export async function generateCommitMessage() {
             title: "Generating commit message with Gemini...",
             cancellable: true
         }, async (progress, token) => {
-            const prompt = `You are an expert developer. Generate a single, concise Git commit message description in English for the provided git diff.
+            const prompt = `Generate a single, concise commit message description in English for the following git diff.
 
-STRICT INSTRUCTIONS:
-- You must output ONLY the commit message enclosed inside <commit_message> and </commit_message> tags.
-- Example output: <commit_message>Add unit tests for commit message parser</commit_message>
-- Do NOT output any thinking, reasoning, chain of thought, explanations, preambles, or markdown backticks outside or inside the tags.
-- Start with a capital letter and use the imperative mood (e.g., "Add", "Fix", "Update", "Refactor").
-- Keep it under 72 characters.
-- Do NOT include any Jira ticket number or ticket prefix.
-- Do NOT include quotes around the message.
+Rules:
+- Start with a capital letter
+- Use the imperative mood (e.g. "Add", "Fix", "Update", "Refactor")
+- Under 72 characters
+- Do NOT include any ticket numbers
+- Do NOT provide multiple options or alternatives
+- Output the final message enclosed exactly between ### and ### on its own line like:
+###<your commit message here>###
 
 Diff:
 ${diff.slice(0, 10000)}`;

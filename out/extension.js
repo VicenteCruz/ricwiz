@@ -4883,11 +4883,14 @@ async function runGeminiCLI(prompt, workspacePath, channel, token) {
       stderr += text;
       if (channel) channel.append(text);
     });
+    child.on("error", (err) => {
+      reject(new Error(`Failed to start Gemini CLI: ${err.message}. Is it installed and in your PATH?`));
+    });
     child.on("close", (code) => {
       if (code === 0) {
         resolve(stdout.trim());
       } else {
-        reject(new Error(`Gemini CLI failed: ${stderr || stdout}`));
+        reject(new Error(`Gemini CLI failed with code ${code}: ${stderr || stdout}`));
       }
     });
   });

@@ -4862,7 +4862,7 @@ async function runGeminiCLI(prompt, workspacePath, channel, token) {
     }
     const child = cp2.spawn(geminiPath, ["-y", "-p", prompt, "--output-format", "text"], {
       cwd: workspacePath,
-      shell: false
+      shell: true
     });
     child.stdin.end();
     if (token) {

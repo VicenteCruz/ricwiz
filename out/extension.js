@@ -4848,7 +4848,7 @@ async function showPipelineLogs(projectPath, pipelineId) {
 // src/commands/aiCommands.ts
 var vscode36 = __toESM(require("vscode"));
 var cp2 = __toESM(require("child_process"));
-async function runGeminiCLI(prompt, workspacePath, channel) {
+async function runGeminiCLI(prompt, workspacePath, channel, token) {
   return new Promise((resolve, reject) => {
     let geminiPath = "gemini";
     if (process.platform === "win32") {
@@ -4864,6 +4864,13 @@ async function runGeminiCLI(prompt, workspacePath, channel) {
       cwd: workspacePath,
       shell: false
     });
+    child.stdin.end();
+    if (token) {
+      token.onCancellationRequested(() => {
+        child.kill();
+        reject(new Error("Operation cancelled by user."));
+      });
+    }
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (data) => {
@@ -4906,8 +4913,8 @@ async function generateCommitMessage() {
     await vscode36.window.withProgress({
       location: vscode36.ProgressLocation.Notification,
       title: "Generating commit message with Gemini...",
-      cancellable: false
-    }, async () => {
+      cancellable: true
+    }, async (progress, token) => {
       const prompt = `Generate a single, concise commit message description in English for the following git diff.
 Rules:
 - Start with a capital letter
@@ -4922,7 +4929,7 @@ ${diff.slice(0, 1e4)}`;
       const channel = vscode36.window.createOutputChannel("Ricwiz AI: Commit Message");
       channel.show(true);
       channel.appendLine("--- Generating Commit Message ---");
-      const msg = await runGeminiCLI(prompt, cwd, channel);
+      const msg = await runGeminiCLI(prompt, cwd, channel, token);
       channel.appendLine("\n--- Finished ---");
       let cleanedMsg = msg.replace(/^`+|`+$/g, "").trim();
       const lines = cleanedMsg.split("\n");
@@ -4970,8 +4977,8 @@ async function askCodeContext(question) {
     await vscode36.window.withProgress({
       location: vscode36.ProgressLocation.Notification,
       title: "Fetching Code Context via Gemini...",
-      cancellable: false
-    }, async () => {
+      cancellable: true
+    }, async (progress, token) => {
       let fileContext = "";
       let jiraContext = "";
       const editor = vscode36.window.activeTextEditor;
@@ -4983,7 +4990,7 @@ async function askCodeContext(question) {
         fileContext = `The user is currently looking at file '${filePath}' between lines ${start} and ${end}.`;
         try {
           const blameOutput = cp2.execSync(`git blame -w -C -C -L ${start},${end} "${filePath}"`, { cwd, encoding: "utf8" });
-          const ticketPattern = /[A-Z]+-\d+/g;
+          const ticketPattern = /[A-Z]+-\\d+/g;
           const matches = blameOutput.match(ticketPattern) || [];
           const uniqueIds = [...new Set(matches)];
           if (uniqueIds.length > 0) {
@@ -5009,7 +5016,7 @@ Output your final answer directly in English.`;
       channel.appendLine("Question: " + question);
       channel.appendLine(fileContext);
       channel.appendLine("----------------------------------------");
-      const answer = await runGeminiCLI(prompt, cwd, channel);
+      const answer = await runGeminiCLI(prompt, cwd, channel, token);
       channel.appendLine("\n----------------------------------------");
       channel.appendLine("Finished.");
     });

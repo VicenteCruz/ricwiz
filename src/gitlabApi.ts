@@ -145,6 +145,84 @@ async function gitlabRequest<T>(baseUrl: string, token: string, method: string, 
 const mrCache = new Map<string, { data: GitLabMRStatus, timestamp: number }>();
 const CACHE_TTL = 30 * 1000; // 30 seconds
 
+export interface PendingMR {
+    title: string;
+    web_url: string;
+    projectPath: string;
+    iid: number;
+}
+
+export async function getPendingReviewMergeRequests(cwd: string): Promise<PendingMR[]> {
+    try {
+        const targets = await getGitlabTargets(cwd);
+        const pending: PendingMR[] = [];
+        
+        for (const target of targets) {
+            try {
+                // First get current user
+                const user = await gitlabRequest<any>(target.baseUrl, target.token, 'GET', `/api/v4/user`);
+                if (!user || !user.username) continue;
+                
+                // Get open MRs assigned to me as a reviewer
+                const path = `/api/v4/projects/${target.projectPath}/merge_requests?state=opened&reviewer_username=${user.username}`;
+                const mrs = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', path);
+                
+                if (!mrs || !Array.isArray(mrs)) continue;
+
+                for (const mr of mrs) {
+                    // Check if I have approved it
+                    const approvals = await gitlabRequest<any>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}/approvals`);
+                    let hasApproved = false;
+                    if (approvals && approvals.approved_by) {
+                        hasApproved = approvals.approved_by.some((a: any) => a.user.username === user.username);
+                    }
+                    
+                    if (!hasApproved) {
+                        // Check if we commented
+                        const notes = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}/notes?sort=desc&order_by=updated_at`);
+                        let hasCommented = false;
+                        if (notes && Array.isArray(notes)) {
+                            hasCommented = notes.some((n: any) => n.author.username === user.username && !n.system);
+                        }
+                        
+                        if (!hasCommented) {
+                            pending.push({
+                                title: mr.title,
+                                web_url: mr.web_url,
+                                projectPath: target.projectPath,
+                                iid: mr.iid
+                            });
+                        }
+                    }
+                }
+            } catch (e: any) {
+                ricwizLogger.appendLine(`[GitLab API] Error getting pending MRs for target: ${e.message}`);
+            }
+        }
+        return pending;
+    } catch (e) {
+        throw e;
+    }
+}
+
+export async function getMergeRequestDiff(cwd: string, projectPath: string, iid: number): Promise<string> {
+    const targets = await getGitlabTargets(cwd);
+    for (const target of targets) {
+        if (target.projectPath === projectPath) {
+            const mr = await gitlabRequest<any>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${target.projectPath}/merge_requests/${iid}/changes`);
+            if (mr && mr.changes) {
+                let diffText = '';
+                for (const change of mr.changes) {
+                    diffText += `--- a/${change.old_path}\n+++ b/${change.new_path}\n${change.diff}\n`;
+                }
+                return diffText;
+            }
+        }
+    }
+    return '';
+}
+
+
 export async function fetchMergeRequestStatus(cwd: string, sourceBranch: string, targetBranch?: string, ctx?: WorkflowContext): Promise<GitLabMRStatus | null> {
     ricwizLogger.appendLine(`[GitLab API] fetchMergeRequestStatus called for source: ${sourceBranch}, target: ${targetBranch || 'any'}`);
     const cacheKey = `${cwd}:${sourceBranch}:${targetBranch || 'any'}`;

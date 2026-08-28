@@ -176,6 +176,10 @@
       {
         "command": "ricwiz.generateCommitMessage",
         "title": "Ricwiz: Generate Commit Message"
+      },
+      {
+        "command": "ricwiz.analyzeMergeRequests",
+        "title": "Ricwiz: Analyze Pending MRs"
       }
     ],
     "configuration": {

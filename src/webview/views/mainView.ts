@@ -219,6 +219,9 @@ export function renderMainView(props: MainViewProps): string {
             <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); border-radius: 4px;" title="Generate Commit Message with Gemini" onclick="sendCommand('generateCommitMessage', null, this)">
                 <span class="icon" style="color: #BF5AF2;">✨</span> Generate Commit Message
             </button>
+            <button class="btn" style="background-color: var(--vscode-button-secondaryBackground); border-radius: 4px; margin-top: 6px;" title="Analyze pending Merge Requests" onclick="sendCommand('analyzeMergeRequests', null, this)">
+                <span class="icon" style="color: #FF9F0A;">🔎</span> Analyze My Reviews
+            </button>
         </div>
 
         ${commitsHtml}

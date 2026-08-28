@@ -214,3 +214,59 @@ ${diff.slice(0, 10000)}`;
         vscode.window.showErrorMessage('Failed to generate commit message: ' + e.message);
     }
 }
+
+import { getPendingReviewMergeRequests, getMergeRequestDiff } from '../gitlabApi';
+
+export async function analyzeMergeRequests() {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+        vscode.window.showErrorMessage('No workspace folder found.');
+        return;
+    }
+    const cwd = workspaceFolders[0].uri.fsPath;
+
+    try {
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Fetching pending Merge Requests...",
+            cancellable: false
+        }, async (progress) => {
+            const pending = await getPendingReviewMergeRequests(cwd);
+            if (pending.length === 0) {
+                vscode.window.showInformationMessage('No pending merge requests to review.');
+                return;
+            }
+
+            for (const mr of pending) {
+                vscode.window.showInformationMessage(`Opening MR: ${mr.title}`);
+                vscode.env.openExternal(vscode.Uri.parse(mr.web_url));
+                
+                const channel = vscode.window.createOutputChannel(`Ricwiz AI: Review MR ${mr.iid}`);
+                channel.show(true);
+                channel.appendLine(`--- Analyzing MR: ${mr.title} ---`);
+                
+                try {
+                    const diff = await getMergeRequestDiff(cwd, mr.projectPath, mr.iid);
+                    if (!diff.trim()) {
+                        channel.appendLine('No diff found for this MR.');
+                        continue;
+                    }
+                    
+                    const prompt = `You are an expert code reviewer. Analyze the following git diff for a merge request.
+Provide a concise code review, pointing out potential bugs, code smells, or areas for improvement.
+If the code looks good, state that it looks good.
+
+Diff:
+${diff.slice(0, 15000)}`;
+
+                    const analysis = await runGeminiCLI(prompt, cwd, channel);
+                    channel.appendLine('\n--- Finished ---');
+                } catch (e: any) {
+                    channel.appendLine(`Failed to analyze MR: ${e.message}`);
+                }
+            }
+        });
+    } catch (e: any) {
+        vscode.window.showErrorMessage('Failed to analyze merge requests: ' + e.message);
+    }
+}

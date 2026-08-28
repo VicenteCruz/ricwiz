@@ -79,26 +79,48 @@ From **both** the blame output and the git log history, scan commit messages for
 - `SPF-1234`
 - Any `[A-Z]+-\d+` pattern
 
-Collect **all unique ticket IDs** found — blame gives the current state, log gives the full history.
+**Formatting Rules**:
+- Clean extracted keys: strip surrounding brackets, colons, or dashes (e.g. `"[SFPSCA-1234]"` → `"SFPSCA-1234"`).
+- Normalize to uppercase (e.g. `"sfpsca-1234"` → `"SFPSCA-1234"`).
+- Deduplicate into a clean `string[]` array.
 
 ---
 
 ### Step 5 — Fetch full Jira context (Scatter-Gather)
 
-Call `get_tickets_batch` with all extracted ticket IDs in a **single request**:
+Fetch the full Jira context in a **single batch request** using the skill's helper script via the terminal:
 
+```bash
+node .agent/skills/code-context/scripts/fetch-tickets.js SFPSCA-1234 SFPSCA-5678
 ```
-get_tickets_batch(ticketIds)
+
+*(You can pass multiple ticket IDs separated by spaces or commas).*
+
+Or via the Ricwiz Inter-Extension API (for in-IDE assistant extensions):
+```typescript
+const resultJson = await api.AiSkills.get_tickets_batch(["SFPSCA-1234", "SFPSCA-5678"]);
+const tickets = JSON.parse(resultJson);
 ```
 
-The response includes for each ticket:
-- `title` — the ticket summary
-- `description` — full plain-text description (includes DoD/technical spec)
-- `parent` — epic or parent ticket
-- `subtasks` — child tasks
-- `issueLinks` — related, blocking, or blocked-by tickets
+**Response Format (`BatchIssueResult[]`)**:
+The script returns a JSON array of issue objects:
+```json
+[
+  {
+    "key": "SFPSCA-1234",
+    "title": "Add validation for checkout branch",
+    "status": "In Progress",
+    "assignee": "Vicente Cruz",
+    "priority": "High",
+    "description": "Plain-text ticket description and DoD requirements...",
+    "parent": { "key": "SFPSCA-1000", "title": "Epic: Branch Helper" },
+    "subtasks": [{ "key": "SFPSCA-1235", "title": "Unit tests" }],
+    "issueLinks": [{ "type": "blocks", "issue": { "key": "SFPSCA-1240", "title": "Deploy to Qual" } }]
+  }
+]
+```
 
-If any `issueLinks` reference tickets not already in the batch, fetch those too for complete context.
+If any `issueLinks` or `parent` reference tickets not already in the batch, fetch those too if needed for complete context.
 
 ---
 

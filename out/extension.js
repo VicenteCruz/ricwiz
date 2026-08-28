@@ -2222,18 +2222,18 @@ async function getPendingReviewMergeRequests(cwd) {
     for (const target of targets) {
       try {
         const user = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/user`);
-        if (!user || !user.username) continue;
-        const path8 = `/api/v4/projects/${target.projectPath}/merge_requests?state=opened&scope=all&reviewer_id=${user.id}`;
+        if (!user || !user.username || !user.id) continue;
+        const path8 = `/api/v4/merge_requests?state=opened&scope=all&reviewer_id=${user.id}`;
         const mrs = await gitlabRequest(target.baseUrl, target.token, "GET", path8);
         if (!mrs || !Array.isArray(mrs)) continue;
         for (const mr of mrs) {
-          const approvals = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}/approvals`);
+          const approvals = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/projects/${mr.project_id}/merge_requests/${mr.iid}/approvals`);
           let hasApproved = false;
           if (approvals && approvals.approved_by) {
             hasApproved = approvals.approved_by.some((a) => a.user.username === user.username);
           }
           if (!hasApproved) {
-            const notes = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/projects/${target.projectPath}/merge_requests/${mr.iid}/notes?sort=desc&order_by=updated_at`);
+            const notes = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/projects/${mr.project_id}/merge_requests/${mr.iid}/notes?sort=desc&order_by=updated_at`);
             let hasCommented = false;
             if (notes && Array.isArray(notes)) {
               hasCommented = notes.some((n) => n.author.username === user.username && !n.system);
@@ -2243,7 +2243,8 @@ async function getPendingReviewMergeRequests(cwd) {
               pending.push({
                 title: mr.title,
                 web_url: mr.web_url,
-                projectPath: target.projectPath,
+                projectPath: String(mr.project_id),
+                // Pass project_id as projectPath so getMergeRequestDiff uses it
                 iid: mr.iid
               });
             } else {
@@ -2253,6 +2254,7 @@ async function getPendingReviewMergeRequests(cwd) {
             ricwizLogger2.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already approved.`);
           }
         }
+        break;
       } catch (e) {
         ricwizLogger2.appendLine(`[GitLab API] Error getting pending MRs for target: ${e.message}`);
       }
@@ -2265,8 +2267,8 @@ async function getPendingReviewMergeRequests(cwd) {
 async function getMergeRequestDiff(cwd, projectPath, iid) {
   const targets = await getGitlabTargets(cwd);
   for (const target of targets) {
-    if (target.projectPath === projectPath) {
-      const mr = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/projects/${target.projectPath}/merge_requests/${iid}/changes`);
+    try {
+      const mr = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/projects/${projectPath}/merge_requests/${iid}/changes`);
       if (mr && mr.changes) {
         let diffText = "";
         for (const change of mr.changes) {
@@ -2277,6 +2279,7 @@ ${change.diff}
         }
         return diffText;
       }
+    } catch (e) {
     }
   }
   return "";

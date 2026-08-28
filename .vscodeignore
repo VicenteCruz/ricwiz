@@ -8,4 +8,6 @@ package-lock.json
 GEMINI.md
 node_modules/**
 esbuild.js
+.agent/**
+.agents/**
 

@@ -119,6 +119,8 @@ export function extractCommitMessage(rawOutput: string): string {
     return candidate;
 }
 
+let commitMsgChannel: vscode.OutputChannel | undefined;
+
 export async function generateCommitMessage() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -161,16 +163,19 @@ Rules:
 Diff:
 ${diff.slice(0, 10000)}`;
 
-            const channel = vscode.window.createOutputChannel('Ricwiz AI: Commit Message');
-            channel.show(true);
-            channel.appendLine('--- Generating Commit Message ---');
+            if (!commitMsgChannel) {
+                commitMsgChannel = vscode.window.createOutputChannel('Ricwiz AI: Commit Message');
+            }
+            commitMsgChannel.clear();
+            commitMsgChannel.show(true);
+            commitMsgChannel.appendLine('--- Generating Commit Message ---');
             
             // Fetch branch name in parallel to save time when prepending ticket ID
             const branchPromise = getCurrentBranch(cwd);
             
-            const msg = await runGeminiCLI(prompt, cwd, channel, token);
+            const msg = await runGeminiCLI(prompt, cwd, commitMsgChannel, token);
 
-            channel.appendLine('\n--- Finished ---');
+            commitMsgChannel.appendLine('\n--- Finished ---');
 
             const cleanedMsg = extractCommitMessage(msg);
             if (!cleanedMsg) {
@@ -217,6 +222,8 @@ ${diff.slice(0, 10000)}`;
 
 import { getPendingReviewMergeRequests, getMergeRequestDiff } from '../gitlabApi';
 
+let mrReviewChannel: vscode.OutputChannel | undefined;
+
 export async function analyzeMergeRequests() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -237,18 +244,24 @@ export async function analyzeMergeRequests() {
                 return;
             }
 
+            if (!mrReviewChannel) {
+                mrReviewChannel = vscode.window.createOutputChannel('Ricwiz AI: MR Reviews');
+            }
+            mrReviewChannel.clear();
+            mrReviewChannel.show(true);
+
             for (const mr of pending) {
                 vscode.window.showInformationMessage(`Opening MR: ${mr.title}`);
                 vscode.env.openExternal(vscode.Uri.parse(mr.web_url));
                 
-                const channel = vscode.window.createOutputChannel(`Ricwiz AI: Review MR ${mr.iid}`);
-                channel.show(true);
-                channel.appendLine(`--- Analyzing MR: ${mr.title} ---`);
+                mrReviewChannel.appendLine(`\n======================================================`);
+                mrReviewChannel.appendLine(`--- Analyzing MR !${mr.iid}: ${mr.title} ---`);
+                mrReviewChannel.appendLine(`======================================================\n`);
                 
                 try {
                     const diff = await getMergeRequestDiff(cwd, mr.projectPath, mr.iid);
                     if (!diff.trim()) {
-                        channel.appendLine('No diff found for this MR.');
+                        mrReviewChannel.appendLine('No diff found for this MR.');
                         continue;
                     }
                     
@@ -259,10 +272,10 @@ If the code looks good, state that it looks good.
 Diff:
 ${diff.slice(0, 15000)}`;
 
-                    const analysis = await runGeminiCLI(prompt, cwd, channel);
-                    channel.appendLine('\n--- Finished ---');
+                    const analysis = await runGeminiCLI(prompt, cwd, mrReviewChannel);
+                    mrReviewChannel.appendLine('\n--- Finished ---\n');
                 } catch (e: any) {
-                    channel.appendLine(`Failed to analyze MR: ${e.message}`);
+                    mrReviewChannel.appendLine(`Failed to analyze MR: ${e.message}\n`);
                 }
             }
         });

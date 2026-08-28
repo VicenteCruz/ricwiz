@@ -97,7 +97,7 @@ async function gitlabRequest<T>(baseUrl: string, token: string, method: string, 
     return new Promise((resolve, reject) => {
         const req = https.request(url, {
             method,
-            timeout: 5000,
+            timeout: 30000,
             agent: gitlabAgent,
             headers: {
                 'PRIVATE-TOKEN': token,
@@ -170,34 +170,38 @@ export async function getPendingReviewMergeRequests(cwd: string): Promise<Pendin
                 if (!mrs || !Array.isArray(mrs)) continue;
 
                 for (const mr of mrs) {
-                    // Check if I have approved it
-                    const approvals = await gitlabRequest<any>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${mr.project_id}/merge_requests/${mr.iid}/approvals`);
-                    let hasApproved = false;
-                    if (approvals && approvals.approved_by) {
-                        hasApproved = approvals.approved_by.some((a: any) => a.user.username === user.username);
-                    }
-                    
-                    if (!hasApproved) {
-                        // Check if we commented
-                        const notes = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${mr.project_id}/merge_requests/${mr.iid}/notes?sort=desc&order_by=updated_at`);
-                        let hasCommented = false;
-                        if (notes && Array.isArray(notes)) {
-                            hasCommented = notes.some((n: any) => n.author.username === user.username && !n.system);
+                    try {
+                        // Check if I have approved it
+                        const approvals = await gitlabRequest<any>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${mr.project_id}/merge_requests/${mr.iid}/approvals`);
+                        let hasApproved = false;
+                        if (approvals && approvals.approved_by) {
+                            hasApproved = approvals.approved_by.some((a: any) => a.user.username === user.username);
                         }
                         
-                        if (!hasCommented) {
-                            ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} (${mr.title}) is pending review for ${user.username}`);
-                            pending.push({
-                                title: mr.title,
-                                web_url: mr.web_url,
-                                projectPath: String(mr.project_id), // Pass project_id as projectPath so getMergeRequestDiff uses it
-                                iid: mr.iid
-                            });
+                        if (!hasApproved) {
+                            // Check if we commented
+                            const notes = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', `/api/v4/projects/${mr.project_id}/merge_requests/${mr.iid}/notes?sort=desc&order_by=updated_at`);
+                            let hasCommented = false;
+                            if (notes && Array.isArray(notes)) {
+                                hasCommented = notes.some((n: any) => n.author.username === user.username && !n.system);
+                            }
+                            
+                            if (!hasCommented) {
+                                ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} (${mr.title}) is pending review for ${user.username}`);
+                                pending.push({
+                                    title: mr.title,
+                                    web_url: mr.web_url,
+                                    projectPath: String(mr.project_id), // Pass project_id as projectPath so getMergeRequestDiff uses it
+                                    iid: mr.iid
+                                });
+                            } else {
+                                ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already commented.`);
+                            }
                         } else {
-                            ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already commented.`);
+                            ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already approved.`);
                         }
-                    } else {
-                        ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already approved.`);
+                    } catch (err: any) {
+                        ricwizLogger.appendLine(`[GitLab API] Skipping MR ${mr.iid} due to error: ${err.message}`);
                     }
                 }
                 

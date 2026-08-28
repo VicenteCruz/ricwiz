@@ -164,7 +164,7 @@ export async function getPendingReviewMergeRequests(cwd: string): Promise<Pendin
                 if (!user || !user.username) continue;
                 
                 // Get open MRs assigned to me as a reviewer
-                const path = `/api/v4/projects/${target.projectPath}/merge_requests?state=opened&reviewer_username=${user.username}`;
+                const path = `/api/v4/projects/${target.projectPath}/merge_requests?state=opened&scope=all&reviewer_id=${user.id}`;
                 const mrs = await gitlabRequest<any[]>(target.baseUrl, target.token, 'GET', path);
                 
                 if (!mrs || !Array.isArray(mrs)) continue;
@@ -186,13 +186,18 @@ export async function getPendingReviewMergeRequests(cwd: string): Promise<Pendin
                         }
                         
                         if (!hasCommented) {
+                            ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} (${mr.title}) is pending review for ${user.username}`);
                             pending.push({
                                 title: mr.title,
                                 web_url: mr.web_url,
                                 projectPath: target.projectPath,
                                 iid: mr.iid
                             });
+                        } else {
+                            ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already commented.`);
                         }
+                    } else {
+                        ricwizLogger.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already approved.`);
                     }
                 }
             } catch (e: any) {

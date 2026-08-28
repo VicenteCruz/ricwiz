@@ -2223,7 +2223,7 @@ async function getPendingReviewMergeRequests(cwd) {
       try {
         const user = await gitlabRequest(target.baseUrl, target.token, "GET", `/api/v4/user`);
         if (!user || !user.username) continue;
-        const path8 = `/api/v4/projects/${target.projectPath}/merge_requests?state=opened&reviewer_username=${user.username}`;
+        const path8 = `/api/v4/projects/${target.projectPath}/merge_requests?state=opened&scope=all&reviewer_id=${user.id}`;
         const mrs = await gitlabRequest(target.baseUrl, target.token, "GET", path8);
         if (!mrs || !Array.isArray(mrs)) continue;
         for (const mr of mrs) {
@@ -2239,13 +2239,18 @@ async function getPendingReviewMergeRequests(cwd) {
               hasCommented = notes.some((n) => n.author.username === user.username && !n.system);
             }
             if (!hasCommented) {
+              ricwizLogger2.appendLine(`[GitLab API] MR ${mr.iid} (${mr.title}) is pending review for ${user.username}`);
               pending.push({
                 title: mr.title,
                 web_url: mr.web_url,
                 projectPath: target.projectPath,
                 iid: mr.iid
               });
+            } else {
+              ricwizLogger2.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already commented.`);
             }
+          } else {
+            ricwizLogger2.appendLine(`[GitLab API] MR ${mr.iid} skipped: ${user.username} has already approved.`);
           }
         }
       } catch (e) {

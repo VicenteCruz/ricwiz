@@ -31,7 +31,12 @@ export function getWorkspaceCwd(): string | undefined {
  */
 export async function getCurrentBranch(cwd: string): Promise<string> {
     try {
-        const { stdout } = await exec('git branch --show-current', { cwd });
+        const stdout = await new Promise<string>((resolve, reject) => {
+            cp.execFile('git', ['branch', '--show-current'], { cwd }, (err, stdout) => {
+                if (err) reject(err);
+                else resolve(stdout);
+            });
+        });
         return stdout.trim();
     } catch (e) {
         return '';

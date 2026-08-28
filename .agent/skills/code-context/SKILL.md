@@ -162,3 +162,4 @@ Structure the answer as:
 - If no ticket ID is found (e.g. an old commit predating the convention), say so clearly and answer based on code analysis and git history only
 - If `get_tickets_batch` or Jira credentials are unavailable, fall back to git blame and git log analysis only and inform the user that Jira context could not be fetched
 - Never guess at business requirements — only state what is in the ticket
+- The more inportant are the User Stories and Technical Stories. Everything else can be put after each user stories and technical stories to give context like bugs, etc. If you can't relate, create a section with all the changes that are not User Stories and Technical Storie

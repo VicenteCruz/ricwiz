@@ -9,13 +9,14 @@ async function runGeminiCLI(prompt: string, workspacePath: string, channel?: vsc
     return new Promise((resolve, reject) => {
         let geminiPath = 'gemini';
         
-        // We use -y (yolo) to avoid interactive prompts, and --output-format text
-        const child = cp.spawn(geminiPath , ['-y', '--output-format', 'text', prompt], {
+        // Use -y (yolo) and --output-format text. We pass the prompt via stdin to avoid OS argument length limits.
+        const child = cp.spawn(geminiPath , ['-y', '--output-format', 'text'], {
             cwd: workspacePath,
             shell: true
         });
 
-        // Close stdin so the process doesn't hang waiting for input
+        // Write the prompt to stdin and close it
+        child.stdin.write(prompt);
         child.stdin.end();
 
         if (token) {
@@ -127,9 +128,10 @@ export async function generateCommitMessage() {
     const cwd = workspaceFolders[0].uri.fsPath;
 
     try {
-        // Get staged diff
+        // Get staged diff, optimized for AI (less context, exclude lock files and generated assets)
         const diff = await new Promise<string>((resolve, reject) => {
-            cp.exec('git diff --cached', { cwd, maxBuffer: 1024 * 1024 * 10 }, (err, stdout, stderr) => {
+            const args = ['diff', '--cached', '-U1', '--no-ext-diff', '--no-color', '--', '.', ':(exclude)package-lock.json', ':(exclude)yarn.lock', ':(exclude)*.map', ':(exclude)*.min.js', ':(exclude)*.min.css'];
+            cp.execFile('git', args, { cwd, maxBuffer: 1024 * 1024 * 10 }, (err, stdout, stderr) => {
                 if (err && !stdout) reject(err);
                 else resolve(stdout);
             });
@@ -163,6 +165,9 @@ ${diff.slice(0, 10000)}`;
             channel.show(true);
             channel.appendLine('--- Generating Commit Message ---');
             
+            // Fetch branch name in parallel to save time when prepending ticket ID
+            const branchPromise = getCurrentBranch(cwd);
+            
             const msg = await runGeminiCLI(prompt, cwd, channel, token);
 
             channel.appendLine('\n--- Finished ---');
@@ -185,7 +190,7 @@ ${diff.slice(0, 10000)}`;
                         repo.inputBox.value = match[0] + cleanedMsg;
                     } else {
                         // Check if current branch has a ticket ID that we can prepend
-                        const currentBranch = await getCurrentBranch(cwd);
+                        const currentBranch = await branchPromise;
                         const config = vscode.workspace.getConfiguration('ricwiz');
                         const configPrefix = config.get<string>('ticketPrefix', 'SFPSCA-');
                         const prefix = resolvePrefix(currentBranch, configPrefix);

@@ -88,12 +88,13 @@ From **both** the blame output and the git log history, scan commit messages for
 
 ### Step 5 — Fetch full Jira context (Scatter-Gather)
 
-Fetch the full Jira context in a **single batch request** by executing the internal VS Code command:
+Fetch the full Jira context in a **single batch request** by executing the internal `ricwiz` CLI tool:
 
-```typescript
-const resultJson = await vscode.commands.executeCommand("ricwiz.getTicketsBatch", ["SFPSCA-1234", "SFPSCA-5678"]);
-const tickets = JSON.parse(resultJson as string);
+```bash
+node out/cli.js get-tickets SFPSCA-1234 SFPSCA-5678
 ```
+
+*(You can pass multiple ticket IDs separated by spaces).*
 
 **Response Format (`BatchIssueResult[]`)**:
 The script returns a JSON array of issue objects:

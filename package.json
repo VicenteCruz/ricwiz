@@ -17,6 +17,9 @@
     "url": "https://github.com/VicenteCruz/ricwiz.git"
   },
   "main": "./out/extension.js",
+  "bin": {
+    "ricwiz": "./out/cli.js"
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [

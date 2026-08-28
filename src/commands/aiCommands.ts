@@ -222,7 +222,7 @@ ${diff.slice(0, 10000)}`;
 
 import { getPendingReviewMergeRequests, getMergeRequestDiff } from '../gitlabApi';
 
-let mrReviewChannel: vscode.OutputChannel | undefined;
+let mrReviewChannels: vscode.OutputChannel[] = [];
 
 export async function analyzeMergeRequests() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -244,25 +244,29 @@ export async function analyzeMergeRequests() {
                 return;
             }
 
-            if (!mrReviewChannel) {
-                mrReviewChannel = vscode.window.createOutputChannel('Ricwiz AI: MR Reviews');
+            // Cleanup previous channels to prevent accumulation
+            for (const ch of mrReviewChannels) {
+                ch.dispose();
             }
-            mrReviewChannel.clear();
-            mrReviewChannel.show(true);
+            mrReviewChannels = [];
 
-            for (const mr of pending) {
+            progress.report({ message: `Found ${pending.length} MR(s). Analyzing in parallel...` });
+
+            const analysisPromises = pending.map(async (mr) => {
                 vscode.window.showInformationMessage(`Opening MR: ${mr.title}`);
                 vscode.env.openExternal(vscode.Uri.parse(mr.web_url));
                 
-                mrReviewChannel.appendLine(`\n======================================================`);
-                mrReviewChannel.appendLine(`--- Analyzing MR !${mr.iid}: ${mr.title} ---`);
-                mrReviewChannel.appendLine(`======================================================\n`);
+                const channel = vscode.window.createOutputChannel(`Ricwiz MR !${mr.iid}`);
+                mrReviewChannels.push(channel);
+                channel.show(true);
+                
+                channel.appendLine(`--- Analyzing MR !${mr.iid}: ${mr.title} ---\n`);
                 
                 try {
                     const diff = await getMergeRequestDiff(cwd, mr.projectPath, mr.iid);
                     if (!diff.trim()) {
-                        mrReviewChannel.appendLine('No diff found for this MR.');
-                        continue;
+                        channel.appendLine('No diff found for this MR.');
+                        return;
                     }
                     
                     const prompt = `You are an expert code reviewer. Analyze the following git diff for a merge request.
@@ -272,12 +276,14 @@ If the code looks good, state that it looks good.
 Diff:
 ${diff.slice(0, 15000)}`;
 
-                    const analysis = await runGeminiCLI(prompt, cwd, mrReviewChannel);
-                    mrReviewChannel.appendLine('\n--- Finished ---\n');
+                    await runGeminiCLI(prompt, cwd, channel);
+                    channel.appendLine('\n--- Finished ---\n');
                 } catch (e: any) {
-                    mrReviewChannel.appendLine(`Failed to analyze MR: ${e.message}\n`);
+                    channel.appendLine(`Failed to analyze MR: ${e.message}\n`);
                 }
-            }
+            });
+
+            await Promise.all(analysisPromises);
         });
     } catch (e: any) {
         vscode.window.showErrorMessage('Failed to analyze merge requests: ' + e.message);

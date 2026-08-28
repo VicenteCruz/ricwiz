@@ -4929,6 +4929,7 @@ function extractCommitMessage(rawOutput) {
   }
   return candidate;
 }
+var commitMsgChannel;
 async function generateCommitMessage() {
   const workspaceFolders = vscode36.workspace.workspaceFolders;
   if (!workspaceFolders) {
@@ -4966,12 +4967,15 @@ Rules:
 
 Diff:
 ${diff.slice(0, 1e4)}`;
-      const channel = vscode36.window.createOutputChannel("Ricwiz AI: Commit Message");
-      channel.show(true);
-      channel.appendLine("--- Generating Commit Message ---");
+      if (!commitMsgChannel) {
+        commitMsgChannel = vscode36.window.createOutputChannel("Ricwiz AI: Commit Message");
+      }
+      commitMsgChannel.clear();
+      commitMsgChannel.show(true);
+      commitMsgChannel.appendLine("--- Generating Commit Message ---");
       const branchPromise = getCurrentBranch(cwd);
-      const msg = await runGeminiCLI(prompt, cwd, channel, token);
-      channel.appendLine("\n--- Finished ---");
+      const msg = await runGeminiCLI(prompt, cwd, commitMsgChannel, token);
+      commitMsgChannel.appendLine("\n--- Finished ---");
       const cleanedMsg = extractCommitMessage(msg);
       if (!cleanedMsg) {
         vscode36.window.showWarningMessage("Could not extract a valid commit message from Gemini output.");
@@ -5012,6 +5016,7 @@ ${diff.slice(0, 1e4)}`;
     vscode36.window.showErrorMessage("Failed to generate commit message: " + e.message);
   }
 }
+var mrReviewChannels = [];
 async function analyzeMergeRequests() {
   const workspaceFolders = vscode36.workspace.workspaceFolders;
   if (!workspaceFolders) {
@@ -5030,17 +5035,24 @@ async function analyzeMergeRequests() {
         vscode36.window.showInformationMessage("No pending merge requests to review.");
         return;
       }
-      for (const mr of pending) {
+      for (const ch of mrReviewChannels) {
+        ch.dispose();
+      }
+      mrReviewChannels = [];
+      progress.report({ message: `Found ${pending.length} MR(s). Analyzing in parallel...` });
+      const analysisPromises = pending.map(async (mr) => {
         vscode36.window.showInformationMessage(`Opening MR: ${mr.title}`);
         vscode36.env.openExternal(vscode36.Uri.parse(mr.web_url));
-        const channel = vscode36.window.createOutputChannel(`Ricwiz AI: Review MR ${mr.iid}`);
+        const channel = vscode36.window.createOutputChannel(`Ricwiz MR !${mr.iid}`);
+        mrReviewChannels.push(channel);
         channel.show(true);
-        channel.appendLine(`--- Analyzing MR: ${mr.title} ---`);
+        channel.appendLine(`--- Analyzing MR !${mr.iid}: ${mr.title} ---
+`);
         try {
           const diff = await getMergeRequestDiff(cwd, mr.projectPath, mr.iid);
           if (!diff.trim()) {
             channel.appendLine("No diff found for this MR.");
-            continue;
+            return;
           }
           const prompt = `You are an expert code reviewer. Analyze the following git diff for a merge request.
 Provide a concise code review, pointing out potential bugs, code smells, or areas for improvement.
@@ -5048,12 +5060,14 @@ If the code looks good, state that it looks good.
 
 Diff:
 ${diff.slice(0, 15e3)}`;
-          const analysis = await runGeminiCLI(prompt, cwd, channel);
-          channel.appendLine("\n--- Finished ---");
+          await runGeminiCLI(prompt, cwd, channel);
+          channel.appendLine("\n--- Finished ---\n");
         } catch (e) {
-          channel.appendLine(`Failed to analyze MR: ${e.message}`);
+          channel.appendLine(`Failed to analyze MR: ${e.message}
+`);
         }
-      }
+      });
+      await Promise.all(analysisPromises);
     });
   } catch (e) {
     vscode36.window.showErrorMessage("Failed to analyze merge requests: " + e.message);

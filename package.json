@@ -176,6 +176,10 @@
       {
         "command": "ricwiz.generateCommitMessage",
         "title": "Ricwiz: Generate Commit Message"
+      },
+      {
+        "command": "ricwiz.getTicketsBatch",
+        "title": "Ricwiz: Get Tickets Batch"
       }
     ],
     "configuration": {

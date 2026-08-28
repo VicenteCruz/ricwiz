@@ -3,7 +3,6 @@ import { RicwizWebviewProvider } from './webview';
 import { initializeSecrets, getJiraToken, getGitlabToken } from './secrets';
 import { registerAllCommands } from './commands/index';
 import { initializeGitMonitor } from './gitMonitor';
-import { AiSkills } from './acpSkills';
 import { RicwizPublicApi } from './types';
 
 export let webviewProvider: RicwizWebviewProvider | undefined;
@@ -33,8 +32,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Ricwiz
             email: vscode.workspace.getConfiguration('ricwiz').get<string>('jiraEmail', ''),
             token: await getJiraToken()
         }),
-        getGitLabToken: async () => getGitlabToken(),
-        AiSkills
+        getGitLabToken: async () => getGitlabToken()
     };
 }
 

@@ -165,13 +165,4 @@ export interface RicwizPublicApi {
     getJiraCredentials: () => Promise<JiraCredentials>;
     /** Returns the GitLab API token from SecretStorage */
     getGitLabToken: () => Promise<string | undefined>;
-    /** AI Skills invocable by the ACP agent via Function Calling */
-    AiSkills: {
-        /**
-         * Fetches multiple Jira tickets in a single JQL batch request (API v3).
-         * Returns a JSON string of BatchIssueResult[] with ADF descriptions converted to plain text.
-         * @param ticketIds - Array of Jira issue keys, e.g. ["SFPSCA-1234", "SFPSCA-5678"]
-         */
-        get_tickets_batch: (ticketIds: string[]) => Promise<string>;
-    };
 }

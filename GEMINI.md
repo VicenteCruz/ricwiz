@@ -22,7 +22,7 @@
 ## Continuous Learning & Findings
 - **Self-Correction & Memory**: Whenever a mistake is made or a highly important detail for the project's progress is discovered, document it in this file (`GEMINI.md`) to maintain crucial context for the future.
 - **VS Code Commands**: When adding new commands in the TypeScript code (e.g., `src/commands/`), they **must** also be declared in the `contributes.commands` array in `package.json`. Otherwise, they won't appear in the VS Code Command Palette.
-- **Type Definitions vs. Implementation**: Ensure that shared API interfaces (e.g., `RicwizPublicApi`, `AiSkills`) perfectly match their implementations. If a method (like `get_git_blame`) is deprecated or native tools are used instead, remove it from the TypeScript interface to avoid silent compilation errors.
+- **Type Definitions vs. Implementation**: Ensure that shared API interfaces (e.g., `RicwizPublicApi`) perfectly match their implementations. If a method (like `get_git_blame`) is deprecated or native tools are used instead, remove it from the TypeScript interface to avoid silent compilation errors.
 - **AI Output Sanitization**: LLMs and reasoning models (via headless CLI or API) may output thinking tags (`<thought>`, `<think>`), thinking process blocks, markdown fences, JSON wrappers, preambles, or duplicate ticket IDs. Always use strict XML tag extraction (`<commit_message>...</commit_message>`) coupled with multi-layer sanitization (`extractCommitMessage`) so internal reasoning never leaks into user-facing inputs or git commit boxes.
 
 ## Git Multi-Remote Topology

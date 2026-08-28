@@ -24,14 +24,14 @@ const esbuildProblemMatcherPlugin = {
 
 async function main() {
     const ctx = await esbuild.context({
-        entryPoints: ["src/extension.ts", "src/cli.ts"],
+        entryPoints: ["src/extension.ts"],
         bundle: true,
         format: "cjs",
         minify: production,
         sourcemap: !production,
         sourcesContent: false,
         platform: "node",
-        outdir: "out",
+        outfile: "out/extension.js",
         external: ["vscode"],
         logLevel: "silent",
         plugins: [

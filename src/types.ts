@@ -117,38 +117,6 @@ export interface JiraDetailsData extends JiraIssueData {
     relatedBranches: RelatedBranch[];
 }
 
-/** Minimal reference to a related Jira issue (used in parent, subtasks, and issueLinks) */
-export interface IssueSummary {
-    key: string;
-    title: string;
-}
-
-/** A directional link between two Jira issues */
-export interface IssueLink {
-    /** Relationship label from the perspective of this issue, e.g. "blocks", "is blocked by", "relates to" */
-    type: string;
-    issue: IssueSummary;
-}
-
-/** Result of a single issue in a batch Jira fetch */
-export interface BatchIssueResult {
-    key: string;
-    title: string;
-    type?: string;
-    status?: string;
-    assignee?: string;
-    priority?: string;
-    labels?: string[];
-    fixVersions?: string[];
-    description: string;
-    /** Direct parent ticket (Epic, Story, etc.) if this issue has one */
-    parent?: IssueSummary;
-    /** Child sub-tasks of this issue */
-    subtasks: IssueSummary[];
-    /** Linked issues with their relationship type */
-    issueLinks: IssueLink[];
-}
-
 
 /** Jira credentials exposed via the Inter-Extension API */
 export interface JiraCredentials {

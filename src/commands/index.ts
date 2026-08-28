@@ -160,11 +160,6 @@ export function registerAllCommands(
         }),
         vscode.commands.registerCommand('ricwiz.generateCommitMessage', async () => {
             await generateCommitMessage();
-        }),
-        vscode.commands.registerCommand('ricwiz.getTicketsBatch', async (ticketIds: string[]) => {
-            const { fetchJiraIssuesBatch } = await import('../jiraApi');
-            const results = await fetchJiraIssuesBatch(ticketIds);
-            return JSON.stringify(results);
         })
     );
 }
